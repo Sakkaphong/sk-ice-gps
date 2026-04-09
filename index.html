@@ -217,8 +217,14 @@ function startGPS(isResume){
   document.getElementById('s-sub').textContent  = 'ลูกค้าได้รับลิงค์แผนที่แล้ว';
   document.getElementById('dot').className = 'dot on';
   document.getElementById('gps-label').textContent = 'กำลังขอ GPS...';
-  watchId = navigator.geolocation.watchPosition(sendGPS, gpsErr,
-    {enableHighAccuracy:true, timeout:20000, maximumAge:0});
+  // ส่ง GPS ทุก 30 วินาที (ไม่ใช้ watchPosition เพราะยิงถี่เกิน)
+  sendOnce();
+  watchId = setInterval(sendOnce, 60000);
+}
+
+function sendOnce(){
+  navigator.geolocation.getCurrentPosition(sendGPS, gpsErr,
+    {enableHighAccuracy:true, timeout:20000, maximumAge:10000});
 }
 
 function sendGPS(pos){
@@ -272,7 +278,7 @@ function showFixBox(msg){
 
 function arrived(){
   saveSession('arrived'); // บันทึกว่าถึงแล้ว
-  if(watchId) navigator.geolocation.clearWatch(watchId);
+  if(watchId) clearInterval(watchId);
   document.getElementById('btn-here').disabled = true;
   document.getElementById('s-icon').textContent = '🔧';
   document.getElementById('s-text').textContent = 'ถึงแล้ว!';
