@@ -99,6 +99,8 @@ const CL = p.get('cline') || '';
 const CN = p.get('cname') || '-';
 const AD = decodeURIComponent(p.get('addr') || '');
 const MAPS = p.get('maps') ? decodeURIComponent(p.get('maps')) : '';
+const DLAT = p.get('dlat') || '';
+const DLNG = p.get('dlng') || '';
 const BASE = 'https://skgroup.app.n8n.cloud/webhook';
 
 document.getElementById('hdr-sub').textContent = '👷 ' + T;
@@ -109,7 +111,9 @@ document.getElementById('d-addr').textContent  = AD || '-';
 if(MAPS || AD){
   const n = document.getElementById('nav-btn');
   n.style.display = 'block';
-  n.href = MAPS || ('https://maps.google.com/?q=' + encodeURIComponent(AD));
+  n.href = MAPS || (DLAT && DLNG
+    ? `https://www.google.com/maps/dir/?api=1&destination=${DLAT},${DLNG}&travelmode=driving`
+    : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(AD)}&travelmode=driving`);
 }
 
 // In-App Browser Detection
@@ -128,9 +132,9 @@ if(MAPS || AD){
     // Show quick open bar if NOT already in Chrome or Safari (i.e. other desktop/android browser)
     // Always show open-bar for convenience on mobile
     const isMobile = /iPhone|iPad|iPod|Android/.test(ua);
-if(isMobile){
-  document.getElementById('open-bar').style.display = 'flex';
-}
+    if(isMobile && !isChrome && !isSafari){
+      document.getElementById('open-bar').style.display = 'flex';
+    }
   }
 })();
 
@@ -238,4 +242,3 @@ function arrived(){
 </script>
 </body>
 </html>
-
