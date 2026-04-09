@@ -108,7 +108,7 @@ document.getElementById('d-work').textContent  = W;
 document.getElementById('d-tech').textContent  = T;
 document.getElementById('d-cust').textContent  = CN;
 document.getElementById('d-addr').textContent  = AD || '-';
-if(MAPS || AD){
+if(MAPS || AD || (DLAT && DLNG)){
   const n = document.getElementById('nav-btn');
   n.style.display = 'block';
   n.href = MAPS || (DLAT && DLNG
@@ -129,10 +129,9 @@ if(MAPS || AD){
     document.getElementById('btn-go').disabled = true;
     document.getElementById('btn-go').textContent = '⚠️ กรุณาเปิดใน Chrome หรือ Safari';
   } else {
-    // Show quick open bar if NOT already in Chrome or Safari (i.e. other desktop/android browser)
-    // Always show open-bar for convenience on mobile
+    // Always show open-bar on mobile
     const isMobile = /iPhone|iPad|iPod|Android/.test(ua);
-    if(isMobile && !isChrome && !isSafari){
+    if(isMobile){
       document.getElementById('open-bar').style.display = 'flex';
     }
   }
