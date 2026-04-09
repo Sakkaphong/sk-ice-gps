@@ -128,9 +128,9 @@ if(MAPS || AD){
     // Show quick open bar if NOT already in Chrome or Safari (i.e. other desktop/android browser)
     // Always show open-bar for convenience on mobile
     const isMobile = /iPhone|iPad|iPod|Android/.test(ua);
-    if(isMobile && !isChrome && !isSafari){
-      document.getElementById('open-bar').style.display = 'flex';
-    }
+if(isMobile){
+  document.getElementById('open-bar').style.display = 'flex';
+}
   }
 })();
 
