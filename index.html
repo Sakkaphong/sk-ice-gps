@@ -116,6 +116,9 @@ if(MAPS || AD || (DLAT && DLNG)){
     : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(AD)}&travelmode=driving`);
 }
 
+// ── ตรวจ session เก่าเมื่อโหลด ──
+window.addEventListener('load', ()=>{ setTimeout(checkResume, 500); });
+
 // In-App Browser Detection
 (function(){
   const ua = navigator.userAgent || '';
@@ -161,17 +164,56 @@ function copyURL(){
 }
 
 let watchId = null, count = 0;
+const SESSION_KEY = 'gps_session_' + W;
 
-function startGPS(){
+// ── บันทึก session ลง localStorage ──
+function saveSession(status){
+  localStorage.setItem(SESSION_KEY, JSON.stringify({
+    active: true, status: status || 'traveling',
+    job_id:W, tech_name:T, customer_line_id:CL,
+    customer_name:CN, job_address:AD, count:count,
+    saved_at: new Date().toISOString()
+  }));
+}
+function clearSession(){ localStorage.removeItem(SESSION_KEY); }
+
+// ── ตรวจสอบ session เก่าเมื่อโหลดหน้า ──
+function checkResume(){
+  let s;
+  try { s = JSON.parse(localStorage.getItem(SESSION_KEY)); } catch(e){}
+  if(!s || !s.active) return;
+  // session เก่าไม่เกิน 4 ชั่วโมง
+  if(new Date() - new Date(s.saved_at) > 4*60*60*1000){ clearSession(); return; }
+
+  count = s.count || 1; // ไม่ส่ง is_first อีก
+  if(s.status === 'arrived'){
+    // ถึงแล้ว — แสดงปุ่มจบงาน
+    document.getElementById('s-icon').textContent = '🔧';
+    document.getElementById('s-text').textContent = 'ถึงแล้ว (resume)';
+    document.getElementById('s-sub').textContent  = 'กดจบงานเมื่อเสร็จ';
+    const btnGo = document.getElementById('btn-go');
+    btnGo.textContent = '🔧 จบงาน'; btnGo.style.background='#E74C3C';
+    btnGo.disabled = false; btnGo.onclick = done;
+    document.getElementById('btn-here').disabled = true;
+  } else {
+    // traveling — resume GPS อัตโนมัติ
+    document.getElementById('s-text').textContent = '🔄 เชื่อมต่อ GPS ใหม่...';
+    document.getElementById('gps-label').textContent = 'กำลัง resume...';
+    startGPS(true); // true = resume, ไม่ต้องส่ง is_first
+  }
+}
+
+function startGPS(isResume){
   if(!navigator.geolocation){
     showFixBox('เบราว์เซอร์ไม่รองรับ GPS');
     return;
   }
+  if(!isResume) count = 0; // reset เฉพาะตอนเริ่มใหม่จริงๆ
   document.getElementById('btn-go').disabled = true;
   document.getElementById('btn-go').textContent = '📍 Tracking...';
   document.getElementById('btn-here').disabled = false;
   document.getElementById('s-icon').textContent = '🚗';
-  document.getElementById('s-text').textContent = 'กำลังเดินทาง';
+  document.getElementById('s-text').textContent = isResume ? '🚗 กำลังเดินทาง (ต่อ)' : 'กำลังเดินทาง';
   document.getElementById('s-sub').textContent  = 'ลูกค้าได้รับลิงค์แผนที่แล้ว';
   document.getElementById('dot').className = 'dot on';
   document.getElementById('gps-label').textContent = 'กำลังขอ GPS...';
@@ -189,6 +231,7 @@ function sendGPS(pos){
     job_address: AD
   };
   count++;
+  saveSession('traveling'); // บันทึกทุกครั้งที่ส่ง GPS
   document.getElementById('d-time').textContent = new Date().toLocaleTimeString('th-TH');
   document.getElementById('gps-label').textContent = 'ส่งแล้ว ' + count + ' ครั้ง | ±' + data.accuracy + 'm';
   document.getElementById('fix-box').style.display = 'none';
@@ -196,6 +239,13 @@ function sendGPS(pos){
     method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)
   }).catch(()=>{});
 }
+
+// ── resume เมื่อกลับมาที่ tab ──
+document.addEventListener('visibilitychange', ()=>{
+  if(!document.hidden && watchId === null){
+    checkResume();
+  }
+});
 
 function gpsErr(e){
   document.getElementById('dot').className = 'dot';
@@ -221,6 +271,7 @@ function showFixBox(msg){
 }
 
 function arrived(){
+  saveSession('arrived'); // บันทึกว่าถึงแล้ว
   if(watchId) navigator.geolocation.clearWatch(watchId);
   document.getElementById('btn-here').disabled = true;
   document.getElementById('s-icon').textContent = '🔧';
@@ -253,6 +304,7 @@ function done(){
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({job_id:W, tech_name:T, customer_line_id:CL, customer_name:CN})
   }).then(()=>{
+    clearSession(); // ล้าง session เมื่อจบงาน
     document.getElementById('s-sub').textContent = 'แจ้งเรียบร้อยแล้ว ✅';
     btnGo.textContent = '✅ เสร็จสิ้น';
   }).catch(()=>{
