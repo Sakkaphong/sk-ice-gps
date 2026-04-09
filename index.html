@@ -1,1 +1,241 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>SK ICE — เดินทาง</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Helvetica Neue',Arial,sans-serif;background:#F0F4F8;min-height:100vh}
+.hdr{background:linear-gradient(135deg,#1E3A5F,#2E6DA4);padding:20px;text-align:center}
+.hdr h1{color:#fff;font-size:20px;font-weight:700}.hdr p{color:#A8D5F0;font-size:13px;margin-top:4px}
+.card{background:#fff;margin:14px;border-radius:12px;padding:18px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+.status-box{text-align:center;padding:16px}
+.status-icon{font-size:52px;margin-bottom:10px}
+.status-text{font-size:17px;font-weight:700;color:#2C3E50}
+.status-sub{font-size:13px;color:#888;margin-top:4px}
+.info-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #F5F5F5}
+.info-row:last-child{border:none}
+.lbl{color:#999;font-size:13px}.val{color:#2C3E50;font-size:13px;font-weight:600;text-align:right;max-width:60%}
+.btn{width:100%;padding:15px;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;margin-top:10px}
+.btn-go{background:#27AE60;color:#fff}.btn-go:disabled{background:#ccc}
+.btn-here{background:#2E6DA4;color:#fff}.btn-here:disabled{background:#ccc}
+.gps-bar{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#F8F9FA;border-radius:8px;margin-top:10px;font-size:12px;color:#666}
+.dot{width:9px;height:9px;border-radius:50%;background:#ccc;flex-shrink:0}
+.dot.on{background:#27AE60;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.nav-btn{background:#FF6B35;color:#fff;text-decoration:none;text-align:center;padding:13px;border-radius:10px;font-weight:700;font-size:14px;margin-top:10px;display:none}
+/* In-app browser warning */
+.browser-warn{background:#FFF3CD;border:2px solid #FFC107;border-radius:12px;padding:16px;margin:14px;display:none}
+.browser-warn h3{color:#856404;font-size:15px;margin-bottom:8px}
+.browser-warn p{color:#664d03;font-size:13px;line-height:1.6;margin-bottom:8px}
+.copy-btn{background:#1E3A5F;color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:700;width:100%;cursor:pointer;margin-bottom:8px}
+.chrome-btn{background:#4285F4;color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:700;width:100%;cursor:pointer;margin-bottom:8px}
+.safari-btn{background:#006CFF;color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:700;width:100%;cursor:pointer}
+/* Open in Chrome bar (always visible) */
+.open-bar{display:flex;gap:8px;margin:14px 14px 0;}
+/* GPS fix steps */
+.fix-box{background:#FFF5F5;border:2px solid #F44336;border-radius:12px;padding:16px;margin-top:12px;display:none}
+.fix-box h3{color:#C62828;font-size:14px;margin-bottom:10px}
+.fix-step{display:flex;gap:10px;margin-bottom:8px;align-items:flex-start}
+.fix-num{background:#C62828;color:#fff;width:22px;height:22px;border-radius:50%;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.fix-text{font-size:12px;color:#555;line-height:1.5}
+.fix-path{font-family:monospace;background:#F5F5F5;padding:2px 6px;border-radius:4px;font-size:11px;color:#C62828}
+</style>
+</head>
+<body>
+
+<!-- Quick open bar (always visible) -->
+<div class="open-bar" id="open-bar" style="display:none">
+  <button onclick="openChrome()" style="flex:1;background:#4285F4;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer">🟢 เปิดใน Chrome</button>
+  <button onclick="openSafari()" style="flex:1;background:#006CFF;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer">🧭 เปิดใน Safari</button>
+</div>
+
+<!-- In-app browser warning -->
+<div class="browser-warn" id="inapp-warn">
+  <h3>⚠️ GPS ใช้งานไม่ได้ใน browser นี้</h3>
+  <p>กรุณาเปิดใน <b>Chrome</b> หรือ <b>Safari</b> เพื่อใช้ GPS</p>
+  <button class="chrome-btn" onclick="openChrome()">🟢 เปิดใน Google Chrome</button>
+  <button class="safari-btn" onclick="openSafari()">🧭 เปิดใน Safari</button>
+  <button class="copy-btn" onclick="copyURL()">📋 Copy ลิงค์ (วางใน browser เอง)</button>
+</div>
+
+<div class="hdr"><h1>🧊 SK ICE</h1><p id="hdr-sub">กำลังโหลด...</p></div>
+
+<div class="card">
+  <div class="status-box">
+    <div class="status-icon" id="s-icon">📍</div>
+    <div class="status-text" id="s-text">กดเริ่มเดินทาง</div>
+    <div class="status-sub" id="s-sub">ระบบจะติดตาม GPS และแจ้งลูกค้าอัตโนมัติ</div>
+  </div>
+  <div class="gps-bar"><div class="dot" id="dot"></div><span id="gps-label">รอเริ่มต้น</span></div>
+  <div class="fix-box" id="fix-box">
+    <h3>🔧 วิธีแก้ GPS บน iPhone</h3>
+    <div class="fix-step"><div class="fix-num">1</div><div class="fix-text">เปิด <b>การตั้งค่า</b> → <b>ความเป็นส่วนตัว</b> → <b>บริการระบุตำแหน่ง</b></div></div>
+    <div class="fix-step"><div class="fix-num">2</div><div class="fix-text">หา <b>Safari</b> → ตั้งเป็น <b>"ขณะใช้แอป"</b></div></div>
+    <div class="fix-step"><div class="fix-num">3</div><div class="fix-text">กลับมา Safari → <b>ปิดแล้วเปิดใหม่</b> → กดปุ่มอีกครั้ง</div></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="info-row"><span class="lbl">รหัสงาน</span><span class="val" id="d-work">-</span></div>
+  <div class="info-row"><span class="lbl">ช่าง</span><span class="val" id="d-tech">-</span></div>
+  <div class="info-row"><span class="lbl">ลูกค้า</span><span class="val" id="d-cust">-</span></div>
+  <div class="info-row"><span class="lbl">ที่อยู่</span><span class="val" id="d-addr">-</span></div>
+  <div class="info-row"><span class="lbl">อัปเดตล่าสุด</span><span class="val" id="d-time">-</span></div>
+  <a id="nav-btn" class="nav-btn" target="_blank">🗺 เปิด Google Maps นำทาง</a>
+</div>
+
+<div class="card">
+  <button class="btn btn-go" id="btn-go" onclick="startGPS()">🚗 เริ่มเดินทาง</button>
+  <button class="btn btn-here" id="btn-here" onclick="arrived()" disabled>✅ ถึงที่แล้ว</button>
+</div>
+
+<script>
+const p = new URLSearchParams(location.search);
+const W  = p.get('work')  || 'WRK-000';
+const T  = p.get('tech')  || 'ช่าง';
+const CL = p.get('cline') || '';
+const CN = p.get('cname') || '-';
+const AD = decodeURIComponent(p.get('addr') || '');
+const MAPS = p.get('maps') ? decodeURIComponent(p.get('maps')) : '';
+const BASE = 'https://skgroup.app.n8n.cloud/webhook';
+
+document.getElementById('hdr-sub').textContent = '👷 ' + T;
+document.getElementById('d-work').textContent  = W;
+document.getElementById('d-tech').textContent  = T;
+document.getElementById('d-cust').textContent  = CN;
+document.getElementById('d-addr').textContent  = AD || '-';
+if(MAPS || AD){
+  const n = document.getElementById('nav-btn');
+  n.style.display = 'block';
+  n.href = MAPS || ('https://maps.google.com/?q=' + encodeURIComponent(AD));
+}
+
+// In-App Browser Detection
+(function(){
+  const ua = navigator.userAgent || '';
+  const isInApp = /Line\/|FBAN|FBAV|FB_IAB|Instagram|Snapchat|Twitter|MicroMessenger/.test(ua)
+    || (/(iPhone|iPod|iPad)/.test(ua) && !/Safari\//.test(ua) && /AppleWebKit/.test(ua));
+  const isChrome = /CriOS/.test(ua);
+  const isSafari = /Safari\//.test(ua) && !/CriOS/.test(ua) && !/Chrome/.test(ua);
+
+  if(isInApp){
+    document.getElementById('inapp-warn').style.display = 'block';
+    document.getElementById('btn-go').disabled = true;
+    document.getElementById('btn-go').textContent = '⚠️ กรุณาเปิดใน Chrome หรือ Safari';
+  } else {
+    // Show quick open bar if NOT already in Chrome or Safari (i.e. other desktop/android browser)
+    // Always show open-bar for convenience on mobile
+    const isMobile = /iPhone|iPad|iPod|Android/.test(ua);
+    if(isMobile && !isChrome && !isSafari){
+      document.getElementById('open-bar').style.display = 'flex';
+    }
+  }
+})();
+
+function openChrome(){
+  // googlechromes:// opens HTTPS URLs in Chrome iOS
+  const chromeUrl = location.href.replace('https://', 'googlechromes://').replace('http://', 'googlechrome://');
+  location.href = chromeUrl;
+  // fallback after 2s if Chrome not installed
+  setTimeout(()=>{ copyURL(); }, 2000);
+}
+
+function openSafari(){
+  // x-web-search:// doesn't work well; best is to copy URL
+  copyURL();
+  alert('วาง (Paste) URL ใน Safari แล้วเปิดครับ');
+}
+
+function copyURL(){
+  const url = location.href;
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(()=>alert('✅ Copy แล้ว!\nวาง (Paste) ใน Chrome หรือ Safari แล้วเปิด'));
+  } else {
+    prompt('Copy URL นี้:', url);
+  }
+}
+
+let watchId = null, count = 0;
+
+function startGPS(){
+  if(!navigator.geolocation){
+    showFixBox('เบราว์เซอร์ไม่รองรับ GPS');
+    return;
+  }
+  document.getElementById('btn-go').disabled = true;
+  document.getElementById('btn-go').textContent = '📍 Tracking...';
+  document.getElementById('btn-here').disabled = false;
+  document.getElementById('s-icon').textContent = '🚗';
+  document.getElementById('s-text').textContent = 'กำลังเดินทาง';
+  document.getElementById('s-sub').textContent  = 'ลูกค้าได้รับลิงค์แผนที่แล้ว';
+  document.getElementById('dot').className = 'dot on';
+  document.getElementById('gps-label').textContent = 'กำลังขอ GPS...';
+  watchId = navigator.geolocation.watchPosition(sendGPS, gpsErr,
+    {enableHighAccuracy:true, timeout:20000, maximumAge:0});
+}
+
+function sendGPS(pos){
+  const data = {
+    job_id: W, tech_name: T, customer_line_id: CL, customer_name: CN,
+    lat: pos.coords.latitude, lng: pos.coords.longitude,
+    accuracy: Math.round(pos.coords.accuracy),
+    timestamp: new Date().toISOString(),
+    is_first: (count === 0),
+    job_address: AD
+  };
+  count++;
+  document.getElementById('d-time').textContent = new Date().toLocaleTimeString('th-TH');
+  document.getElementById('gps-label').textContent = 'ส่งแล้ว ' + count + ' ครั้ง | ±' + data.accuracy + 'm';
+  document.getElementById('fix-box').style.display = 'none';
+  fetch(BASE + '/gps-update', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)
+  }).catch(()=>{});
+}
+
+function gpsErr(e){
+  document.getElementById('dot').className = 'dot';
+  if(e.code === 1){
+    showFixBox('ไม่ได้รับอนุญาต GPS');
+  } else if(e.code === 2){
+    document.getElementById('gps-label').textContent = 'ไม่พบสัญญาณ GPS — ออกไปที่โล่ง';
+  } else {
+    document.getElementById('gps-label').textContent = 'GPS timeout — ลองใหม่';
+    document.getElementById('btn-go').disabled = false;
+    document.getElementById('btn-go').textContent = '🔄 ลองใหม่';
+  }
+}
+
+function showFixBox(msg){
+  document.getElementById('gps-label').textContent = '❌ ' + msg;
+  document.getElementById('fix-box').style.display = 'block';
+  document.getElementById('btn-go').disabled = false;
+  document.getElementById('btn-go').textContent = '🔄 ลองใหม่';
+  document.getElementById('s-icon').textContent  = '⚠️';
+  document.getElementById('s-text').textContent  = 'GPS ถูกบล็อค';
+  document.getElementById('s-sub').textContent   = 'ดูวิธีแก้ด้านล่าง';
+}
+
+function arrived(){
+  if(watchId) navigator.geolocation.clearWatch(watchId);
+  document.getElementById('btn-here').disabled = true;
+  document.getElementById('s-icon').textContent = '🔧';
+  document.getElementById('s-text').textContent = 'ถึงแล้ว!';
+  document.getElementById('s-sub').textContent  = 'กำลังแจ้งลูกค้า...';
+  document.getElementById('dot').className = 'dot';
+  document.getElementById('gps-label').textContent = 'หยุด tracking';
+  fetch(BASE + '/gps-arrived', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({job_id:W, tech_name:T, customer_line_id:CL, customer_name:CN})
+  }).then(()=>{
+    document.getElementById('s-sub').textContent = 'แจ้งลูกค้าแล้ว ✅';
+    document.getElementById('btn-go').textContent = '✅ เสร็จงาน';
+  }).catch(()=>{
+    document.getElementById('s-sub').textContent = 'แจ้งแล้ว (offline)';
+  });
+}
+</script>
+</body>
+</html>
 
