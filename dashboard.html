@@ -207,11 +207,10 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #F0F4F8; min-heig
     </div>
   </div>
   <div class="nav-tabs">
-    <button class="nav-tab">📊 ภาพรวม</button>
-    <button class="nav-tab active">➕ มอบหมายงาน</button>
-    <button class="nav-tab">🔄 งานในมือ</button>
-    <button class="nav-tab">👥 ลูกค้า</button>
-    <button class="nav-tab">⚙️ ตั้งค่า</button>
+    <button class="nav-tab" onclick="switchTab('overview',this)">📊 ภาพรวม</button>
+    <button class="nav-tab active" id="tab-btn-assign" onclick="switchTab('assign',this)">➕ มอบหมายงาน</button>
+    <button class="nav-tab" onclick="switchTab('active',this)">🔄 งานในมือ</button>
+    <button class="nav-tab" onclick="switchTab('customers',this)">👥 ลูกค้า</button>
   </div>
   <div class="nav-user">
     <div class="nav-avatar">A</div>
@@ -219,6 +218,47 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #F0F4F8; min-heig
   </div>
 </div>
 
+<div id="tab-overview" class="tab-section" style="display:none;padding:24px;max-width:1200px;margin:0 auto;">
+  <h2 style="color:#1E3A5F;margin-bottom:16px;">📊 ภาพรวม</h2>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;">
+    <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.08);text-align:center;">
+      <div style="font-size:28px;font-weight:700;color:#3B82F6" id="ov-total">—</div>
+      <div style="font-size:13px;color:#888;margin-top:4px;">งานทั้งหมด</div>
+    </div>
+    <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.08);text-align:center;">
+      <div style="font-size:28px;font-weight:700;color:#94A3B8" id="ov-new">—</div>
+      <div style="font-size:13px;color:#888;margin-top:4px;">รอช่าง</div>
+    </div>
+    <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.08);text-align:center;">
+      <div style="font-size:28px;font-weight:700;color:#F59E0B" id="ov-active">—</div>
+      <div style="font-size:13px;color:#888;margin-top:4px;">กำลังดำเนินการ</div>
+    </div>
+    <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.08);text-align:center;">
+      <div style="font-size:28px;font-weight:700;color:#10B981" id="ov-done">—</div>
+      <div style="font-size:13px;color:#888;margin-top:4px;">เสร็จแล้ว</div>
+    </div>
+  </div>
+  <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.08);">
+    <div style="font-weight:700;color:#1E3A5F;margin-bottom:12px;">งานล่าสุดทั้งหมด</div>
+    <div id="ov-jobs-list"><div style="color:#888;text-align:center;padding:20px;">กำลังโหลด...</div></div>
+  </div>
+</div>
+
+<div id="tab-active" class="tab-section" style="display:none;padding:24px;max-width:1200px;margin:0 auto;">
+  <h2 style="color:#1E3A5F;margin-bottom:16px;">🔄 งานในมือ</h2>
+  <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.08);">
+    <div id="active-jobs-list"><div style="color:#888;text-align:center;padding:20px;">กำลังโหลด...</div></div>
+  </div>
+</div>
+
+<div id="tab-customers" class="tab-section" style="display:none;padding:24px;max-width:1200px;margin:0 auto;">
+  <h2 style="color:#1E3A5F;margin-bottom:16px;">👥 ลูกค้าทั้งหมด</h2>
+  <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.08);">
+    <div id="customers-list"><div style="color:#888;text-align:center;padding:20px;">กำลังโหลด...</div></div>
+  </div>
+</div>
+
+<div id="tab-assign" class="tab-section">
 <div class="main">
   <div>
     <div class="form-card">
@@ -372,6 +412,8 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #F0F4F8; min-heig
   </div>
 </div>
 
+</div><!-- end tab-assign -->
+
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal">
     <div class="modal-icon">✅</div>
@@ -420,7 +462,7 @@ async function loadCustomers() {
     customersData.forEach((c, i) => {
       const opt = document.createElement('option');
       opt.value = i;
-      opt.textContent = c.name || c.id;
+      opt.textContent = cName(c);
       sel.appendChild(opt);
     });
   } catch(e) {
@@ -439,7 +481,7 @@ async function loadTechnicians() {
     techsData.forEach((t, i) => {
       const opt = document.createElement('option');
       opt.value = i;
-      opt.textContent = (t.tech_name || t.name) + (t.staff_id ? ' (' + t.staff_id + ')' : '');
+      opt.textContent = tName(t) + (tStaffId(t) ? ' (' + tStaffId(t) + ')' : '');
       sel.appendChild(opt);
     });
   } catch(e) {
@@ -471,7 +513,7 @@ function renderJobs(jobs) {
     else if (st === 'traveling') { dotClass = 'dot-blue'; statusText = '🚗 กำลังไป'; statusColor = '#3B82F6'; }
     else if (st === 'new') { dotClass = 'dot-gray'; statusText = '🆕 รอช่าง'; statusColor = '#94A3B8'; }
     const time = j.timestamp ? new Date(j.timestamp).toLocaleTimeString('th-TH', {hour:'2-digit',minute:'2-digit'}) : '';
-    return `<div class="job-item">
+    return `<div class="job-item" style="cursor:pointer;" onclick='showJobPreview(${JSON.stringify(j)})'>
       <div class="job-dot ${dotClass}"></div>
       <div class="job-id">${j.job_id}</div>
       <div class="job-detail">
@@ -488,7 +530,7 @@ async function loadNextJobId() {
   try {
     const r = await fetch(GAS_URL + '?action=nextjobid', { redirect: 'follow' });
     const d = await r.json();
-    currentJobId = d.job_id || 'WRK-001';
+    currentJobId = d.next_job_id || 'WRK-001';
   } catch(e) {
     currentJobId = 'WRK-001';
   }
@@ -496,18 +538,28 @@ async function loadNextJobId() {
   document.getElementById('prev-work').textContent = currentJobId;
 }
 
+// ───── helpers: flexible field names ─────
+function cName(c)    { return c.name || c['ชื่อ'] || c.customer_name || Object.values(c)[0] || '—'; }
+function cAddr(c)    { return c.address || c['ที่อยู่'] || c.Address || '—'; }
+function cPhone(c)   { return c.phone || c.Phone || c['เบอร์โทร'] || '—'; }
+function cLineId(c)  { return c.line_id || c['LINE User ID'] || c.LINE_ID || c['line_user_id'] || '—'; }
+function cMaps(c)    { return c.maps_url || c['Maps URL'] || c.google_maps || ''; }
+function tName(t)    { return t.tech_name || t.Name || t.name || '—'; }
+function tLineId(t)  { return t['LINE User ID'] || t.line_id || t.LINE_ID || '—'; }
+function tStaffId(t) { return t.staff_id || t['staff_id'] || ''; }
+
 // ───── Customer Change ─────
 function onCustomerChange() {
   const val = document.getElementById('customerSelect').value;
   const info = document.getElementById('customerInfo');
   if (val !== '' && customersData[val]) {
     const c = customersData[val];
-    document.getElementById('cAddr').textContent = c.address || '—';
-    document.getElementById('cPhone').textContent = c.phone || '—';
-    document.getElementById('cLine').textContent = 'LINE: ' + (c.line_id || '—');
-    document.getElementById('addrInput').value = c.address || '';
-    document.getElementById('prev-customer').textContent = c.name || '—';
-    document.getElementById('prev-addr').textContent = c.address || '—';
+    document.getElementById('cAddr').textContent  = cAddr(c);
+    document.getElementById('cPhone').textContent = cPhone(c);
+    document.getElementById('cLine').textContent  = 'LINE: ' + cLineId(c);
+    document.getElementById('addrInput').value    = cAddr(c) !== '—' ? cAddr(c) : '';
+    document.getElementById('prev-customer').textContent = cName(c);
+    document.getElementById('prev-addr').textContent     = cAddr(c);
     info.classList.add('show');
     setTimeout(() => info.classList.remove('show'), 3000);
   } else {
@@ -522,10 +574,11 @@ function onTechChange() {
   const preview = document.getElementById('techPreview');
   if (val !== '' && techsData[val]) {
     const t = techsData[val];
-    document.getElementById('techLineId').value = t.line_id || '—';
-    document.getElementById('techAv').textContent = (t.tech_name || t.name || '?')[0].toUpperCase();
-    document.getElementById('techName').textContent = t.tech_name || t.name || '—';
-    document.getElementById('techLineDisplay').textContent = 'LINE: ' + (t.line_id || '—');
+    const lineId = tLineId(t);
+    document.getElementById('techLineId').value = lineId;
+    document.getElementById('techAv').textContent = (tName(t))[0].toUpperCase();
+    document.getElementById('techName').textContent = tName(t);
+    document.getElementById('techLineDisplay').textContent = 'LINE: ' + lineId;
     document.getElementById('techStatus').className = 'tech-info-status status-free';
     document.getElementById('techStatus').textContent = '🟢 พร้อมรับงาน';
     preview.classList.add('show');
@@ -562,20 +615,20 @@ async function submitJob() {
 
   const c = customersData[cVal];
   const t = techsData[tVal];
-  const addr = document.getElementById('addrInput').value || c.address || '';
+  const addr = document.getElementById('addrInput').value || cAddr(c);
 
-  if (!c.line_id) { alert('ลูกค้ารายนี้ไม่มี LINE ID ครับ'); return; }
-  if (!t.line_id) { alert('ช่างรายนี้ไม่มี LINE ID ครับ'); return; }
+  if (cLineId(c) === '—' || !cLineId(c)) { alert('ลูกค้ารายนี้ไม่มี LINE ID ครับ'); return; }
+  if (tLineId(t) === '—' || !tLineId(t)) { alert('ช่างรายนี้ไม่มี LINE ID ครับ'); return; }
 
   const payload = {
     job_id:           currentJobId,
-    staff_id:         t.staff_id || '',
-    tech_name:        t.tech_name || t.name || '',
-    tech_line_id:     t.line_id || '',
-    customer_name:    c.name || '',
-    customer_line_id: c.line_id || '',
+    staff_id:         tStaffId(t),
+    tech_name:        tName(t),
+    tech_line_id:     tLineId(t),
+    customer_name:    cName(c),
+    customer_line_id: cLineId(c),
     job_address:      addr,
-    job_maps_url:     c.maps_url || '',
+    job_maps_url:     cMaps(c),
     job_type:         jobType,
     priority:         selectedPriority,
     note:             document.getElementById('noteInput').value || '',
@@ -610,6 +663,107 @@ async function submitJob() {
     btn.disabled = false;
     btn.innerHTML = '⚡ มอบหมายงาน + ส่ง LINE ช่างทันที';
   }
+}
+
+// ───── Tab Switching ─────
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-section').forEach(s => s.style.display = 'none');
+  document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+  if (tab === 'assign') {
+    document.getElementById('tab-assign').style.display = 'block';
+  } else if (tab === 'overview') {
+    document.getElementById('tab-overview').style.display = 'block';
+    renderOverview();
+  } else if (tab === 'active') {
+    document.getElementById('tab-active').style.display = 'block';
+    renderActiveJobs();
+  } else if (tab === 'customers') {
+    document.getElementById('tab-customers').style.display = 'block';
+    renderCustomerList();
+  }
+  if (btn) btn.classList.add('active');
+}
+
+function renderOverview() {
+  const list = document.getElementById('ov-jobs-list');
+  list.innerHTML = '<div style="color:#888;text-align:center;padding:20px;">⏳ โหลด...</div>';
+  fetch(GAS_URL + '?action=jobs', { redirect: 'follow' })
+    .then(r => r.json())
+    .then(d => {
+      const jobs = d.jobs || [];
+      document.getElementById('ov-total').textContent = jobs.length;
+      document.getElementById('ov-new').textContent = jobs.filter(j => j.status === 'new' || !j.status).length;
+      document.getElementById('ov-active').textContent = jobs.filter(j => j.status === 'traveling' || j.status === 'arrived').length;
+      document.getElementById('ov-done').textContent = jobs.filter(j => j.status === 'completed').length;
+      list.innerHTML = jobs.slice(0,20).map(j => jobRowHTML(j)).join('');
+    })
+    .catch(() => { list.innerHTML = '<div style="color:red;padding:12px;">โหลดไม่ได้</div>'; });
+}
+
+function renderActiveJobs() {
+  const list = document.getElementById('active-jobs-list');
+  list.innerHTML = '<div style="color:#888;text-align:center;padding:20px;">⏳ โหลด...</div>';
+  fetch(GAS_URL + '?action=jobs', { redirect: 'follow' })
+    .then(r => r.json())
+    .then(d => {
+      const jobs = (d.jobs || []).filter(j => j.status !== 'completed');
+      if (!jobs.length) { list.innerHTML = '<div style="color:#888;text-align:center;padding:20px;">ไม่มีงานในมือ</div>'; return; }
+      list.innerHTML = jobs.map(j => jobRowHTML(j)).join('');
+    })
+    .catch(() => { list.innerHTML = '<div style="color:red;padding:12px;">โหลดไม่ได้</div>'; });
+}
+
+function renderCustomerList() {
+  const list = document.getElementById('customers-list');
+  if (customersData.length) {
+    list.innerHTML = customersData.map(c =>
+      `<div style="padding:12px 0;border-bottom:1px solid #F0F4F8;display:flex;gap:12px;align-items:center;">
+        <div style="width:40px;height:40px;border-radius:50%;background:#EEF4FF;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">👤</div>
+        <div style="flex:1;">
+          <div style="font-weight:600;color:#1E3A5F;">${cName(c)}</div>
+          <div style="font-size:12px;color:#888;">${cPhone(c)} · LINE: ${cLineId(c)}</div>
+          <div style="font-size:12px;color:#888;">${cAddr(c)}</div>
+        </div>
+      </div>`
+    ).join('');
+  } else {
+    list.innerHTML = '<div style="color:#888;text-align:center;padding:20px;">⏳ โหลด...</div>';
+    fetch(GAS_URL + '?action=customers', { redirect: 'follow' })
+      .then(r => r.json())
+      .then(d => { customersData = d.customers || []; renderCustomerList(); })
+      .catch(() => { list.innerHTML = '<div style="color:red;padding:12px;">โหลดไม่ได้</div>'; });
+  }
+}
+
+function jobRowHTML(j) {
+  const st = j.status || 'new';
+  let statusText = '🆕 รอช่าง', statusColor = '#94A3B8';
+  if (st === 'completed')  { statusText = '✅ เสร็จ';      statusColor = '#10B981'; }
+  else if (st === 'arrived')   { statusText = '🔧 กำลังซ่อม'; statusColor = '#F59E0B'; }
+  else if (st === 'traveling') { statusText = '🚗 กำลังไป';  statusColor = '#3B82F6'; }
+  const time = j.timestamp ? new Date(j.timestamp).toLocaleString('th-TH', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+  return `<div style="padding:12px;border-bottom:1px solid #F0F4F8;display:flex;align-items:center;gap:12px;cursor:pointer;" onclick="showJobPreview(${JSON.stringify(j).replace(/"/g,'&quot;')})">
+    <div style="font-weight:700;color:#1E3A5F;min-width:80px;">${j.job_id||'—'}</div>
+    <div style="flex:1;">
+      <div style="font-size:13px;font-weight:600;">${j.tech_name||'—'} → ${j.customer_name||'—'}</div>
+      <div style="font-size:12px;color:#888;">${j.job_type||''} ${time}</div>
+    </div>
+    <div style="font-size:12px;font-weight:600;color:${statusColor}">${statusText}</div>
+  </div>`;
+}
+
+// ───── Show job in LINE preview ─────
+function showJobPreview(j) {
+  document.getElementById('prev-work').textContent     = j.job_id || '—';
+  document.getElementById('prev-customer').textContent = j.customer_name || '—';
+  document.getElementById('prev-problem').textContent  = j.job_type || '—';
+  document.getElementById('prev-addr').textContent     = j.job_address || '—';
+  if (j.timestamp) {
+    const d = new Date(j.timestamp);
+    document.getElementById('prev-date').textContent = d.toLocaleDateString('th-TH') + ' ' + d.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) + ' น.';
+  }
+  // scroll to preview
+  document.querySelector('.preview-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // ───── Close Modal ─────
