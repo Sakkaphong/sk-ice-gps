@@ -233,7 +233,28 @@ function arrived(){
     body: JSON.stringify({job_id:W, tech_name:T, customer_line_id:CL, customer_name:CN})
   }).then(()=>{
     document.getElementById('s-sub').textContent = 'แจ้งลูกค้าแล้ว ✅';
-    document.getElementById('btn-go').textContent = '✅ เสร็จงาน';
+    const btnGo = document.getElementById('btn-go');
+    btnGo.textContent = '🔧 จบงาน';
+    btnGo.style.background = '#E74C3C';
+    btnGo.disabled = false;
+    btnGo.onclick = done;
+  }).catch(()=>{
+    document.getElementById('s-sub').textContent = 'แจ้งแล้ว (offline)';
+  });
+}
+
+function done(){
+  const btnGo = document.getElementById('btn-go');
+  btnGo.disabled = true;
+  document.getElementById('s-icon').textContent = '✅';
+  document.getElementById('s-text').textContent = 'จบงานแล้ว!';
+  document.getElementById('s-sub').textContent  = 'กำลังแจ้งลูกค้าและหัวหน้า...';
+  fetch(BASE + '/gps-done', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({job_id:W, tech_name:T, customer_line_id:CL, customer_name:CN})
+  }).then(()=>{
+    document.getElementById('s-sub').textContent = 'แจ้งเรียบร้อยแล้ว ✅';
+    btnGo.textContent = '✅ เสร็จสิ้น';
   }).catch(()=>{
     document.getElementById('s-sub').textContent = 'แจ้งแล้ว (offline)';
   });
