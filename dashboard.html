@@ -34,6 +34,14 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #F0F4F8; min-heig
 .nav-name { font-size: 13px; color: #A8D5F0; }
 
 .main { display: grid; grid-template-columns: 1fr 380px; gap: 20px; padding: 20px 24px; max-width: 1200px; margin: 0 auto; }
+@media (max-width: 768px) {
+  .main { grid-template-columns: 1fr; padding: 12px; }
+  .right-panel { order: 2; }
+  .nav-tabs { gap: 2px; }
+  .nav-tab { padding: 6px 10px; font-size: 12px; }
+  .form-grid { grid-template-columns: 1fr !important; }
+  .form-grid.customer-grid { grid-template-columns: 1fr !important; }
+}
 
 .form-card { background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,.08); }
 .form-header {
@@ -57,6 +65,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #F0F4F8; min-heig
 .section-title::after { content: ''; flex: 1; height: 1px; background: #F0F4F8; }
 
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-grid.customer-grid { grid-template-columns: minmax(200px, 320px) 1fr; }
 .form-group { display: flex; flex-direction: column; gap: 6px; }
 .form-group.full { grid-column: 1 / -1; }
 .form-label { font-size: 12px; font-weight: 600; color: #374151; display: flex; align-items: center; gap: 6px; }
@@ -156,7 +165,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #F0F4F8; min-heig
   display: flex; align-items: center; justify-content: space-between;
 }
 .jobs-refresh { font-size: 12px; color: #2E6DA4; cursor: pointer; font-weight: 400; border: none; background: none; }
-.jobs-list { padding: 8px; }
+.jobs-list { padding: 8px; max-height: 500px; overflow-y: auto; }
 .job-item {
   display: flex; align-items: center; gap: 10px;
   padding: 8px 10px; border-radius: 8px; transition: background .15s;
@@ -253,6 +262,9 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #F0F4F8; min-heig
 
 <div id="tab-customers" class="tab-section" style="display:none;padding:24px;max-width:1200px;margin:0 auto;">
   <h2 style="color:#1E3A5F;margin-bottom:16px;">👥 ลูกค้าทั้งหมด</h2>
+  <input id="customerSearch" type="text" placeholder="🔍 ค้นหาชื่อร้าน, รหัสลูกค้า, เบอร์โทร..."
+    style="width:100%;padding:12px 16px;border-radius:10px;border:1.5px solid #E2E8F0;font-size:14px;margin-bottom:16px;outline:none;"
+    oninput="filterCustomers(this.value)" />
   <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.08);">
     <div id="customers-list"><div style="color:#888;text-align:center;padding:20px;">กำลังโหลด...</div></div>
   </div>
@@ -277,7 +289,12 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #F0F4F8; min-heig
 
         <div class="form-section">
           <div class="section-title">👤 ข้อมูลลูกค้า</div>
-          <div class="form-grid">
+
+          <!-- Banner ประเภทลูกค้า -->
+          <div id="custTypeBanner" style="display:none;padding:10px 16px;border-radius:10px;font-size:14px;font-weight:700;margin-bottom:12px;"></div>
+
+          <!-- Row 1: เลือกลูกค้า + ประเภทลูกค้า -->
+          <div class="form-grid" style="margin-bottom:14px;">
             <div class="form-group">
               <label class="form-label">เลือกลูกค้า <span class="required">*</span></label>
               <div class="select-with-info">
@@ -285,15 +302,93 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #F0F4F8; min-heig
                   <option value="">⏳ กำลังโหลด...</option>
                 </select>
                 <div class="select-info" id="customerInfo">
-                  <div class="info-row"><span class="info-icon">📍</span><span id="cAddr">—</span></div>
+                  <div class="info-row"><span class="info-icon">🆔</span><span id="cCustId">—</span> &nbsp;<span id="cPeakCode" style="color:#888;font-size:12px;"></span></div>
                   <div class="info-row"><span class="info-icon">📞</span><span id="cPhone">—</span></div>
                   <div class="info-row"><span class="info-icon">💬</span><span id="cLine">LINE: —</span></div>
+                  <div class="info-row" id="cPaymentRow" style="margin-top:4px;"></div>
                 </div>
               </div>
             </div>
             <div class="form-group">
-              <label class="form-label">ที่อยู่งาน <span class="required">*</span></label>
-              <input class="form-input" id="addrInput" placeholder="ที่อยู่ที่นัดซ่อม..." oninput="document.getElementById('prev-addr').textContent=this.value||'—'" />
+              <label class="form-label">ประเภทลูกค้า</label>
+              <input class="form-input auto" id="custTypeDisplay" placeholder="เลือกลูกค้าก่อน..." readonly style="font-weight:600;" />
+            </div>
+          </div>
+
+          <!-- ลูกค้าใหม่ -->
+          <div id="newCustomerSection" style="display:none;background:#FFF8E7;border:1.5px dashed #F59E0B;border-radius:10px;padding:14px;margin-bottom:14px;">
+            <div style="font-size:13px;font-weight:700;color:#D97706;margin-bottom:10px;">➕ ข้อมูลลูกค้าใหม่</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label">ชื่อร้าน / ลูกค้า <span class="required">*</span></label>
+                <input class="form-input" id="newCustName" placeholder="ชื่อร้าน..." />
+              </div>
+              <div class="form-group">
+                <label class="form-label">เบอร์โทร</label>
+                <input class="form-input" id="newCustPhone" placeholder="08X-XXX-XXXX" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">LINE User ID</label>
+                <input class="form-input" id="newCustLineId" placeholder="Uxxxxxxxx..." />
+              </div>
+              <div class="form-group">
+                <label class="form-label">ประเภทลูกค้า</label>
+                <select class="form-select" id="newCustType">
+                  <option value="เช่า">เช่า</option>
+                  <option value="ซื้อ">ซื้อ</option>
+                  <option value="นิติบุคคล">นิติบุคคล</option>
+                  <option value="อื่นๆ">อื่นๆ</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Row 2: ที่อยู่ยาว -->
+          <div class="form-group" style="margin-bottom:14px;">
+            <label class="form-label">ที่อยู่งาน <span class="required">*</span></label>
+            <textarea class="form-input" id="addrInput" rows="2" placeholder="ที่อยู่ที่นัดซ่อม..." oninput="document.getElementById('prev-addr').textContent=this.value||'—'" style="resize:vertical;line-height:1.6;"></textarea>
+          </div>
+
+          <!-- Row 3: Google Maps URL -->
+          <div class="form-group" style="margin-bottom:14px;">
+            <label class="form-label">Google Maps URL
+              <span style="color:#888;font-weight:400;">(ออโต้จากลูกค้า หรือวางเองสำหรับลูกค้าใหม่)</span>
+            </label>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input class="form-input auto" id="mapsUrlInput" placeholder="วาง Google Maps URL ที่นี่..." style="flex:1;" readonly
+                oninput="const b=document.getElementById('mapsPreviewBtn');if(this.value){b.href=this.value;b.style.display='block';}else{b.style.display='none';}" />
+              <button type="button" id="mapsEditBtn" onclick="toggleMapsEdit()" style="background:#E2E8F0;border:none;padding:8px 12px;border-radius:8px;font-size:12px;cursor:pointer;white-space:nowrap;">✏️ แก้ไข</button>
+              <a id="mapsPreviewBtn" href="#" target="_blank" style="display:none;background:#10B981;color:#fff;padding:8px 12px;border-radius:8px;text-decoration:none;font-size:13px;white-space:nowrap;">🗺️ ดูแผนที่</a>
+            </div>
+          </div>
+
+          <!-- Row 4: เครื่องจักร -->
+          <div id="machinesSection" style="display:none;">
+            <label class="form-label" style="margin-bottom:8px;">🏭 เครื่องจักรที่ติดตั้ง</label>
+            <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;">
+              <div style="background:#F8FAFC;border-radius:8px;padding:10px;border:1px solid #E2E8F0;">
+                <div style="font-size:11px;color:#888;margin-bottom:4px;">เครื่องที่ 1</div>
+                <div style="font-weight:600;color:#1E3A5F;font-size:13px;" id="machine1type">—</div>
+                <div style="font-size:12px;color:#888;" id="machine1model"></div>
+              </div>
+              <div style="background:#F8FAFC;border-radius:8px;padding:10px;border:1px solid #E2E8F0;">
+                <div style="font-size:11px;color:#888;margin-bottom:4px;">เครื่องที่ 2</div>
+                <div style="font-weight:600;color:#1E3A5F;font-size:13px;" id="machine2type">—</div>
+                <div style="font-size:12px;color:#888;" id="machine2model"></div>
+              </div>
+              <div style="background:#F8FAFC;border-radius:8px;padding:10px;border:1px solid #E2E8F0;">
+                <div style="font-size:11px;color:#888;margin-bottom:4px;">เครื่องที่ 3</div>
+                <div style="font-weight:600;color:#1E3A5F;font-size:13px;" id="machine3type">—</div>
+                <div style="font-size:12px;color:#888;" id="machine3model"></div>
+              </div>
+            </div>
+            <!-- Filter System -->
+            <div id="filterSystemRow" style="display:none;margin-top:10px;background:#EFF6FF;border-radius:8px;padding:10px 14px;border:1px solid #BFDBFE;display:flex;align-items:center;gap:10px;">
+              <span style="font-size:18px;">💧</span>
+              <div>
+                <div style="font-size:11px;color:#3B82F6;font-weight:600;">ระบบกรองน้ำ (Filter System)</div>
+                <div style="font-size:14px;font-weight:700;color:#1E3A5F;" id="filterSystemVal">—</div>
+              </div>
             </div>
           </div>
         </div>
@@ -305,13 +400,44 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #F0F4F8; min-heig
               <label class="form-label">ประเภทงาน <span class="required">*</span></label>
               <select class="form-select" id="jobType" onchange="document.getElementById('prev-problem').textContent=this.value||'—'">
                 <option value="">— เลือกประเภท —</option>
-                <option>แอร์ไม่เย็น</option>
-                <option>แอร์หยดน้ำ</option>
-                <option>แอร์มีเสียงดัง</option>
-                <option>ล้างแอร์</option>
-                <option>ติดตั้งแอร์ใหม่</option>
-                <option>ซ่อมแอร์ทั่วไป</option>
-                <option>อื่นๆ</option>
+                <optgroup label="📋 ประเมิน / สำรวจ">
+                  <option>ดูหน้างาน / ประเมินราคา</option>
+                </optgroup>
+                <optgroup label="🔩 ติดตั้ง / ย้าย / ถอด">
+                  <option>งานติดตั้ง</option>
+                  <option>งานถอดการติดตั้ง</option>
+                  <option>งานย้ายที่ติดตั้ง</option>
+                </optgroup>
+                <optgroup label="🧊 ซ่อม — เครื่องทำน้ำแข็ง">
+                  <option>เครื่องทำน้ำแข็ง เปิดไม่ติด</option>
+                  <option>น้ำแข็งไม่ตก</option>
+                  <option>เครื่องทำงานช้า / น้ำแข็งน้อย</option>
+                  <option>ไม่มีน้ำเข้าเครื่อง</option>
+                  <option>เครื่องกรองน้ำมีปัญหา</option>
+                  <option>ไส้กรองตัน / เปลี่ยนไส้กรอง</option>
+                  <option>เครื่องต้องการทำความสะอาด</option>
+                </optgroup>
+                <optgroup label="🍽️ ซ่อม — เครื่องล้างจาน">
+                  <option>เครื่องล้างจาน เปิดไม่ติด</option>
+                  <option>เครื่องล้างจาน ล้างไม่สะอาด</option>
+                  <option>เครื่องล้างจาน น้ำไม่ออก</option>
+                  <option>เครื่องล้างจาน มีเสียงผิดปกติ</option>
+                  <option>เครื่องล้างจาน ต้องการทำความสะอาด</option>
+                </optgroup>
+                <optgroup label="💧 เครื่องกรองน้ำ">
+                  <option>เครื่องกรองน้ำ เปิดไม่ติด</option>
+                  <option>ไส้กรองตัน / เปลี่ยนไส้กรอง RO</option>
+                  <option>เปลี่ยนไส้กรอง Pre-filter</option>
+                  <option>น้ำไหลช้า / แรงดันต่ำ</option>
+                  <option>น้ำมีกลิ่น / รส ผิดปกติ</option>
+                  <option>เครื่องกรองน้ำรั่ว</option>
+                  <option>ล้างทำความสะอาดเครื่องกรองน้ำ</option>
+                  <option>ติดตั้งเครื่องกรองน้ำใหม่</option>
+                </optgroup>
+                <optgroup label="🔧 ทั่วไป">
+                  <option>PM ประจำปี</option>
+                  <option>อื่นๆ</option>
+                </optgroup>
               </select>
             </div>
             <div class="form-group">
@@ -352,6 +478,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #F0F4F8; min-heig
             <div>
               <div class="tech-info-name" id="techName">—</div>
               <div class="tech-info-line" id="techLineDisplay">LINE: —</div>
+              <div class="tech-info-line" id="techLarkDisplay" style="color:#06AED4;">Lark: —</div>
               <div class="tech-info-status" id="techStatus">—</div>
             </div>
           </div>
@@ -458,7 +585,7 @@ async function loadCustomers() {
     const d = await r.json();
     customersData = d.customers || [];
     const sel = document.getElementById('customerSelect');
-    sel.innerHTML = '<option value="">— เลือกลูกค้า —</option>';
+    sel.innerHTML = '<option value="">— เลือกลูกค้า —</option><option value="NEW">➕ ลูกค้าใหม่ (กรอกเอง)</option>';
     customersData.forEach((c, i) => {
       const opt = document.createElement('option');
       opt.value = i;
@@ -539,27 +666,97 @@ async function loadNextJobId() {
 }
 
 // ───── helpers: flexible field names ─────
-function cName(c)    { return c.name || c['ชื่อ'] || c.customer_name || Object.values(c)[0] || '—'; }
-function cAddr(c)    { return c.address || c['ที่อยู่'] || c.Address || '—'; }
-function cPhone(c)   { return c.phone || c.Phone || c['เบอร์โทร'] || '—'; }
-function cLineId(c)  { return c.line_id || c['LINE User ID'] || c.LINE_ID || c['line_user_id'] || '—'; }
-function cMaps(c)    { return c.maps_url || c['Maps URL'] || c.google_maps || ''; }
+function cName(c)       { return c['Shop Name'] || c['shop_name'] || c.name || c['ชื่อ'] || c.customer_name || c['Customer ID'] || Object.values(c)[0] || '—'; }
+function cAddr(c) { return c.Address || c.address || c['ที่อยู่'] || '—'; }
+function cPhone(c)      { return c['Phone 1'] || c.phone || c.Phone || c['เบอร์โทร'] || '—'; }
+function cContact(c)    { return c['Contact Person 1'] || c.contact_person || c['ชื่อผู้ติดต่อ'] || '—'; }
+function cLineId(c)     { return c.line_id || c['LINE User ID'] || c.LINE_ID || c['line_user_id'] || '—'; }
+function cMaps(c)       { return c['Google Maps URL'] || c.maps_url || c['Maps URL'] || c.google_maps || ''; }
+function cCustId(c)     { return c['Customer ID'] || c.customer_id || '—'; }
+function cPeakCode(c)   { return c['PEAK Code'] || c.peak_code || '—'; }
+function cCustType(c)   { return c['Customer Type'] || c.customer_type || '—'; }
+function cPaymentTag(c) {
+  const t = cCustType(c).toLowerCase();
+  if (t.includes('เช่า'))        return { label: '📦 เช่า — ไม่ต้องเก็บเงิน', color: '#10B981' };
+  if (t.includes('ซื้อ'))        return { label: '💰 ซื้อ — เก็บเงินด้วย',    color: '#F59E0B' };
+  if (t.includes('นิติ'))        return { label: '🏢 นิติบุคคล — ออกบิล',      color: '#3B82F6' };
+  return { label: '❓ ' + cCustType(c), color: '#94A3B8' };
+}
 function tName(t)    { return t.tech_name || t.Name || t.name || '—'; }
-function tLineId(t)  { return t['LINE User ID'] || t.line_id || t.LINE_ID || '—'; }
+function tLineId(t)  { return t['tech_line_id'] || t['LINE User ID'] || t.line_id || t.LINE_ID || '—'; }
+function tLarkId(t)  { return t['Lark Account'] || t.lark_account || t.lark_id || '—'; }
 function tStaffId(t) { return t.staff_id || t['staff_id'] || ''; }
 
 // ───── Customer Change ─────
 function onCustomerChange() {
   const val = document.getElementById('customerSelect').value;
   const info = document.getElementById('customerInfo');
+  // ลูกค้าใหม่
+  if (val === 'NEW') {
+    document.getElementById('newCustomerSection').style.display = 'block';
+    document.getElementById('custTypeBanner').style.display = 'none';
+    document.getElementById('addrInput').value = '';
+    document.getElementById('mapsUrlInput').value = '';
+    document.getElementById('mapsPreviewBtn').style.display = 'none';
+    document.getElementById('custTypeDisplay').value = '';
+    document.getElementById('machinesSection').style.display = 'none';
+    return;
+  }
+  document.getElementById('newCustomerSection').style.display = 'none';
+
   if (val !== '' && customersData[val]) {
     const c = customersData[val];
-    document.getElementById('cAddr').textContent  = cAddr(c);
-    document.getElementById('cPhone').textContent = cPhone(c);
-    document.getElementById('cLine').textContent  = 'LINE: ' + cLineId(c);
-    document.getElementById('addrInput').value    = cAddr(c) !== '—' ? cAddr(c) : '';
-    document.getElementById('prev-customer').textContent = cName(c);
+    document.getElementById('custTypeDisplay').value = cCustType(c);
+    document.getElementById('cCustId').textContent  = cCustId(c);
+    document.getElementById('cPeakCode').textContent = cPeakCode(c) !== '—' ? '(PEAK: ' + cPeakCode(c) + ')' : '';
+    document.getElementById('cPhone').textContent   = cPhone(c);
+    document.getElementById('cLine').textContent    = 'LINE: ' + cLineId(c);
+    const pay = cPaymentTag(c);
+    document.getElementById('cPaymentRow').innerHTML = `<span style="background:${pay.color};color:#fff;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;">${pay.label}</span>`;
+    const banner = document.getElementById('custTypeBanner');
+    banner.style.display = 'block';
+    banner.style.background = pay.color + '20';
+    banner.style.border = '2px solid ' + pay.color;
+    banner.style.color = pay.color;
+    banner.innerHTML = pay.label + ' &nbsp;·&nbsp; ' + cCustId(c) + ' &nbsp;·&nbsp; PEAK: ' + cPeakCode(c);
+    document.getElementById('addrInput').value      = cAddr(c) !== '—' ? cAddr(c) : '';
+    const mapsUrl = cMaps(c);
+    document.getElementById('mapsUrlInput').value   = mapsUrl;
+    const mapsBtn = document.getElementById('mapsPreviewBtn');
+    if (mapsUrl) { mapsBtn.href = mapsUrl; mapsBtn.style.display = 'block'; }
+    else { mapsBtn.style.display = 'none'; }
+    document.getElementById('prev-customer').textContent = cName(c) + ' (' + cCustId(c) + ')';
     document.getElementById('prev-addr').textContent     = cAddr(c);
+
+    // เครื่องจักร
+    const m1t = c['Machine 1 (Type)'] || c['Machine 1\n(Type)'] || c['machine1_type'] || '';
+    const m1m = c['Machine 1 (Model)'] || c['Machine 1\n(Model)'] || c['machine1_model'] || '';
+    const m2t = c['Machine 2 (Type)'] || c['Machine 2\n(Type)'] || c['machine2_type'] || '';
+    const m2m = c['Machine 2 (Model)'] || c['Machine 2\n(Model)'] || c['machine2_model'] || '';
+    const m3t = c['Machine 3 (Type)'] || c['Machine 3\n(Type)'] || c['machine3_type'] || '';
+    const m3m = c['Machine 3 (Model)'] || c['Machine 3\n(Model)'] || c['machine3_model'] || '';
+    // Filter System
+    const filterSys = c['Filter System'] || c['filter_system'] || '';
+    const filterRow = document.getElementById('filterSystemRow');
+    if (filterSys) {
+      filterRow.style.display = 'flex';
+      document.getElementById('filterSystemVal').textContent = filterSys;
+    } else {
+      filterRow.style.display = 'none';
+    }
+
+    if (m1t || m2t || m3t) {
+      document.getElementById('machinesSection').style.display = 'block';
+      document.getElementById('machine1type').textContent = m1t || '—';
+      document.getElementById('machine1model').textContent = m1m;
+      document.getElementById('machine2type').textContent = m2t || '—';
+      document.getElementById('machine2model').textContent = m2m;
+      document.getElementById('machine3type').textContent = m3t || '—';
+      document.getElementById('machine3model').textContent = m3m;
+    } else {
+      document.getElementById('machinesSection').style.display = 'none';
+    }
+
     info.classList.add('show');
     setTimeout(() => info.classList.remove('show'), 3000);
   } else {
@@ -579,6 +776,7 @@ function onTechChange() {
     document.getElementById('techAv').textContent = (tName(t))[0].toUpperCase();
     document.getElementById('techName').textContent = tName(t);
     document.getElementById('techLineDisplay').textContent = 'LINE: ' + lineId;
+    document.getElementById('techLarkDisplay').textContent = 'Lark: ' + tLarkId(t);
     document.getElementById('techStatus').className = 'tech-info-status status-free';
     document.getElementById('techStatus').textContent = '🟢 พร้อมรับงาน';
     preview.classList.add('show');
@@ -613,11 +811,18 @@ async function submitJob() {
   if (tVal === '' || !techsData[tVal]) { alert('กรุณาเลือกช่างครับ'); return; }
   if (!jobType) { alert('กรุณาเลือกประเภทงานครับ'); return; }
 
-  const c = customersData[cVal];
+  const isNew = cVal === 'NEW';
+  const c = isNew ? null : customersData[cVal];
   const t = techsData[tVal];
-  const addr = document.getElementById('addrInput').value || cAddr(c);
+  const addr = document.getElementById('addrInput').value || (c ? cAddr(c) : '');
 
-  if (cLineId(c) === '—' || !cLineId(c)) { alert('ลูกค้ารายนี้ไม่มี LINE ID ครับ'); return; }
+  // ข้อมูลลูกค้าใหม่
+  const newName   = isNew ? document.getElementById('newCustName').value.trim() : '';
+  const newLineId = isNew ? document.getElementById('newCustLineId').value.trim() : '';
+  const newType   = isNew ? document.getElementById('newCustType').value : '';
+
+  if (isNew && !newName) { alert('กรุณากรอกชื่อลูกค้าใหม่ครับ'); return; }
+  if (!isNew && (cLineId(c) === '—' || !cLineId(c))) { alert('ลูกค้ารายนี้ไม่มี LINE ID ครับ'); return; }
   if (tLineId(t) === '—' || !tLineId(t)) { alert('ช่างรายนี้ไม่มี LINE ID ครับ'); return; }
 
   const payload = {
@@ -625,10 +830,12 @@ async function submitJob() {
     staff_id:         tStaffId(t),
     tech_name:        tName(t),
     tech_line_id:     tLineId(t),
-    customer_name:    cName(c),
-    customer_line_id: cLineId(c),
+    customer_name:    isNew ? newName   : cName(c),
+    customer_line_id: isNew ? newLineId : cLineId(c),
     job_address:      addr,
-    job_maps_url:     cMaps(c),
+    job_maps_url:     document.getElementById('mapsUrlInput').value || (c ? cMaps(c) : ''),
+    customer_id:      isNew ? 'NEW' : cPeakCode(c),
+    customer_type:    isNew ? newType  : cCustType(c),
     job_type:         jobType,
     priority:         selectedPriority,
     note:             document.getElementById('noteInput').value || '',
@@ -662,6 +869,26 @@ async function submitJob() {
   } finally {
     btn.disabled = false;
     btn.innerHTML = '⚡ มอบหมายงาน + ส่ง LINE ช่างทันที';
+  }
+}
+
+// ───── Maps Edit Toggle ─────
+function toggleMapsEdit() {
+  const input = document.getElementById('mapsUrlInput');
+  const btn   = document.getElementById('mapsEditBtn');
+  if (input.readOnly) {
+    input.readOnly = false;
+    input.classList.remove('auto');
+    input.focus();
+    btn.textContent = '🔒 ล็อค';
+    btn.style.background = '#FEE2E2';
+  } else {
+    input.readOnly = true;
+    input.classList.add('auto');
+    btn.textContent = '✏️ แก้ไข';
+    btn.style.background = '#E2E8F0';
+    const b = document.getElementById('mapsPreviewBtn');
+    if (input.value) { b.href = input.value; b.style.display = 'block'; }
   }
 }
 
@@ -713,19 +940,24 @@ function renderActiveJobs() {
     .catch(() => { list.innerHTML = '<div style="color:red;padding:12px;">โหลดไม่ได้</div>'; });
 }
 
+function customerCardHTML(c) {
+  const pay = cPaymentTag(c);
+  return `<div style="padding:12px 0;border-bottom:1px solid #F0F4F8;display:flex;gap:12px;align-items:center;">
+    <div style="width:40px;height:40px;border-radius:50%;background:#EEF4FF;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">👤</div>
+    <div style="flex:1;">
+      <div style="font-weight:600;color:#1E3A5F;">${cName(c)} <span style="font-size:11px;color:#888;">${cCustId(c)}</span></div>
+      <div style="font-size:12px;color:#555;margin:2px 0;">👤 ${cContact(c)}</div>
+      <div style="font-size:12px;color:#888;margin:2px 0;">📞 ${cPhone(c)} · 💬 LINE: ${cLineId(c)}</div>
+      <div style="font-size:12px;color:#888;">${cAddr(c)}</div>
+    </div>
+    <span style="background:${pay.color};color:#fff;padding:3px 8px;border-radius:20px;font-size:11px;white-space:nowrap;">${pay.label}</span>
+  </div>`;
+}
+
 function renderCustomerList() {
   const list = document.getElementById('customers-list');
   if (customersData.length) {
-    list.innerHTML = customersData.map(c =>
-      `<div style="padding:12px 0;border-bottom:1px solid #F0F4F8;display:flex;gap:12px;align-items:center;">
-        <div style="width:40px;height:40px;border-radius:50%;background:#EEF4FF;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">👤</div>
-        <div style="flex:1;">
-          <div style="font-weight:600;color:#1E3A5F;">${cName(c)}</div>
-          <div style="font-size:12px;color:#888;">${cPhone(c)} · LINE: ${cLineId(c)}</div>
-          <div style="font-size:12px;color:#888;">${cAddr(c)}</div>
-        </div>
-      </div>`
-    ).join('');
+    list.innerHTML = customersData.map(c => customerCardHTML(c)).join('') || '<div style="color:#888;text-align:center;padding:20px;">ไม่พบลูกค้า</div>';
   } else {
     list.innerHTML = '<div style="color:#888;text-align:center;padding:20px;">⏳ โหลด...</div>';
     fetch(GAS_URL + '?action=customers', { redirect: 'follow' })
@@ -733,6 +965,22 @@ function renderCustomerList() {
       .then(d => { customersData = d.customers || []; renderCustomerList(); })
       .catch(() => { list.innerHTML = '<div style="color:red;padding:12px;">โหลดไม่ได้</div>'; });
   }
+}
+
+function filterCustomers(q) {
+  const list = document.getElementById('customers-list');
+  const kw = q.toLowerCase().trim();
+  if (!kw) { list.innerHTML = customersData.map(c => customerCardHTML(c)).join(''); return; }
+  const filtered = customersData.filter(c =>
+    cName(c).toLowerCase().includes(kw) ||
+    cCustId(c).toLowerCase().includes(kw) ||
+    cPhone(c).toLowerCase().includes(kw) ||
+    cAddr(c).toLowerCase().includes(kw) ||
+    cPeakCode(c).toLowerCase().includes(kw)
+  );
+  list.innerHTML = filtered.length
+    ? filtered.map(c => customerCardHTML(c)).join('')
+    : '<div style="color:#888;text-align:center;padding:20px;">ไม่พบลูกค้า "' + q + '"</div>';
 }
 
 function jobRowHTML(j) {
