@@ -1390,9 +1390,9 @@ async function loadNextJobId() {
 // ───── helpers: flexible field names ─────
 function cName(c)       { return c['Shop Name'] || c['shop_name'] || c.name || c['ชื่อ'] || c.customer_name || c['Customer ID'] || Object.values(c)[0] || '—'; }
 function cAddr(c) { return c.Address || c.address || c['ที่อยู่'] || '—'; }
-function cPhone(c)      { return c['Phone 1'] || c.phone || c.Phone || c['เบอร์โทร'] || '—'; }
-function cContact(c)    { return c['Contact Person 1'] || c.contact_person || c['ชื่อผู้ติดต่อ'] || '—'; }
-function cLineId(c)     { return c.line_id || c['LINE User ID'] || c.LINE_ID || c['line_user_id'] || '—'; }
+function cPhone(c)      { return c['Customer Phone 1'] || c['Customer Phone 2'] || c.phone || c['Phone 1'] || c['เบอร์โทร'] || '—'; }
+function cContact(c)    { return c['Customer Contact 1'] || c.contact || c['Contact Person 1'] || c['ชื่อผู้ติดต่อ'] || '—'; }
+function cLineId(c)     { return c['C.LINE User ID'] || c['C.LINE ID'] || c.line_id || c['LINE User ID'] || '—'; }
 function cMaps(c)       { return c['Google Maps URL'] || c.maps_url || c['Maps URL'] || c.google_maps || ''; }
 function cCustId(c)     { return c['Customer ID'] || c.customer_id || '—'; }
 function cPeakCode(c)   { return c['PEAK Code'] || c.peak_code || '—'; }
