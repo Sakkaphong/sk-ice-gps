@@ -38,7 +38,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const token = $input.first().json.tenant_access_token;\nreturn [{ json: { lark_token: token, searchBody: JSON.stringify({ page_size: 200 }) } }];"
+        "jsCode": "const token = $input.first().json.tenant_access_token;\nconst body = {\n  page_size: 200,\n  field_names: [\n    'Customer', 'Customer ID', 'PEAK Code', 'Customer Type',\n    'Customer Phone 1', 'Customer Phone 2',\n    'Customer Contact 1', 'Customer Contact 2',\n    'C.LINE User ID', 'C.LINE ID',\n    'Google Maps URL', 'Address',\n    'Equipment Type', 'Filter System 1', 'Filter System 2',\n    'Install date', 'Account Health'\n  ]\n};\nreturn [{ json: { lark_token: token, searchBody: JSON.stringify(body) } }];"
       },
       "id": "gc-003",
       "name": "Prep Search T1",
