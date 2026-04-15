@@ -694,6 +694,23 @@ body { font-family: var(--font); background: var(--bg); min-height: 100vh; color
       </div>
     </div>
 
+    <!-- ══ Team Online Today ══ -->
+    <div class="content-card" style="margin-bottom:20px;">
+      <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
+        <div class="card-header-title"><i data-lucide="users-round"></i> ทีมช่าง — วันนี้</div>
+        <button onclick="loadAttendance()" style="font-size:12px;color:var(--accent);background:none;border:none;cursor:pointer;font-family:var(--font);padding:4px 8px;border-radius:8px;transition:background .15s;" onmouseover="this.style.background='#EEF6FF'" onmouseout="this.style.background='none'">
+          <i data-lucide="refresh-cw" style="width:13px;height:13px;vertical-align:middle;"></i> รีเฟรช
+        </button>
+      </div>
+      <div id="team-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;padding:16px;">
+        <div class="loading-text">กำลังโหลด...</div>
+      </div>
+      <div style="padding:4px 16px 12px;font-size:11px;color:var(--muted);">
+        <span id="attend-summary">—</span>
+        <span style="margin-left:12px;color:#94A3B8;">อัปเดต: <span id="attend-time">—</span></span>
+      </div>
+    </div>
+
     <div class="content-card">
       <div class="card-header">
         <div class="card-header-title"><i data-lucide="list"></i> งานล่าสุดทั้งหมด</div>
@@ -1287,6 +1304,7 @@ window.addEventListener('load', () => {
   loadRecentJobs();
   loadNextJobId();
   loadCarePlans();
+  loadAttendance();
   // set default date
   const now = new Date();
   now.setHours(now.getHours() + 2);
@@ -1345,6 +1363,56 @@ async function loadTechnicians() {
   } catch(e) {
     document.getElementById('techSelect').innerHTML = '<option value="">❌ โหลดไม่ได้ ลองรีเฟรช</option>';
   }
+}
+
+// ───── Load Attendance (Lark) ─────
+async function loadAttendance() {
+  const grid = document.getElementById('team-grid');
+  if (!grid) return;
+  grid.innerHTML = '<div class="loading-text">⏳ กำลังดึงข้อมูล Lark Attendance...</div>';
+  try {
+    const r = await fetch(N8N_BASE + '/get-attendance', { redirect: 'follow' });
+    const d = await r.json();
+    renderTeamGrid(d.team || []);
+    const summary = document.getElementById('attend-summary');
+    const timeEl  = document.getElementById('attend-time');
+    const checked = (d.team || []).filter(t => t.checked_in).length;
+    if (summary) summary.textContent = `เข้างานแล้ว ${checked} / ${(d.team||[]).length} คน`;
+    if (timeEl)  timeEl.textContent  = new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+  } catch(e) {
+    // ถ้า N8N ยังไม่มี endpoint ให้ fallback ใช้ข้อมูลจาก techsData
+    renderTeamGrid(techsData.map(t => ({ ...t, checked_in: false, check_in_time: null, status: 'unknown' })));
+    const summary = document.getElementById('attend-summary');
+    if (summary) summary.textContent = 'ไม่สามารถดึงข้อมูล Lark Attendance — แสดงรายชื่อช่างทั้งหมด';
+  }
+}
+
+function renderTeamGrid(team) {
+  const grid = document.getElementById('team-grid');
+  if (!grid) return;
+  if (!team.length) { grid.innerHTML = '<div class="loading-text">ไม่มีข้อมูล</div>'; return; }
+  grid.innerHTML = team.map(t => {
+    const nick = t.name || t.nickname || tName(t).split(' ')[0] || '?';
+    const fullName = tName(t);
+    const status = t.status || (t.checked_in ? 'working' : 'off');
+    const checkInTime = t.check_in_time ? new Date(t.check_in_time * 1000).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) : null;
+    const colors = { working:'#22C55E', off:'#CBD5E1', leave:'#F59E0B', unknown:'#CBD5E1' };
+    const labels = { working:'เข้างาน', off:'หยุด', leave:'ลา', unknown:'ไม่ทราบ' };
+    const dotColor = colors[status] || '#CBD5E1';
+    const statusLabel = labels[status] || status;
+    const initial = (nick[0] || '?').toUpperCase();
+    const avatarBg = t.checked_in ? '#1E3A5F' : '#94A3B8';
+    return `<div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:14px;padding:14px 10px;text-align:center;position:relative;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow='none'">
+      <div style="width:48px;height:48px;border-radius:50%;background:${avatarBg};color:#fff;font-size:20px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;position:relative;">
+        ${initial}
+        <span style="position:absolute;bottom:1px;right:1px;width:12px;height:12px;border-radius:50%;background:${dotColor};border:2px solid #fff;"></span>
+      </div>
+      <div style="font-size:13px;font-weight:700;color:#1E3A5F;">${nick}</div>
+      <div style="font-size:10px;color:#94A3B8;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${fullName !== nick ? fullName : ''}</div>
+      <div style="margin-top:6px;font-size:11px;font-weight:600;color:${dotColor};">${statusLabel}</div>
+      ${checkInTime ? `<div style="font-size:10px;color:#94A3B8;margin-top:2px;">เข้า ${checkInTime}</div>` : ''}
+    </div>`;
+  }).join('');
 }
 
 // ───── Load Recent Jobs ─────
