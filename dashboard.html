@@ -748,12 +748,24 @@ body { font-family: var(--font); background: var(--bg); min-height: 100vh; color
         </button>
       </div>
     </div>
+    <!-- Filter tabs -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+      <button id="cf-all"      onclick="setCustFilter('all')"      style="padding:7px 16px;border-radius:20px;border:1.5px solid #E2E8F0;background:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all .15s;">ทั้งหมด <span id="cf-count-all"  style="color:#94A3B8;font-weight:400;"></span></button>
+      <button id="cf-active"   onclick="setCustFilter('active')"   style="padding:7px 16px;border-radius:20px;border:1.5px solid #E2E8F0;background:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all .15s;">🟢 Active <span id="cf-count-active" style="color:#94A3B8;font-weight:400;"></span></button>
+      <button id="cf-inactive" onclick="setCustFilter('inactive')" style="padding:7px 16px;border-radius:20px;border:1.5px solid #E2E8F0;background:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all .15s;">⛔ Inactive <span id="cf-count-inactive" style="color:#94A3B8;font-weight:400;"></span></button>
+    </div>
     <div class="customer-search-wrap">
       <input id="customerSearch" type="text" class="search-input"
         placeholder="🔍 ค้นหาชื่อร้าน, รหัสลูกค้า, เบอร์โทร..."
         oninput="filterCustomers(this.value)" />
     </div>
     <div id="customers-list"><div class="loading-text">กำลังโหลด...</div></div>
+    <!-- Load More -->
+    <div id="load-more-wrap" style="display:none;text-align:center;padding:20px;">
+      <button onclick="loadMoreCustomers()" style="padding:10px 28px;border-radius:20px;border:1.5px solid var(--accent);color:var(--accent);background:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--font);">
+        โหลดเพิ่ม <span id="load-more-hint" style="font-weight:400;color:#94A3B8;"></span>
+      </button>
+    </div>
   </div>
 </div>
 
@@ -1293,6 +1305,9 @@ const N8N_BASE = 'https://n8n-production-b8f6.up.railway.app/webhook';
 const N8N_INIT = N8N_BASE + '/gps-init';
 
 let currentJobId = 'WRK-001';
+let custFilter = 'all';      // 'all' | 'active' | 'inactive'
+let custPageToken = null;    // Lark page_token สำหรับโหลดหน้าต่อไป
+let custHasMore = false;     // มีหน้าต่อไปไหม
 let selectedPriority = 'med';
 let customersData = [];
 let techsData = [];
@@ -1313,37 +1328,84 @@ window.addEventListener('load', () => {
 });
 
 // ───── Load Customers ─────
-async function loadCustomers() {
+async function loadCustomers(pageToken = null) {
   try {
-    const r = await fetch(N8N_BASE + '/get-customers', { redirect: 'follow' });
+    const url = N8N_BASE + '/get-customers' + (pageToken ? '?page_token=' + encodeURIComponent(pageToken) : '');
+    const r = await fetch(url, { redirect: 'follow' });
     const d = await r.json();
-    customersData = d.customers || [];
+    const newCusts = d.customers || [];
+    if (pageToken) {
+      customersData = customersData.concat(newCusts);
+    } else {
+      customersData = newCusts;
+    }
+    custPageToken = d.page_token || null;
+    custHasMore   = !!d.has_more;
+    updateCustFilterCounts();
+    // Re-render customer grid with current filter applied
+    const activeTab = document.getElementById('tab-customers');
+    if (activeTab && activeTab.style.display !== 'none') {
+      filterCustomers(document.getElementById('customerSearch')?.value || '');
+    }
+    // populate assign dropdown (active ก่อน inactive)
     const sel = document.getElementById('customerSelect');
-    sel.innerHTML = '<option value="">— เลือกลูกค้า —</option><option value="NEW">➕ ลูกค้าใหม่ (กรอกเอง)</option>';
-    // แสดง active ก่อน แล้วตามด้วย inactive (เพื่อให้เลือกได้ทุกคน)
-    const active   = customersData.filter(c => cHealth(c) !== 'Inactive' && !cHealth(c).toLowerCase().includes('inact'));
-    const inactive = customersData.filter(c => cHealth(c) === 'Inactive' || cHealth(c).toLowerCase().includes('inact'));
-    active.forEach((c, i) => {
+    if (!pageToken) {
+      sel.innerHTML = '<option value="">— เลือกลูกค้า —</option><option value="NEW">➕ ลูกค้าใหม่ (กรอกเอง)</option>';
+    }
+    const active   = newCusts.filter(c => cHealth(c) !== 'Inactive');
+    const inactive = newCusts.filter(c => cHealth(c) === 'Inactive');
+    active.forEach(c => {
       const opt = document.createElement('option');
       opt.value = customersData.indexOf(c);
-      opt.textContent = cName(c) + (cHealth(c) && cHealth(c) !== '—' && cHealth(c) !== 'Healthy' ? ' [' + cHealth(c) + ']' : '');
+      opt.textContent = cName(c);
       sel.appendChild(opt);
     });
-    if (inactive.length) {
-      const sep = document.createElement('option');
-      sep.disabled = true;
-      sep.textContent = '── ลูกค้าเดิม (Inactive) ──';
-      sel.appendChild(sep);
-      inactive.forEach((c) => {
+    if (inactive.length && !pageToken) {
+      const sep = document.createElement('option'); sep.disabled = true;
+      sep.textContent = '── ลูกค้าเดิม (Inactive) ──'; sel.appendChild(sep);
+      inactive.forEach(c => {
         const opt = document.createElement('option');
         opt.value = customersData.indexOf(c);
-        opt.textContent = '⛔ ' + cName(c);
-        sel.appendChild(opt);
+        opt.textContent = '⛔ ' + cName(c); sel.appendChild(opt);
       });
     }
   } catch(e) {
     document.getElementById('customerSelect').innerHTML = '<option value="">❌ โหลดไม่ได้ ลองรีเฟรช</option>';
   }
+}
+
+function updateCustFilterCounts() {
+  const total    = customersData.length;
+  const active   = customersData.filter(c => cHealth(c) !== 'Inactive').length;
+  const inactive = customersData.filter(c => cHealth(c) === 'Inactive').length;
+  const el = (id, val) => { const e = document.getElementById(id); if(e) e.textContent = '(' + val + ')'; };
+  el('cf-count-all', total + (custHasMore ? '+' : ''));
+  el('cf-count-active', active);
+  el('cf-count-inactive', inactive);
+  // update load more button
+  const lmw = document.getElementById('load-more-wrap');
+  const lmh = document.getElementById('load-more-hint');
+  if (lmw) lmw.style.display = custHasMore ? 'block' : 'none';
+  if (lmh) lmh.textContent = custPageToken ? '(โหลดแล้ว ' + total + ' รายการ)' : '';
+}
+
+function setCustFilter(f) {
+  custFilter = f;
+  ['all','active','inactive'].forEach(k => {
+    const btn = document.getElementById('cf-' + k);
+    if (!btn) return;
+    const isActive = k === f;
+    btn.style.background  = isActive ? 'var(--accent)' : '#fff';
+    btn.style.color       = isActive ? '#fff' : 'var(--text)';
+    btn.style.borderColor = isActive ? 'var(--accent)' : '#E2E8F0';
+  });
+  filterCustomers(document.getElementById('customerSearch')?.value || '');
+}
+
+async function loadMoreCustomers() {
+  if (!custPageToken) return;
+  await loadCustomers(custPageToken);
+  filterCustomers(document.getElementById('customerSearch')?.value || '');
 }
 
 // ───── Load Technicians ─────
@@ -1901,21 +1963,33 @@ function customerCardHTML(c) {
 }
 
 function renderCustomerList() {
+  const q = document.getElementById('customerSearch')?.value || '';
   const list = document.getElementById('customers-list');
   if (customersData.length) {
-    renderWithView(customersData);
+    filterCustomers(q);  // apply status + keyword filter before rendering
   } else {
     list.innerHTML = '<div class="loading-text">⏳ โหลด...</div>';
     fetch(N8N_BASE + '/get-customers', { redirect: 'follow' })
       .then(r => r.json())
-      .then(d => { customersData = d.customers || []; renderWithView(customersData); })
+      .then(d => {
+        customersData = d.customers || [];
+        custPageToken = d.page_token || null;
+        custHasMore   = !!d.has_more;
+        updateCustFilterCounts();
+        filterCustomers(q);
+      })
       .catch(() => { list.innerHTML = '<div style="color:red;padding:12px;">โหลดไม่ได้</div>'; });
   }
 }
 
 function filterCustomers(q) {
-  const kw = q.toLowerCase().trim();
-  const arr = !kw ? customersData : customersData.filter(c =>
+  const kw = (q || '').toLowerCase().trim();
+  // 1. Apply status filter first
+  let arr = customersData;
+  if (custFilter === 'active')   arr = arr.filter(c => cHealth(c) !== 'Inactive');
+  if (custFilter === 'inactive') arr = arr.filter(c => cHealth(c) === 'Inactive');
+  // 2. Apply keyword filter on top
+  if (kw) arr = arr.filter(c =>
     cName(c).toLowerCase().includes(kw) ||
     cCustId(c).toLowerCase().includes(kw) ||
     cPhone(c).toLowerCase().includes(kw) ||
