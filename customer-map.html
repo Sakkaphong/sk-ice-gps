@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>ติดตามช่าง — SK ICE</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+@font-face { font-family:'SukhumvitSet'; src:url('fonts/SukhumvitSet-Bold.ttf'); font-weight:700; font-display:swap; }
+@font-face { font-family:'SukhumvitSet'; src:url('fonts/SukhumvitSet-SemiBold.ttf'); font-weight:600; font-display:swap; }
+@font-face { font-family:'SukhumvitSet'; src:url('fonts/SukhumvitSet-Medium.ttf'); font-weight:500; font-display:swap; }
+@font-face { font-family:'SukhumvitSet'; src:url('fonts/SukhumvitSet-Text.ttf'); font-weight:400; font-display:swap; }
+
+:root {
+  --font: 'SukhumvitSet', 'Helvetica Neue', Arial, sans-serif;
+  --text: #1D1D1F;
+  --muted: #6E6E73;
+  --accent: #0071E3;
+  --green: #34C759;
+  --radius-pill: 980px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body {
+  height:100%; overflow:hidden;
+  font-family:var(--font); background:#F5F5F7;
+  display:flex; flex-direction:column;
+}
+
+/* ── Nav ── */
+.topnav {
+  background:#000; height:64px; flex-shrink:0;
+  display:flex; align-items:center; gap:14px; padding:0 20px;
+}
+.topnav-logo { width:32px; height:32px; border-radius:50%; overflow:hidden; flex-shrink:0; }
+.topnav-logo img { width:100%; height:auto; display:block; }
+.topnav-info { flex:1; }
+.topnav-title { font-size:15px; font-weight:700; color:#F5F5F7; letter-spacing:-.3px; }
+.topnav-sub { font-size:11px; color:rgba(245,245,247,.5); margin-top:1px; font-weight:400; }
+.topnav-tag {
+  font-size:12px; font-weight:700; color:#fff;
+  background:#0071E3; padding:5px 12px; border-radius:var(--radius-pill);
+}
+
+/* ── Open-bar ── */
+.open-bar {
+  display:none; gap:8px; padding:10px 16px; flex-shrink:0;
+  background:#FFF9E6; border-bottom:1px solid #FFE082;
+}
+.open-bar button {
+  flex:1; border:none; border-radius:var(--radius-pill);
+  padding:10px; font-size:13px; font-weight:700; cursor:pointer;
+  font-family:var(--font);
+}
+.btn-chrome { background:#4285F4; color:#fff; }
+.btn-safari { background:#006CFF; color:#fff; }
+
+/* ── Status bar ── */
+.sbar {
+  background:#fff; padding:13px 20px; flex-shrink:0;
+  display:flex; align-items:center; gap:12px;
+  box-shadow:0 1px 0 rgba(0,0,0,.08);
+}
+.s-icon { font-size:28px; line-height:1; }
+.sinfo { flex:1; }
+.s-title { font-size:15px; font-weight:700; color:var(--text); letter-spacing:-.2px; }
+.s-sub {
+  font-size:12px; color:var(--muted); margin-top:2px;
+  display:flex; align-items:center; gap:5px;
+}
+.dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:#ccc; flex-shrink:0; }
+.dot.on { background:var(--green); animation:pulse 1.5s infinite; }
+.dot.off { background:#ccc; }
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:.4} }
+.job-tag {
+  font-size:12px; font-weight:700; color:var(--accent);
+  background:#EEF6FF; padding:5px 12px; border-radius:var(--radius-pill);
+}
+
+/* ── Map ── */
+.wrap { flex:1; position:relative; min-height:0; }
+#map { width:100%; height:100%; }
+
+/* ── Loading overlay ── */
+#loading {
+  position:absolute; inset:0;
+  background:rgba(255,255,255,.92);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  z-index:999; gap:12px; font-size:15px; color:var(--muted); font-family:var(--font);
+}
+#loading span { font-size:40px; }
+
+/* ── FABs ── */
+.fabs {
+  position:absolute; bottom:24px; right:16px; z-index:1000;
+  display:flex; flex-direction:column; gap:10px; align-items:flex-end;
+}
+.fab {
+  border:none; border-radius:var(--radius-pill);
+  padding:12px 18px; font-size:14px; font-weight:700;
+  cursor:pointer; font-family:var(--font);
+  box-shadow:0 4px 16px rgba(0,0,0,.2);
+  display:flex; align-items:center; gap:6px; white-space:nowrap;
+  transition:opacity .15s, transform .1s;
+}
+.fab:active { transform:scale(.97); opacity:.85; }
+.fab-tech { background:#1D1D1F; color:#fff; }
+.fab-me { background:var(--accent); color:#fff; }
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<div class="topnav">
+  <div class="topnav-logo">
+    <img src="../SK LOGO.png" alt="SK ICE">
+  </div>
+  <div class="topnav-info">
+    <div class="topnav-title">SK ICE</div>
+    <div class="topnav-sub" id="hdr-sub">ติดตามช่าง</div>
+  </div>
+  <div class="topnav-tag" id="job-tag">-</div>
+</div>
+
+<!-- Open-bar -->
+<div class="open-bar" id="open-bar">
+  <button class="btn-chrome" onclick="openChrome()">เปิดใน Chrome</button>
+  <button class="btn-safari" onclick="openSafari()">เปิดใน Safari</button>
+</div>
+
+<!-- Status bar -->
+<div class="sbar">
+  <div class="s-icon" id="s-icon">🚗</div>
+  <div class="sinfo">
+    <div class="s-title" id="s-text">กำลังเดินทาง</div>
+    <div class="s-sub">
+      <span class="dot on" id="dot"></span>
+      <span id="s-sub">กำลังโหลดตำแหน่ง...</span>
+    </div>
+  </div>
+</div>
+
+<!-- Map -->
+<div class="wrap">
+  <div id="loading"><span>📍</span>กำลังโหลดแผนที่...</div>
+  <div id="map"></div>
+  <div class="fabs">
+    <button class="fab fab-tech" id="btn-tech" onclick="focusTech()" style="display:none">ตำแหน่งช่าง</button>
+    <button class="fab fab-me" onclick="centerMe()">จุดของฉัน</button>
+  </div>
+</div>
+
+<script>
+const BASE = 'https://n8n-production-b8f6.up.railway.app/webhook';
+const GPS_POS_URL = 'https://script.google.com/macros/s/AKfycby4bz_lqC2mVSd1PTN6Qa0v-debtTZmxKa2A6VlnXL0qxJHHQR5ghe7bvQqe3JR1jWK/exec';
+const POLL_MS = 60000;
+
+const p = new URLSearchParams(location.search);
+const JOB = (p.get('job_id') || p.get('work') || '').trim();
+
+document.getElementById('hdr-sub').textContent = JOB ? 'งาน: ' + JOB : 'ไม่ระบุงาน';
+document.getElementById('job-tag').textContent  = JOB || '-';
+
+// Map
+const map = L.map('map', { zoomControl:true, attributionControl:false });
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+  { maxZoom:19, subdomains:'abcd' }).addTo(map);
+map.setView([13.75, 100.5], 13);
+document.getElementById('loading').style.display = 'none';
+
+// Icons
+const _badge = (bg, shadow, svgInner) =>
+  `<div style="width:40px;height:40px;background:${bg};border:3px solid #fff;border-radius:50%;box-shadow:0 3px 12px ${shadow};display:flex;align-items:center;justify-content:center;">${svgInner}</div>`;
+
+const techIcon = L.divIcon({
+  html: _badge('#0071E3','rgba(0,113,227,.45)',
+    `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5 17H3a2 2 0 0 1-2-2V9l3-5h12l3 5v6a2 2 0 0 1-2 2h-2"/>
+      <circle cx="7.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="17.5" r="2.5"/>
+    </svg>`),
+  className:'', iconSize:[40,40], iconAnchor:[20,20], popupAnchor:[0,-22]
+});
+const doneIcon = L.divIcon({
+  html: _badge('#34C759','rgba(52,199,89,.45)',
+    `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>`),
+  className:'', iconSize:[40,40], iconAnchor:[20,20], popupAnchor:[0,-22]
+});
+const meIcon = L.divIcon({
+  html:'<div style="width:16px;height:16px;background:#0071E3;border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 4px rgba(0,113,227,.25)"></div>',
+  className:'', iconSize:[16,16], iconAnchor:[8,8]
+});
+
+let techMarker=null, meMarker=null;
+let myLat=null, myLng=null, techLat=null, techLng=null;
+let firstLoad=true, pollTimer=null, isDone=false;
+
+// Test/Dummy technician marker for demo
+techLat=13.7563; techLng=100.5018; // Near Lumpini Park Bangkok
+techMarker=L.marker([techLat,techLng],{icon:techIcon}).bindPopup('<b>ช่างทดสอบ</b><br>กำลังเดินทาง').addTo(map);
+document.getElementById('btn-tech').style.display='flex';
+document.getElementById('s-icon').textContent='🚗';
+document.getElementById('s-text').textContent='ช่างกำลังเดินทางมาหาคุณ';
+document.getElementById('s-sub').textContent='อัปเดตล่าสุด: '+new Date().toLocaleTimeString('th-TH');
+document.getElementById('dot').className='dot on';
+
+// Browser detection
+(function(){
+  const ua = navigator.userAgent || '';
+  const isInApp = /Line\/|FBAN|FBAV|FB_IAB|Instagram|Snapchat|Twitter|MicroMessenger/.test(ua)
+    || (/(iPhone|iPod|iPad)/.test(ua) && !/Safari\//.test(ua) && /AppleWebKit/.test(ua));
+  const isMobile = /iPhone|iPad|iPod|Android/.test(ua);
+  if(isInApp || isMobile) document.getElementById('open-bar').style.display = 'flex';
+})();
+
+function openChrome(){
+  const u = location.href.replace('https://','googlechromes://').replace('http://','googlechrome://');
+  location.href = u;
+  setTimeout(()=>{ copyURL(); }, 2000);
+}
+function openSafari(){ copyURL(); alert('วาง URL ใน Safari แล้วเปิดครับ'); }
+function copyURL(){
+  const url = location.href;
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(()=>alert('Copy แล้ว!\nวางใน Chrome หรือ Safari'));
+  } else { prompt('Copy URL:', url); }
+}
+
+function fetchPosition(){
+  if(!JOB){ document.getElementById('s-sub').textContent='ไม่มีรหัสงาน'; return; }
+  fetch(GPS_POS_URL+'?job_id='+encodeURIComponent(JOB),{redirect:'follow'})
+    .then(r=>{ if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(data=>{ updateMap(data); updateStatus(data); })
+    .catch(()=>{ document.getElementById('s-sub').textContent='ไม่สามารถโหลดข้อมูล — ลองใหม่...'; });
+}
+
+function updateMap(d){
+  if(!d.found || !d.lat || !d.lng || d.lat===0) return;
+  techLat=d.lat; techLng=d.lng;
+  const ll=[d.lat,d.lng];
+  const icon=(d.status==='completed')?doneIcon:techIcon;
+  const popup='<b>'+(d.tech_name||'ช่าง')+'</b><br>สถานะ: '+fmtStatus(d.status)+'<br>อัปเดต: '+fmtTime(d.timestamp);
+  if(!techMarker){
+    techMarker=L.marker(ll,{icon}).addTo(map);
+    techMarker.bindPopup(popup);
+    document.getElementById('btn-tech').style.display='flex';
+  } else {
+    techMarker.setLatLng(ll); techMarker.setIcon(icon); techMarker.setPopupContent(popup);
+  }
+  if(firstLoad){ map.setView(ll,15); firstLoad=false; }
+}
+
+function updateStatus(d){
+  const st=d.status||'traveling';
+  const icon=document.getElementById('s-icon');
+  const text=document.getElementById('s-text');
+  const sub=document.getElementById('s-sub');
+  const dot=document.getElementById('dot');
+  if(st==='completed'){
+    icon.textContent='✅'; text.textContent='งานเสร็จแล้ว!';
+    sub.textContent='เสร็จเรียบร้อย — ขอบคุณที่ใช้บริการ SK ICE ครับ';
+    dot.className='dot off';
+    if(!isDone){ isDone=true; clearInterval(pollTimer); }
+  } else if(st==='arrived'){
+    icon.textContent='🔧'; text.textContent='ช่างถึงที่แล้ว!';
+    sub.textContent='กำลังดำเนินการ'; dot.className='dot off';
+  } else {
+    icon.textContent='🚗'; text.textContent='กำลังเดินทางมาหาคุณ';
+    sub.textContent='อัปเดตล่าสุด: '+fmtTime(d.timestamp); dot.className='dot on';
+  }
+}
+
+function focusTech(){ if(techLat!==null) map.setView([techLat,techLng],16); }
+
+function centerMe(){
+  if(myLat!==null){ map.setView([myLat,myLng],17); meMarker.openPopup(); return; }
+  if(!navigator.geolocation){ alert('เบราว์เซอร์ไม่รองรับ GPS'); return; }
+  navigator.geolocation.getCurrentPosition(
+    pos=>{
+      myLat=pos.coords.latitude; myLng=pos.coords.longitude;
+      if(!meMarker){
+        meMarker=L.marker([myLat,myLng],{icon:meIcon}).addTo(map);
+        meMarker.bindPopup('<b>ตำแหน่งของคุณ</b>').openPopup();
+      } else { meMarker.setLatLng([myLat,myLng]); meMarker.openPopup(); }
+      map.setView([myLat,myLng],17);
+    },
+    ()=>{ alert('ไม่สามารถหาตำแหน่งของคุณได้\nกรุณาเปิด GPS แล้วลองใหม่'); },
+    {enableHighAccuracy:true,timeout:12000}
+  );
+}
+
+function fmtTime(ts){
+  if(!ts) return '-';
+  try{ return new Date(ts).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}); }
+  catch(e){ return ts; }
+}
+function fmtStatus(st){
+  return st==='completed'?'เสร็จแล้ว':st==='arrived'?'ถึงแล้ว':'กำลังเดินทาง';
+}
+
+fetchPosition();
+pollTimer = setInterval(fetchPosition, POLL_MS);
+</script>
+</body>
+</html>

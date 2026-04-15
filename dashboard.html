@@ -5,278 +5,749 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SK ICE — Admin Dashboard</title>
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Segoe UI', Arial, sans-serif; background: #F0F4F8; min-height: 100vh; }
+/* ── Sukhumvit Set Font ── */
+@font-face { font-family: 'SukhumvitSet'; src: url('fonts/SukhumvitSet-Thin.ttf'); font-weight: 100; font-style: normal; }
+@font-face { font-family: 'SukhumvitSet'; src: url('fonts/SukhumvitSet-Light.ttf'); font-weight: 300; font-style: normal; }
+@font-face { font-family: 'SukhumvitSet'; src: url('fonts/SukhumvitSet-Text.ttf'); font-weight: 400; font-style: normal; }
+@font-face { font-family: 'SukhumvitSet'; src: url('fonts/SukhumvitSet-Medium.ttf'); font-weight: 500; font-style: normal; }
+@font-face { font-family: 'SukhumvitSet'; src: url('fonts/SukhumvitSet-SemiBold.ttf'); font-weight: 600; font-style: normal; }
+@font-face { font-family: 'SukhumvitSet'; src: url('fonts/SukhumvitSet-Bold.ttf'); font-weight: 700; font-style: normal; }
 
+/* ── Design Tokens ── */
+:root {
+  --font: 'SukhumvitSet', 'Segoe UI', sans-serif;
+  --primary: #1D1D1F;
+  --accent: #0071E3;
+  --bg: #F5F5F7;
+  --card: #FFFFFF;
+  --border: #D2D2D7;
+  --text: #1D1D1F;
+  --muted: #6E6E73;
+  --success: #34C759;
+  --warning: #FF9F0A;
+  --danger: #FF3B30;
+  --radius-card: 18px;
+  --radius-input: 10px;
+  --radius-pill: 980px;
+  --shadow-card: 0 2px 8px rgba(0,0,0,.06), 0 0 0 0.5px rgba(0,0,0,.04);
+  --shadow-card-hover: 0 8px 28px rgba(0,0,0,.12), 0 2px 8px rgba(0,0,0,.06);
+  --transition: all .25s cubic-bezier(.4,0,.2,1);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { max-width: 100%; overflow-x: hidden; }
+body { font-family: var(--font); background: var(--bg); min-height: 100vh; color: var(--text); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
+
+/* ── Topnav — Apple style ── */
 .topnav {
-  background: #1E3A5F; padding: 0 24px; height: 56px;
+  background: #000000;
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  height: 68px;
   display: flex; align-items: center; justify-content: space-between;
-  box-shadow: 0 2px 8px rgba(0,0,0,.2);
+  padding: 0 24px;
+  border-bottom: 0.5px solid rgba(255,255,255,.1);
+  position: sticky; top: 0; z-index: 50;
 }
 .nav-brand { display: flex; align-items: center; gap: 10px; }
-.nav-brand-icon { font-size: 24px; }
-.nav-brand-name { font-size: 18px; font-weight: 700; color: #fff; }
-.nav-brand-sub { font-size: 11px; color: #A8D5F0; }
-.nav-tabs { display: flex; gap: 4px; }
+.nav-brand-icon { font-size: 20px; line-height: 1; }
+.nav-brand-name { font-size: 16px; font-weight: 700; color: #F5F5F7; letter-spacing: -.2px; }
+.nav-brand-sub { font-size: 10px; color: rgba(245,245,247,.45); margin-top: 1px; font-weight: 400; }
+
+.nav-tabs { display: flex; gap: 1px; flex: 1; min-width: 0; justify-content: center; }
 .nav-tab {
-  padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
-  color: #A8D5F0; cursor: pointer; border: none; background: transparent; transition: all .2s;
+  display: flex; align-items: center; gap: 4px;
+  padding: 4px 12px; border-radius: 0;
+  font-size: 12px; font-weight: 400;
+  color: rgba(255,255,255,.75); cursor: pointer;
+  border: none; background: transparent;
+  transition: color .2s ease;
+  font-family: var(--font);
+  letter-spacing: -.1px;
 }
-.nav-tab.active { background: rgba(255,255,255,.15); color: #fff; }
-.nav-tab:hover:not(.active) { background: rgba(255,255,255,.08); }
+.nav-tab i { width: 16px; height: 16px; }
+.nav-tab.active { background: transparent; color: #FFFFFF; font-weight: 500; }
+.nav-tab:hover:not(.active) { background: transparent; color: #FFFFFF; }
+
 .nav-user { display: flex; align-items: center; gap: 8px; }
-.nav-avatar {
+.nav-bell {
   width: 32px; height: 32px; border-radius: 50%;
-  background: linear-gradient(135deg, #5BB8F5, #2E6DA4);
+  background: rgba(255,255,255,.08); border: none; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  font-size: 14px; color: #fff; font-weight: 700;
+  color: rgba(245,245,247,.6); transition: var(--transition);
 }
-.nav-name { font-size: 13px; color: #A8D5F0; }
+.nav-bell:hover { background: rgba(255,255,255,.14); color: #F5F5F7; }
+.nav-bell i { width: 15px; height: 15px; }
+.nav-avatar {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: #AEAEB2;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: #fff; font-weight: 700;
+  border: 1.5px solid rgba(255,255,255,.15);
+}
+.nav-name { font-size: 12px; color: rgba(245,245,247,.6); font-weight: 500; }
 
+/* ── Tab Sections ── */
+.tab-section { animation: fadeIn .25s ease; padding-bottom: 80px; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ── Overview tab ── */
+.overview-wrap { padding: 28px 24px; max-width: 1200px; margin: 0 auto; }
+.page-title {
+  font-size: 22px; font-weight: 700; color: var(--text);
+  margin-bottom: 22px; display: flex; align-items: center; gap: 9px;
+  letter-spacing: -.4px;
+}
+.page-title i { width: 20px; height: 20px; color: var(--accent); }
+
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+.stat-card {
+  background: var(--card); border-radius: 18px; padding: 22px 20px;
+  box-shadow: var(--shadow-card); border: 0.5px solid var(--border);
+  display: flex; flex-direction: column; gap: 4px;
+  transition: var(--transition);
+  position: relative; overflow: hidden;
+}
+.stat-card:hover { box-shadow: var(--shadow-card-hover); transform: translateY(-3px); }
+.stat-card::after {
+  content: ''; position: absolute; right: -12px; top: -12px;
+  width: 72px; height: 72px; border-radius: 50%;
+  opacity: .06;
+}
+.stat-card:nth-child(1)::after { background: #0071E3; }
+.stat-card:nth-child(2)::after { background: #6E6E73; }
+.stat-card:nth-child(3)::after { background: #FF9F0A; }
+.stat-card:nth-child(4)::after { background: #34C759; }
+.stat-card-icon {
+  width: 38px; height: 38px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; margin-bottom: 10px;
+}
+.stat-card-icon i { width: 18px; height: 18px; }
+.stat-card-icon.blue   { background: #E8F1FC; color: #0071E3; }
+.stat-card-icon.gray   { background: #F2F2F7; color: #6E6E73; }
+.stat-card-icon.orange { background: #FFF4E5; color: #FF9F0A; }
+.stat-card-icon.green  { background: #E8FAF0; color: #34C759; }
+.stat-num { font-size: 34px; font-weight: 700; color: var(--text); line-height: 1; letter-spacing: -1px; }
+.stat-label { font-size: 12px; color: var(--muted); font-weight: 500; margin-top: 2px; }
+
+/* ── Card base ── */
+.content-card {
+  background: var(--card); border-radius: 18px;
+  box-shadow: var(--shadow-card); border: 0.5px solid var(--border); overflow: hidden;
+}
+.card-header {
+  padding: 14px 20px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  background: linear-gradient(to bottom, #0071E3 0%, #5AC8FA 100%);
+}
+.card-header-title { font-size: 14px; font-weight: 600; color: #fff; display: flex; align-items: center; gap: 6px; }
+.card-header-title i { width: 16px; height: 16px; color: rgba(255,255,255,.7); }
+.card-body { padding: 16px 20px; }
+
+/* ── Main layout (assign tab) ── */
 .main { display: grid; grid-template-columns: 1fr 380px; gap: 20px; padding: 20px 24px; max-width: 1200px; margin: 0 auto; }
-@media (max-width: 768px) {
-  .main { grid-template-columns: 1fr; padding: 12px; }
-  .right-panel { order: 2; }
-  .nav-tabs { gap: 2px; }
-  .nav-tab { padding: 6px 10px; font-size: 12px; }
-  .form-grid { grid-template-columns: 1fr !important; }
-  .form-grid.customer-grid { grid-template-columns: 1fr !important; }
-}
 
-.form-card { background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+/* ── Form Card ── */
+.form-card { background: var(--card); border-radius: var(--radius-card); overflow: hidden; box-shadow: var(--shadow-card); border: 1px solid var(--border); }
 .form-header {
-  background: linear-gradient(135deg, #1E3A5F, #2E6DA4);
-  padding: 20px 24px; color: #fff;
+  background: linear-gradient(to bottom, #0D3272 0%, #1565C0 55%, #2196F3 100%);
+  padding: 16px 22px; color: #fff;
   display: flex; align-items: center; justify-content: space-between;
 }
-.form-header-title { font-size: 18px; font-weight: 700; }
-.form-header-sub { font-size: 13px; opacity: .75; margin-top: 2px; }
-.work-id-badge { background: rgba(255,255,255,.2); border-radius: 10px; padding: 8px 14px; text-align: center; }
-.work-id-label { font-size: 10px; opacity: .7; }
-.work-id-val { font-size: 20px; font-weight: 700; letter-spacing: 1px; }
+.form-header-title { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 7px; }
+.form-header-title i { width: 18px; height: 18px; opacity: .85; }
+.form-header-sub { font-size: 12px; opacity: .8; margin-top: 3px; font-weight: 400; }
+.work-id-badge {
+  background: #0071E3;
+  border-radius: var(--radius-pill);
+  padding: 8px 18px; text-align: center;
+  box-shadow: 0 4px 16px rgba(0,113,227,.45);
+  border: none;
+}
+.work-id-label { font-size: 10px; color: rgba(255,255,255,.75); font-weight: 500; letter-spacing: .5px; text-transform: uppercase; }
+.work-id-val { font-size: 20px; font-weight: 700; letter-spacing: 1px; color: #fff; }
 
 .form-body { padding: 24px; }
 .form-section { margin-bottom: 24px; }
 .section-title {
-  font-size: 12px; font-weight: 700; color: #94A3B8;
-  text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px;
+  font-size: 11px; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 14px;
   display: flex; align-items: center; gap: 8px;
 }
-.section-title::after { content: ''; flex: 1; height: 1px; background: #F0F4F8; }
+.section-title i { width: 13px; height: 13px; }
+.section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .form-grid.customer-grid { grid-template-columns: minmax(200px, 320px) 1fr; }
-.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
 .form-group.full { grid-column: 1 / -1; }
-.form-label { font-size: 12px; font-weight: 600; color: #374151; display: flex; align-items: center; gap: 6px; }
-.required { color: #EF4444; }
+.form-label { font-size: 12px; font-weight: 600; color: #374151; display: flex; align-items: center; gap: 5px; }
+.required { color: var(--danger); }
 .form-input, .form-select, .form-textarea {
-  padding: 10px 12px; border: 1.5px solid #E5E7EB; border-radius: 8px;
-  font-size: 13px; color: #1E293B; background: #fff;
-  transition: border-color .2s, box-shadow .2s; font-family: inherit; outline: none;
+  padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px;
+  font-size: 14px; color: var(--text); background: var(--card);
+  transition: border-color .2s, box-shadow .2s; font-family: var(--font); outline: none;
+  letter-spacing: -.1px;
 }
 .form-input:focus, .form-select:focus, .form-textarea:focus {
-  border-color: #2E6DA4; box-shadow: 0 0 0 3px rgba(46,109,164,.1);
+  border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,113,227,.12);
 }
-.form-input.auto { background: #F8FAFC; color: #64748B; cursor: not-allowed; }
+.form-input.auto { background: var(--bg); color: var(--muted); cursor: not-allowed; }
 .form-textarea { resize: vertical; min-height: 80px; }
 
 .select-with-info { position: relative; }
 .select-info {
   display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0;
-  background: #fff; border: 1.5px solid #E5E7EB; border-radius: 8px;
+  background: var(--card); border: 1.5px solid var(--border); border-radius: var(--radius-input);
   padding: 10px 12px; font-size: 12px; color: #555;
-  box-shadow: 0 4px 12px rgba(0,0,0,.1); z-index: 100;
+  box-shadow: 0 8px 24px rgba(0,0,0,.12); z-index: 100;
 }
 .select-info.show { display: block; }
 .info-row { display: flex; gap: 6px; padding: 2px 0; }
 .info-icon { width: 16px; text-align: center; }
 
 .tech-preview {
-  background: #F8FAFC; border-radius: 8px; padding: 10px 12px;
-  display: none; align-items: center; gap: 10px; margin-top: 6px;
+  background: var(--bg); border-radius: var(--radius-input);
+  padding: 10px 12px; display: none; align-items: center; gap: 10px; margin-top: 8px;
+  border: 1px solid var(--border);
 }
 .tech-preview.show { display: flex; }
 .tech-av {
   width: 36px; height: 36px; border-radius: 50%;
   background: linear-gradient(135deg, #2E6DA4, #5BB8F5);
   display: flex; align-items: center; justify-content: center;
-  font-size: 16px; color: #fff; font-weight: 700; flex-shrink: 0;
+  font-size: 15px; color: #fff; font-weight: 700; flex-shrink: 0;
 }
-.tech-info-name { font-size: 13px; font-weight: 700; color: #1E3A5F; }
-.tech-info-line { font-size: 11px; color: #888; }
+.tech-info-name { font-size: 13px; font-weight: 700; color: var(--primary); }
+.tech-info-line { font-size: 11px; color: var(--muted); }
 .tech-info-status { font-size: 11px; }
-.status-free { color: #10B981; }
-.status-busy { color: #F59E0B; }
+.status-free { color: var(--success); }
+.status-busy { color: var(--warning); }
 
-.priority-group { display: flex; gap: 8px; }
+/* ── Priority Buttons — Apple pill ── */
+.priority-group { display: flex; gap: 8px; margin-top: 8px; }
 .priority-btn {
-  flex: 1; padding: 8px; border-radius: 8px; border: 1.5px solid #E5E7EB;
-  font-size: 12px; font-weight: 600; cursor: pointer; text-align: center;
-  background: #fff; color: #94A3B8; transition: all .2s;
+  flex: 1; padding: 9px 10px; border-radius: var(--radius-pill);
+  border: 1px solid var(--border); font-size: 12px; font-weight: 600;
+  cursor: pointer; text-align: center; background: var(--card);
+  color: var(--muted); transition: var(--transition); font-family: var(--font);
+  letter-spacing: -.1px;
 }
-.priority-btn.selected-low { border-color: #10B981; background: #D1FAE5; color: #065F46; }
-.priority-btn.selected-med { border-color: #F59E0B; background: #FEF3C7; color: #92400E; }
-.priority-btn.selected-high { border-color: #EF4444; background: #FEE2E2; color: #991B1B; }
+.priority-btn:hover { border-color: #AEAEB2; background: #F2F2F7; }
+.priority-btn.selected-low  { border-color: #34C759; background: #E8FAF0; color: #1A7A38; box-shadow: 0 2px 8px rgba(52,199,89,.2); }
+.priority-btn.selected-med  { border-color: #FF9F0A; background: #FFF4E5; color: #B35C00; box-shadow: 0 2px 8px rgba(255,159,10,.2); }
+.priority-btn.selected-high { border-color: #FF3B30; background: #FFF0EF; color: #CC1F16; box-shadow: 0 2px 8px rgba(255,59,48,.2); }
 
+/* ── Submit Button ── */
 .form-footer { padding: 0 24px 24px; }
 .submit-btn {
-  width: 100%; padding: 14px; border-radius: 12px; border: none;
-  background: linear-gradient(135deg, #1E3A5F, #2E6DA4);
-  color: #fff; font-size: 15px; font-weight: 700; cursor: pointer;
+  width: 100%; padding: 14px; border-radius: var(--radius-pill); border: none;
+  background: var(--accent);
+  color: #fff; font-size: 15px; font-weight: 600; cursor: pointer;
   display: flex; align-items: center; justify-content: center; gap: 8px;
-  transition: transform .1s, box-shadow .2s;
-  box-shadow: 0 4px 15px rgba(46,109,164,.3);
+  transition: var(--transition);
+  box-shadow: 0 4px 16px rgba(0,113,227,.3);
+  font-family: var(--font); letter-spacing: -.1px;
 }
-.submit-btn:hover:not(:disabled) { box-shadow: 0 6px 20px rgba(46,109,164,.4); }
-.submit-btn:active:not(:disabled) { transform: scale(.99); }
-.submit-btn:disabled { opacity: .6; cursor: not-allowed; }
+.submit-btn:hover:not(:disabled) { background: #0077ED; box-shadow: 0 8px 28px rgba(0,113,227,.4); transform: translateY(-1px); }
+.submit-btn:active:not(:disabled) { transform: scale(.98); }
+.submit-btn:disabled { opacity: .45; cursor: not-allowed; }
 
+/* ── Right Panel ── */
 .right-panel { display: flex; flex-direction: column; gap: 16px; }
 
-.preview-card { background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+/* ── Preview Card ── */
+.preview-card { background: var(--card); border-radius: var(--radius-card); overflow: hidden; box-shadow: var(--shadow-card); border: 1px solid var(--border); }
 .preview-header {
-  background: #F8FAFC; padding: 14px 18px; border-bottom: 1px solid #F0F4F8;
-  font-size: 13px; font-weight: 700; color: #374151; display: flex; align-items: center; gap: 6px;
+  background: var(--bg); padding: 13px 18px; border-bottom: 1px solid var(--border);
+  font-size: 13px; font-weight: 600; color: var(--text);
+  display: flex; align-items: center; gap: 6px;
 }
-.preview-body { padding: 16px 18px; }
+.preview-header i { width: 15px; height: 15px; color: var(--muted); }
+.preview-body { padding: 14px; }
 
-.line-preview { border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.1); }
-.line-hdr { background: #06C755; padding: 10px 14px; display: flex; align-items: center; gap: 8px; }
-.line-hdr-av { width: 30px; height: 30px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 14px; }
-.line-hdr-name { font-size: 13px; font-weight: 700; color: #fff; }
-.line-hdr-sub { font-size: 10px; color: rgba(255,255,255,.7); }
-.line-chat { background: #BEE3F8; padding: 12px; }
+/* ── LINE Preview ── */
+.line-preview { border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,.12); }
+.line-hdr { background: linear-gradient(to bottom, #00882A 0%, #06C755 100%); padding: 10px 14px; display: flex; align-items: center; gap: 8px; }
+.line-hdr-av { width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,.12); display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.line-hdr-name { font-size: 13px; font-weight: 700; color: #F5F5F7; }
+.line-hdr-sub { font-size: 10px; color: rgba(245,245,247,.5); }
+.line-chat { background: #EBEBED; padding: 12px; }
 .flex-card-preview { background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
-.fcp-hdr { background: #1E3A5F; padding: 8px 12px; }
-.fcp-hdr-t { color: #fff; font-size: 12px; font-weight: 700; }
-.fcp-hdr-s { color: #A8D5F0; font-size: 10px; }
+.fcp-hdr { background: linear-gradient(to bottom, #4A4A4E 0%, #7A7A80 100%); padding: 8px 12px; }
+.fcp-hdr-t { color: #F5F5F7; font-size: 12px; font-weight: 700; }
+.fcp-hdr-s { color: rgba(245,245,247,.55); font-size: 10px; }
 .fcp-body { padding: 10px 12px; }
 .fcp-row { display: flex; justify-content: space-between; font-size: 11px; padding: 2px 0; }
 .fcp-l { color: #888; }
-.fcp-v { font-weight: 600; color: #1E3A5F; font-size: 11px; }
+.fcp-v { font-weight: 600; color: var(--primary); font-size: 11px; }
 .fcp-btn { background: #1976D2; color: #fff; border: none; border-radius: 6px; padding: 7px 10px; width: 100%; font-size: 12px; font-weight: 700; margin-top: 8px; cursor: pointer; }
 .line-msg-time { font-size: 10px; color: #888; margin-top: 4px; text-align: right; }
 
-.jobs-card { background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+/* ── Jobs Card ── */
+.jobs-card { background: var(--card); border-radius: var(--radius-card); overflow: hidden; box-shadow: var(--shadow-card); border: 1px solid var(--border); }
 .jobs-header {
-  padding: 14px 18px; border-bottom: 1px solid #F0F4F8;
-  font-size: 13px; font-weight: 700; color: #374151;
+  padding: 13px 18px; border-bottom: 1px solid var(--border);
   display: flex; align-items: center; justify-content: space-between;
 }
-.jobs-refresh { font-size: 12px; color: #2E6DA4; cursor: pointer; font-weight: 400; border: none; background: none; }
-.jobs-list { padding: 8px; max-height: 500px; overflow-y: auto; }
+.jobs-header-title { font-size: 13px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 6px; }
+.jobs-header-title i { width: 15px; height: 15px; color: var(--muted); }
+.jobs-refresh {
+  font-size: 12px; color: var(--accent); cursor: pointer;
+  font-weight: 500; border: none; background: none;
+  display: flex; align-items: center; gap: 4px;
+  padding: 4px 8px; border-radius: 6px; transition: var(--transition);
+  font-family: var(--font);
+}
+.jobs-refresh:hover { background: #EFF6FF; }
+.jobs-refresh i { width: 13px; height: 13px; }
+.jobs-list { padding: 6px 8px; max-height: 500px; overflow-y: auto; }
 .job-item {
   display: flex; align-items: center; gap: 10px;
-  padding: 8px 10px; border-radius: 8px; transition: background .15s;
+  padding: 8px 10px; border-radius: 8px; transition: background .15s; cursor: pointer;
 }
-.job-item:hover { background: #F8FAFC; }
+.job-item:hover { background: var(--bg); }
 .job-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.dot-green { background: #10B981; }
-.dot-orange { background: #F59E0B; animation: blink 1.5s infinite; }
-.dot-blue { background: #3B82F6; }
-.dot-gray { background: #94A3B8; }
-@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
-.job-id { font-size: 12px; font-weight: 700; color: #1E3A5F; width: 70px; }
-.job-detail { flex: 1; }
-.job-name { font-size: 12px; font-weight: 600; color: #374151; }
-.job-sub { font-size: 11px; color: #94A3B8; }
-.job-status { font-size: 11px; font-weight: 600; }
+.dot-green  { background: var(--success); }
+.dot-orange { background: var(--warning); animation: pulse 1.5s infinite; }
+.dot-blue   { background: #3B82F6; animation: pulse 1.5s infinite; }
+.dot-gray   { background: #CBD5E1; }
+@keyframes pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 currentColor; }
+  50% { opacity: .7; }
+}
+.job-id { font-size: 12px; font-weight: 700; color: var(--primary); width: 72px; }
+.job-detail { flex: 1; min-width: 0; }
+.job-name { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.job-sub { font-size: 11px; color: var(--muted); }
+.job-status { font-size: 11px; font-weight: 600; white-space: nowrap; }
 
-.loading-text { font-size: 12px; color: #94A3B8; text-align: center; padding: 16px; }
+.loading-text { font-size: 12px; color: var(--muted); text-align: center; padding: 20px; }
 
+/* ── Status Badges ── */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600;
+}
+.badge-success { background: #D1FAE5; color: #065F46; }
+.badge-warning { background: #FEF3C7; color: #92400E; }
+.badge-danger  { background: #FEE2E2; color: #991B1B; }
+.badge-blue    { background: #DBEAFE; color: #1D4ED8; }
+.badge-gray    { background: #F1F5F9; color: #475569; }
+
+/* ── Modal ── */
 .modal-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,.5);
+  position: fixed; inset: 0;
+  background: rgba(15,23,42,.55);
+  backdrop-filter: blur(4px);
   display: none; align-items: center; justify-content: center; z-index: 1000;
 }
 .modal-overlay.show { display: flex; }
 .modal {
-  background: #fff; border-radius: 20px; padding: 32px; text-align: center;
-  max-width: 360px; width: 90%; animation: popIn .3s cubic-bezier(.175,.885,.32,1.275);
+  background: var(--card); border-radius: 16px; padding: 32px;
+  text-align: center; max-width: 380px; width: 90%;
+  animation: popIn .3s cubic-bezier(.175,.885,.32,1.275);
+  box-shadow: 0 20px 60px rgba(0,0,0,.2);
+  border: 1px solid var(--border);
 }
-@keyframes popIn { from { transform: scale(.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-.modal-icon { font-size: 56px; margin-bottom: 16px; }
-.modal-title { font-size: 22px; font-weight: 700; color: #1E3A5F; margin-bottom: 8px; }
-.modal-sub { font-size: 14px; color: #64748B; line-height: 1.6; margin-bottom: 20px; }
-.modal-detail { background: #F8FAFC; border-radius: 10px; padding: 14px; text-align: left; font-size: 13px; margin-bottom: 20px; }
+@keyframes popIn { from { transform: scale(.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.modal-icon { font-size: 52px; margin-bottom: 14px; }
+.modal-title { font-size: 20px; font-weight: 700; color: var(--primary); margin-bottom: 6px; }
+.modal-sub { font-size: 14px; color: var(--muted); line-height: 1.65; margin-bottom: 18px; }
+.modal-detail {
+  background: var(--bg); border-radius: 10px; padding: 14px;
+  text-align: left; font-size: 13px; margin-bottom: 18px;
+  border: 1px solid var(--border);
+}
 .modal-row { display: flex; justify-content: space-between; padding: 4px 0; }
-.modal-l { color: #94A3B8; }
-.modal-v { font-weight: 700; color: #1E3A5F; }
-.modal-btn { background: linear-gradient(135deg, #1E3A5F, #2E6DA4); color: #fff; border: none; border-radius: 12px; padding: 12px 32px; font-size: 14px; font-weight: 700; cursor: pointer; }
+.modal-l { color: var(--muted); font-weight: 500; }
+.modal-v { font-weight: 700; color: var(--primary); }
+.modal-btn {
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: #fff; border: none; border-radius: var(--radius-input);
+  padding: 11px 28px; font-size: 14px; font-weight: 700; cursor: pointer;
+  font-family: var(--font);
+}
+
+/* ── Care Plan page title — Apple Intelligence gradient ── */
+.cp-page-title-wrap { margin-bottom: 40px; margin-top: 48px; text-align: center; }
+.cp-page-title-main {
+  font-size: 72px; font-weight: 700; letter-spacing: -2px; line-height: 1.05;
+  white-space: nowrap;
+  background: linear-gradient(to right,
+    #00D4FF 0%,
+    #1E90FF 22%,
+    #7C5EFF 45%,
+    #C84EE8 62%,
+    #E84B8A 78%,
+    #FF6B35 100%
+  );
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.cp-page-title-sub {
+  font-size: 26px; font-weight: 600; color: var(--text); margin-top: 16px; letter-spacing: -.5px;
+}
+
+/* ── Care Plan tab — Apple gradient cards ── */
+.cp-summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+.cp-stat-card {
+  border-radius: 20px; padding: 26px 20px 22px; text-align: center;
+  position: relative; overflow: hidden;
+  transition: var(--transition);
+}
+.cp-stat-card:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(0,0,0,.14); }
+.cp-stat-card.overdue {
+  background: linear-gradient(to bottom, #FFCDD2 0%, #FFF5F5 100%);
+  border: none;
+  box-shadow: 0 2px 10px rgba(220,80,80,.12);
+}
+.cp-stat-card.soon {
+  background: linear-gradient(to bottom, #FFE0A0 0%, #FFFBF0 100%);
+  border: none;
+  box-shadow: 0 2px 10px rgba(220,170,0,.12);
+}
+.cp-stat-card.ok {
+  background: linear-gradient(to bottom, #B8E6C4 0%, #F0FBF3 100%);
+  border: none;
+  box-shadow: 0 2px 10px rgba(60,180,100,.12);
+}
+.cp-stat-num {
+  font-size: 52px; font-weight: 700; line-height: 1;
+  letter-spacing: -2px; font-family: var(--font);
+}
+.cp-stat-card.overdue .cp-stat-num { color: #E53935; }
+.cp-stat-card.soon    .cp-stat-num { color: #F57C00; }
+.cp-stat-card.ok      .cp-stat-num { color: #2E7D32; }
+.cp-stat-label { font-size: 13px; font-weight: 600; margin-top: 8px; letter-spacing: -.1px; }
+.cp-stat-card.overdue .cp-stat-label { color: #C62828; }
+.cp-stat-card.soon    .cp-stat-label { color: #E65100; }
+.cp-stat-card.ok      .cp-stat-label { color: #1B5E20; }
+.cp-stat-dot {
+  display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  margin-right: 5px; vertical-align: middle;
+}
+.cp-stat-card.overdue .cp-stat-dot { background: #EF5350; box-shadow: 0 0 6px rgba(239,83,80,.5); }
+.cp-stat-card.soon    .cp-stat-dot { background: #FFA726; box-shadow: 0 0 6px rgba(255,167,38,.5); }
+.cp-stat-card.ok      .cp-stat-dot { background: #66BB6A; box-shadow: 0 0 6px rgba(102,187,106,.5); }
+
+.filter-bar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+.search-input {
+  padding: 9px 16px; border-radius: var(--radius-pill);
+  border: 1px solid var(--border); font-size: 13px; outline: none;
+  min-width: 200px; font-family: var(--font); color: var(--text);
+  transition: border-color .2s, box-shadow .2s; background: var(--card);
+}
+.search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,113,227,.12); }
+.filter-select {
+  padding: 9px 14px; border-radius: var(--radius-pill);
+  border: 1px solid var(--border); font-size: 13px; outline: none;
+  font-family: var(--font); color: var(--text); background: var(--card);
+  transition: border-color .2s; cursor: pointer;
+}
+.filter-select:focus { border-color: var(--accent); }
+.btn-secondary {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 20px; background: var(--accent); color: #fff;
+  border: none; border-radius: var(--radius-pill);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  font-family: var(--font); transition: var(--transition);
+  letter-spacing: -.1px;
+}
+.btn-secondary:hover { background: #0077ED; box-shadow: 0 4px 16px rgba(0,113,227,.35); }
+.btn-secondary i { width: 14px; height: 14px; }
+
+/* ── Table ── */
+.table-wrap { background: var(--card); border-radius: var(--radius-card); box-shadow: var(--shadow-card); border: 1px solid var(--border); overflow: hidden; }
+.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.data-table thead th {
+  padding: 11px 16px; text-align: left;
+  color: var(--muted); font-weight: 600; font-size: 11.5px;
+  background: var(--bg); border-bottom: 1px solid var(--border);
+  white-space: nowrap; text-transform: uppercase; letter-spacing: .5px;
+}
+.data-table tbody tr { border-bottom: 1px solid #F1F5F9; transition: background .15s; }
+.data-table tbody tr:hover { background: #F8FAFC; }
+.data-table tbody tr:last-child { border-bottom: none; }
+.data-table tbody td { padding: 11px 16px; vertical-align: middle; }
+.tr-overdue { background: #FFFAFA !important; }
+.tr-soon    { background: #FFFBF0 !important; }
+.tr-ok      { background: #fff; }
+
+/* ── Create Job (Lark) tab ── */
+/* ── Customer view toggle ── */
+.view-toggle {
+  display: flex; background: #F1F5F9; border-radius: 10px; padding: 3px; gap: 2px;
+}
+.vt-btn {
+  width: 34px; height: 34px; border: none; border-radius: 8px; background: transparent;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  color: var(--muted); transition: var(--transition);
+}
+.vt-btn i { width: 16px; height: 16px; }
+.vt-btn:hover { color: var(--primary); }
+.vt-btn.active { background: #fff; color: var(--accent); box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+.cust-list-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 20px; border-bottom: 1px solid #F1F5F9; transition: background .15s;
+}
+.cust-list-item:last-child { border-bottom: none; }
+.cust-list-item:hover { background: #F8FAFC; }
+.cust-av {
+  width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+  background: linear-gradient(135deg, #EEF4FF, #DBEAFE);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px; font-weight: 700; color: var(--accent);
+}
+.cust-meta { font-size: 12px; color: var(--muted); margin-top: 3px; display: flex; flex-wrap: wrap; gap: 10px; }
+.cust-type-pill { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; color: #fff; white-space: nowrap; flex-shrink: 0; }
+.cust-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; padding: 16px;
+}
+.cust-grid-card {
+  background: #fff; border: 1px solid var(--border); border-radius: 12px;
+  padding: 16px; display: flex; flex-direction: column; gap: 10px; transition: var(--transition);
+}
+.cust-grid-card:hover { box-shadow: var(--shadow-card-hover); transform: translateY(-2px); }
+.cust-grid-av {
+  width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
+  background: linear-gradient(135deg, #1E3A5F, #2563EB);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 700; color: #fff;
+}
+.cust-grid-name { font-size: 13px; font-weight: 600; color: var(--primary); line-height: 1.3; }
+.cust-grid-id { font-size: 11px; color: var(--muted); }
+.cust-grid-info { font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 3px; }
+.cust-table-wrap { overflow-x: auto; }
+.cust-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.cust-table thead th {
+  background: #F8FAFC; padding: 10px 14px; text-align: left;
+  font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase;
+  letter-spacing: .5px; border-bottom: 2px solid var(--border); white-space: nowrap;
+}
+.cust-table tbody tr { border-bottom: 1px solid #F1F5F9; transition: background .12s; }
+.cust-table tbody tr:last-child { border-bottom: none; }
+.cust-table tbody tr:hover { background: #F8FAFC; }
+.cust-table td { padding: 9px 14px; vertical-align: middle; }
+.cust-table td:first-child { font-weight: 600; color: var(--primary); }
+
+.cj-wrap { max-width: 580px; width: 100%; margin: 0 auto; padding: 24px; }
+.cj-card { background: var(--card); border-radius: var(--radius-card); overflow: hidden; box-shadow: var(--shadow-card); border: 1px solid var(--border); }
+.cj-hdr { background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; padding: 20px 24px; }
+.cj-hdr h2 { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 7px; }
+.cj-hdr h2 i { width: 18px; height: 18px; opacity: .85; }
+.cj-hdr p  { font-size: 12px; color: #A8D5F0; margin-top: 3px; font-weight: 400; }
+.cj-body { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+.cj-field { display: flex; flex-direction: column; gap: 6px; }
+.cj-label { font-size: 12px; font-weight: 600; color: #374151; display: flex; align-items: center; gap: 5px; }
+.cj-label .req { color: var(--danger); }
+.cj-input, .cj-sel, .cj-ta {
+  padding: 9px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-input);
+  font-size: 13px; color: var(--text); background: var(--card); font-family: var(--font);
+  transition: border-color .2s, box-shadow .2s; outline: none;
+}
+.cj-input:focus, .cj-sel:focus, .cj-ta:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+.cj-input:disabled, .cj-sel:disabled { background: var(--bg); color: #aaa; cursor: not-allowed; }
+.cj-ta { resize: vertical; min-height: 80px; }
+.cj-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.cj-hint { font-size: 11px; color: var(--muted); }
+.cj-submit {
+  width: 100%; padding: 13px; border: none; border-radius: var(--radius-input);
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: #fff; font-size: 14px; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  box-shadow: 0 4px 14px rgba(37,99,235,.35);
+  transition: opacity .2s; font-family: var(--font);
+}
+.cj-submit:disabled { opacity: .55; cursor: not-allowed; }
+.cj-result { display: none; padding: 12px 16px; border-radius: var(--radius-input); font-size: 13px; font-weight: 600; text-align: center; white-space: pre-line; }
+.cj-ok  { background: #D1FAE5; color: #065F46; border: 1.5px solid #6EE7B7; }
+.cj-err { background: #FEE2E2; color: #991B1B; border: 1.5px solid #FCA5A5; }
+.cj-loading-txt { font-size: 12px; color: var(--muted); text-align: center; }
+
+/* ── Customer Search Input ── */
+.customer-search-wrap { margin-bottom: 16px; }
+.customer-search-wrap .search-input { width: 100%; }
+
+/* ── Scrollbar styling ── */
+.jobs-list::-webkit-scrollbar { width: 4px; }
+.jobs-list::-webkit-scrollbar-track { background: transparent; }
+.jobs-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .cp-summary-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 768px) {
+  .main { grid-template-columns: 1fr; padding: 12px; gap: 12px; }
+  .right-panel { order: 2; }
+  .nav-tabs { gap: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; justify-content: flex-start; }
+  .nav-tabs::-webkit-scrollbar { display: none; }
+  .nav-tab { padding: 5px 9px; font-size: 11.5px; white-space: nowrap; flex-shrink: 0; }
+  .nav-tab i { display: none; }
+  .form-grid { grid-template-columns: 1fr !important; }
+  .form-grid.customer-grid { grid-template-columns: 1fr !important; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .cp-summary-grid { grid-template-columns: 1fr; }
+  .cj-row { grid-template-columns: 1fr; }
+  .overview-wrap, .cj-wrap { padding: 12px; }
+  .filter-bar { gap: 8px; flex-wrap: wrap; }
+  .search-input { min-width: 100%; }
+  .filter-select { width: 100%; }
+  .nav-name { display: none; }
+  .nav-bell { display: none; }
+  .nav-brand-sub { display: none; }
+  .form-body { padding: 16px; }
+  .form-footer { padding: 0 16px 16px; }
+  .cp-stat-num { font-size: 38px; }
+}
+@media (max-width: 600px) {
+  /* ซ่อนข้อความแท็บ เหลือแค่ icon สีขาว */
+  .nav-tab i { display: inline-block !important; width: 18px; height: 18px; color: rgba(255,255,255,.7); }
+  .nav-tab { padding: 6px 12px; }
+  .nav-tab.active i { color: #fff; }
+  .nav-tab .tab-label { display: none; }
+  .nav-tab { padding: 6px 12px; }
+  /* tabs กลาง */
+  .nav-tabs { justify-content: center; }
+  /* ซ่อนชื่อ brand เหลือแค่ logo */
+  .nav-brand-text { display: none; }
+  .nav-logo { width: 30px; height: 30px; }
+  .nav-avatar { width: 26px; height: 26px; font-size: 10px; }
+  .nav-name { display: none; }
+  .nav-bell { display: none; }
+}
+@media (max-width: 480px) {
+  .topnav { padding: 0 10px; height: 50px; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .stat-num { font-size: 26px; }
+  .work-id-val { font-size: 16px; }
+  .form-header { padding: 12px 16px; }
+  .form-header-title { font-size: 14px; }
+}
 </style>
 </head>
 <body>
 
+<!-- ══ Topnav ══ -->
 <div class="topnav">
   <div class="nav-brand">
-    <div class="nav-brand-icon">🧊</div>
-    <div>
+    <div style="width:34px;height:34px;border-radius:50%;overflow:hidden;flex-shrink:0;background:#fff;">
+      <img src="../SK LOGO.png" style="width:100%;height:auto;display:block;margin-top:-2px;" alt="SK ICE Logo">
+    </div>
+    <div class="nav-brand-text">
       <div class="nav-brand-name">SK ICE</div>
       <div class="nav-brand-sub">Admin Dashboard</div>
     </div>
   </div>
   <div class="nav-tabs">
-    <button class="nav-tab" onclick="switchTab('overview',this)">📊 ภาพรวม</button>
-    <button class="nav-tab active" id="tab-btn-assign" onclick="switchTab('assign',this)">➕ มอบหมายงาน</button>
-    <button class="nav-tab" onclick="switchTab('active',this)">🔄 งานในมือ</button>
-    <button class="nav-tab" onclick="switchTab('customers',this)">👥 ลูกค้า</button>
+    <button class="nav-tab active" onclick="switchTab('overview',this)">
+      <i data-lucide="bar-chart-2"></i><span class="tab-label"> ภาพรวม</span>
+    </button>
+    <button class="nav-tab" onclick="switchTab('createjob',this)">
+      <i data-lucide="plus"></i><span class="tab-label"> มอบหมายงาน</span>
+    </button>
+    <button class="nav-tab" onclick="switchTab('active',this)">
+      <i data-lucide="refresh-cw"></i><span class="tab-label"> งานในมือ</span>
+    </button>
+    <button class="nav-tab" onclick="switchTab('customers',this)">
+      <i data-lucide="users"></i><span class="tab-label"> ลูกค้า</span>
+    </button>
+    <button class="nav-tab" id="tab-btn-careplan" onclick="switchTab('careplan',this)">
+      <i data-lucide="bell"></i><span class="tab-label"> Care Plan</span>
+      <span id="cp-badge" style="display:none;background:#EF4444;color:#fff;border-radius:10px;padding:1px 6px;font-size:11px;margin-left:2px;"></span>
+    </button>
   </div>
   <div class="nav-user">
+    <button class="nav-bell"><i data-lucide="bell"></i></button>
     <div class="nav-avatar">A</div>
     <div class="nav-name">Admin</div>
   </div>
 </div>
 
-<div id="tab-overview" class="tab-section" style="display:none;padding:24px;max-width:1200px;margin:0 auto;">
-  <h2 style="color:#1E3A5F;margin-bottom:16px;">📊 ภาพรวม</h2>
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;">
-    <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.08);text-align:center;">
-      <div style="font-size:28px;font-weight:700;color:#3B82F6" id="ov-total">—</div>
-      <div style="font-size:13px;color:#888;margin-top:4px;">งานทั้งหมด</div>
+<!-- ══ TAB: ภาพรวม ══ -->
+<div id="tab-overview" class="tab-section">
+  <div class="overview-wrap">
+    <div class="page-title"><i data-lucide="bar-chart-2"></i> ภาพรวม</div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-card-icon blue"><i data-lucide="layers"></i></div>
+        <div class="stat-num" id="ov-total">—</div>
+        <div class="stat-label">งานทั้งหมด</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-icon gray"><i data-lucide="clock"></i></div>
+        <div class="stat-num" id="ov-new">—</div>
+        <div class="stat-label">รอช่าง</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-icon orange"><i data-lucide="wrench"></i></div>
+        <div class="stat-num" id="ov-active">—</div>
+        <div class="stat-label">กำลังดำเนินการ</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-icon green"><i data-lucide="check-circle-2"></i></div>
+        <div class="stat-num" id="ov-done">—</div>
+        <div class="stat-label">เสร็จแล้ว</div>
+      </div>
     </div>
-    <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.08);text-align:center;">
-      <div style="font-size:28px;font-weight:700;color:#94A3B8" id="ov-new">—</div>
-      <div style="font-size:13px;color:#888;margin-top:4px;">รอช่าง</div>
+
+    <div class="content-card">
+      <div class="card-header">
+        <div class="card-header-title"><i data-lucide="list"></i> งานล่าสุดทั้งหมด</div>
+      </div>
+      <div id="ov-jobs-list" style="padding:4px 0;"><div class="loading-text">กำลังโหลด...</div></div>
     </div>
-    <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.08);text-align:center;">
-      <div style="font-size:28px;font-weight:700;color:#F59E0B" id="ov-active">—</div>
-      <div style="font-size:13px;color:#888;margin-top:4px;">กำลังดำเนินการ</div>
-    </div>
-    <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.08);text-align:center;">
-      <div style="font-size:28px;font-weight:700;color:#10B981" id="ov-done">—</div>
-      <div style="font-size:13px;color:#888;margin-top:4px;">เสร็จแล้ว</div>
-    </div>
-  </div>
-  <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.08);">
-    <div style="font-weight:700;color:#1E3A5F;margin-bottom:12px;">งานล่าสุดทั้งหมด</div>
-    <div id="ov-jobs-list"><div style="color:#888;text-align:center;padding:20px;">กำลังโหลด...</div></div>
   </div>
 </div>
 
-<div id="tab-active" class="tab-section" style="display:none;padding:24px;max-width:1200px;margin:0 auto;">
-  <h2 style="color:#1E3A5F;margin-bottom:16px;">🔄 งานในมือ</h2>
-  <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.08);">
-    <div id="active-jobs-list"><div style="color:#888;text-align:center;padding:20px;">กำลังโหลด...</div></div>
+<!-- ══ TAB: งานในมือ ══ -->
+<div id="tab-active" class="tab-section" style="display:none;">
+  <div class="overview-wrap">
+    <div class="page-title"><i data-lucide="refresh-cw"></i> งานในมือ</div>
+    <div class="content-card">
+      <div id="active-jobs-list" style="padding:4px 0;"><div class="loading-text">กำลังโหลด...</div></div>
+    </div>
   </div>
 </div>
 
-<div id="tab-customers" class="tab-section" style="display:none;padding:24px;max-width:1200px;margin:0 auto;">
-  <h2 style="color:#1E3A5F;margin-bottom:16px;">👥 ลูกค้าทั้งหมด</h2>
-  <input id="customerSearch" type="text" placeholder="🔍 ค้นหาชื่อร้าน, รหัสลูกค้า, เบอร์โทร..."
-    style="width:100%;padding:12px 16px;border-radius:10px;border:1.5px solid #E2E8F0;font-size:14px;margin-bottom:16px;outline:none;"
-    oninput="filterCustomers(this.value)" />
-  <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.08);">
-    <div id="customers-list"><div style="color:#888;text-align:center;padding:20px;">กำลังโหลด...</div></div>
+<!-- ══ TAB: ลูกค้า ══ -->
+<div id="tab-customers" class="tab-section" style="display:none;">
+  <div class="overview-wrap">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+      <div class="page-title" style="margin-bottom:0;"><i data-lucide="users"></i> ลูกค้าทั้งหมด <span id="cust-count" style="font-size:14px;font-weight:500;color:var(--muted);margin-left:6px;"></span></div>
+      <!-- View toggle -->
+      <div class="view-toggle">
+        <button class="vt-btn active" id="vt-list" onclick="setCustomerView('list')" title="List">
+          <i data-lucide="list"></i>
+        </button>
+        <button class="vt-btn" id="vt-grid" onclick="setCustomerView('grid')" title="Grid">
+          <i data-lucide="layout-grid"></i>
+        </button>
+        <button class="vt-btn" id="vt-table" onclick="setCustomerView('table')" title="Table">
+          <i data-lucide="table-2"></i>
+        </button>
+      </div>
+    </div>
+    <div class="customer-search-wrap">
+      <input id="customerSearch" type="text" class="search-input"
+        placeholder="🔍 ค้นหาชื่อร้าน, รหัสลูกค้า, เบอร์โทร..."
+        oninput="filterCustomers(this.value)" />
+    </div>
+    <div id="customers-list"><div class="loading-text">กำลังโหลด...</div></div>
   </div>
 </div>
 
-<div id="tab-assign" class="tab-section">
+<!-- ══ TAB: มอบหมายงาน ══ -->
+<div id="tab-assign" class="tab-section" style="display:none;">
 <div class="main">
   <div>
     <div class="form-card">
       <div class="form-header">
         <div>
-          <div class="form-header-title">➕ มอบหมายงานใหม่</div>
+          <div class="form-header-title"><i data-lucide="plus"></i> มอบหมายงานใหม่</div>
           <div class="form-header-sub">กรอกข้อมูล → ระบบส่ง LINE ให้ช่างอัตโนมัติ</div>
         </div>
         <div class="work-id-badge">
@@ -288,10 +759,10 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #F0F4F8; min-heig
       <div class="form-body">
 
         <div class="form-section">
-          <div class="section-title">👤 ข้อมูลลูกค้า</div>
+          <div class="section-title"><i data-lucide="user"></i> ข้อมูลลูกค้า</div>
 
           <!-- Banner ประเภทลูกค้า -->
-          <div id="custTypeBanner" style="display:none;padding:10px 16px;border-radius:10px;font-size:14px;font-weight:700;margin-bottom:12px;"></div>
+          <div id="custTypeBanner" style="display:none;padding:10px 16px;border-radius:8px;font-size:13px;font-weight:700;margin-bottom:12px;"></div>
 
           <!-- Row 1: เลือกลูกค้า + ประเภทลูกค้า -->
           <div class="form-grid" style="margin-bottom:14px;">
@@ -352,13 +823,13 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #F0F4F8; min-heig
           <!-- Row 3: Google Maps URL -->
           <div class="form-group" style="margin-bottom:14px;">
             <label class="form-label">Google Maps URL
-              <span style="color:#888;font-weight:400;">(ออโต้จากลูกค้า หรือวางเองสำหรับลูกค้าใหม่)</span>
+              <span style="color:var(--muted);font-weight:400;">(ออโต้จากลูกค้า หรือวางเองสำหรับลูกค้าใหม่)</span>
             </label>
             <div style="display:flex;gap:8px;align-items:center;">
               <input class="form-input auto" id="mapsUrlInput" placeholder="วาง Google Maps URL ที่นี่..." style="flex:1;" readonly
                 oninput="const b=document.getElementById('mapsPreviewBtn');if(this.value){b.href=this.value;b.style.display='block';}else{b.style.display='none';}" />
-              <button type="button" id="mapsEditBtn" onclick="toggleMapsEdit()" style="background:#E2E8F0;border:none;padding:8px 12px;border-radius:8px;font-size:12px;cursor:pointer;white-space:nowrap;">✏️ แก้ไข</button>
-              <a id="mapsPreviewBtn" href="#" target="_blank" style="display:none;background:#10B981;color:#fff;padding:8px 12px;border-radius:8px;text-decoration:none;font-size:13px;white-space:nowrap;">🗺️ ดูแผนที่</a>
+              <button type="button" id="mapsEditBtn" onclick="toggleMapsEdit()" style="background:var(--bg);border:1.5px solid var(--border);padding:8px 12px;border-radius:8px;font-size:12px;cursor:pointer;white-space:nowrap;font-family:var(--font);color:var(--text);transition:var(--transition);">✏️ แก้ไข</button>
+              <a id="mapsPreviewBtn" href="#" target="_blank" style="display:none;background:var(--success);color:#fff;padding:8px 12px;border-radius:8px;text-decoration:none;font-size:13px;white-space:nowrap;font-weight:600;">🗺️ ดูแผนที่</a>
             </div>
           </div>
 
@@ -366,20 +837,20 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #F0F4F8; min-heig
           <div id="machinesSection" style="display:none;">
             <label class="form-label" style="margin-bottom:8px;">🏭 เครื่องจักรที่ติดตั้ง</label>
             <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;">
-              <div style="background:#F8FAFC;border-radius:8px;padding:10px;border:1px solid #E2E8F0;">
-                <div style="font-size:11px;color:#888;margin-bottom:4px;">เครื่องที่ 1</div>
-                <div style="font-weight:600;color:#1E3A5F;font-size:13px;" id="machine1type">—</div>
-                <div style="font-size:12px;color:#888;" id="machine1model"></div>
+              <div style="background:var(--bg);border-radius:8px;padding:10px;border:1px solid var(--border);">
+                <div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:500;">เครื่องที่ 1</div>
+                <div style="font-weight:600;color:var(--primary);font-size:13px;" id="machine1type">—</div>
+                <div style="font-size:12px;color:var(--muted);" id="machine1model"></div>
               </div>
-              <div style="background:#F8FAFC;border-radius:8px;padding:10px;border:1px solid #E2E8F0;">
-                <div style="font-size:11px;color:#888;margin-bottom:4px;">เครื่องที่ 2</div>
-                <div style="font-weight:600;color:#1E3A5F;font-size:13px;" id="machine2type">—</div>
-                <div style="font-size:12px;color:#888;" id="machine2model"></div>
+              <div style="background:var(--bg);border-radius:8px;padding:10px;border:1px solid var(--border);">
+                <div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:500;">เครื่องที่ 2</div>
+                <div style="font-weight:600;color:var(--primary);font-size:13px;" id="machine2type">—</div>
+                <div style="font-size:12px;color:var(--muted);" id="machine2model"></div>
               </div>
-              <div style="background:#F8FAFC;border-radius:8px;padding:10px;border:1px solid #E2E8F0;">
-                <div style="font-size:11px;color:#888;margin-bottom:4px;">เครื่องที่ 3</div>
-                <div style="font-weight:600;color:#1E3A5F;font-size:13px;" id="machine3type">—</div>
-                <div style="font-size:12px;color:#888;" id="machine3model"></div>
+              <div style="background:var(--bg);border-radius:8px;padding:10px;border:1px solid var(--border);">
+                <div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:500;">เครื่องที่ 3</div>
+                <div style="font-weight:600;color:var(--primary);font-size:13px;" id="machine3type">—</div>
+                <div style="font-size:12px;color:var(--muted);" id="machine3model"></div>
               </div>
             </div>
             <!-- Filter System -->
@@ -387,14 +858,14 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #F0F4F8; min-heig
               <span style="font-size:18px;">💧</span>
               <div>
                 <div style="font-size:11px;color:#3B82F6;font-weight:600;">ระบบกรองน้ำ (Filter System)</div>
-                <div style="font-size:14px;font-weight:700;color:#1E3A5F;" id="filterSystemVal">—</div>
+                <div style="font-size:14px;font-weight:700;color:var(--primary);" id="filterSystemVal">—</div>
               </div>
             </div>
           </div>
         </div>
 
         <div class="form-section">
-          <div class="section-title">🔧 รายละเอียดงาน</div>
+          <div class="section-title"><i data-lucide="wrench"></i> รายละเอียดงาน</div>
           <div class="form-grid">
             <div class="form-group">
               <label class="form-label">ประเภทงาน <span class="required">*</span></label>
@@ -441,7 +912,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #F0F4F8; min-heig
               </select>
             </div>
             <div class="form-group">
-              <label class="form-label">นัดหมายวันที่</label>
+              <label class="form-label"><i data-lucide="calendar" style="width:13px;height:13px;display:inline;vertical-align:middle;"></i> นัดหมายวันที่</label>
               <input class="form-input" type="datetime-local" id="appointDate" onchange="updatePrevDate(this.value)" />
             </div>
             <div class="form-group full">
@@ -449,8 +920,8 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #F0F4F8; min-heig
               <textarea class="form-textarea" id="noteInput" placeholder="รายละเอียดปัญหา, ข้อควรระวัง..."></textarea>
             </div>
           </div>
-          <div style="margin-top:12px;">
-            <label class="form-label" style="margin-bottom:8px;">ความเร่งด่วน</label>
+          <div style="margin-top:14px;">
+            <label class="form-label" style="margin-bottom:4px;">ความเร่งด่วน</label>
             <div class="priority-group">
               <button class="priority-btn" onclick="setPriority('low',this)">🟢 ปกติ</button>
               <button class="priority-btn selected-med" onclick="setPriority('med',this)">🟡 ด่วน</button>
@@ -460,7 +931,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #F0F4F8; min-heig
         </div>
 
         <div class="form-section">
-          <div class="section-title">👷 มอบหมายช่าง</div>
+          <div class="section-title"><i data-lucide="user"></i> มอบหมายช่าง</div>
           <div class="form-grid">
             <div class="form-group">
               <label class="form-label">เลือกช่าง <span class="required">*</span></label>
@@ -494,9 +965,10 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #F0F4F8; min-heig
     </div>
   </div>
 
+  <!-- Right panel -->
   <div class="right-panel">
     <div class="preview-card">
-      <div class="preview-header">💬 ตัวอย่าง LINE ที่ช่างจะได้รับ</div>
+      <div class="preview-header"><i data-lucide="message-square"></i> ตัวอย่าง LINE ที่ช่างจะได้รับ</div>
       <div class="preview-body">
         <div class="line-preview">
           <div class="line-hdr">
@@ -529,8 +1001,8 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #F0F4F8; min-heig
 
     <div class="jobs-card">
       <div class="jobs-header">
-        <span>🔄 งานล่าสุด</span>
-        <button class="jobs-refresh" onclick="loadRecentJobs()">🔃 รีเฟรช</button>
+        <div class="jobs-header-title"><i data-lucide="refresh-cw"></i> งานล่าสุด</div>
+        <button class="jobs-refresh" onclick="loadRecentJobs()"><i data-lucide="refresh-cw"></i> รีเฟรช</button>
       </div>
       <div class="jobs-list" id="jobsList">
         <div class="loading-text">⏳ กำลังโหลด...</div>
@@ -538,8 +1010,249 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #F0F4F8; min-heig
     </div>
   </div>
 </div>
-
 </div><!-- end tab-assign -->
+
+<!-- ══ TAB: Care Plan ══ -->
+<div id="tab-careplan" class="tab-section" style="display:none;">
+  <div class="overview-wrap">
+    <div class="cp-page-title-wrap">
+      <div class="cp-page-title-main">Care Plan</div>
+      <div class="cp-page-title-sub">แผนการบำรุงรักษา</div>
+    </div>
+
+    <!-- Summary cards -->
+    <div class="cp-summary-grid">
+      <div class="cp-stat-card overdue">
+        <div class="cp-stat-num" id="cp-overdue-count">0</div>
+        <div class="cp-stat-label"><span class="cp-stat-dot"></span>เกินกำหนด</div>
+      </div>
+      <div class="cp-stat-card soon">
+        <div class="cp-stat-num" id="cp-soon-count">0</div>
+        <div class="cp-stat-label"><span class="cp-stat-dot"></span>ภายใน 7 วัน</div>
+      </div>
+      <div class="cp-stat-card ok">
+        <div class="cp-stat-num" id="cp-ok-count">0</div>
+        <div class="cp-stat-label"><span class="cp-stat-dot"></span>ปกติ</div>
+      </div>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="filter-bar">
+      <input id="cp-search" type="text" class="search-input" placeholder="🔍 ค้นหาร้าน, รหัส..."
+        oninput="renderCarePlanList()" />
+      <select id="cp-filter" class="filter-select" onchange="renderCarePlanList()">
+        <option value="all">ทั้งหมด</option>
+        <option value="overdue">เกินกำหนด</option>
+        <option value="soon">ภายใน 7 วัน</option>
+        <option value="ok">ปกติ</option>
+      </select>
+      <select id="cp-type-filter" class="filter-select" onchange="renderCarePlanList()">
+        <option value="all">ทุกประเภทงาน</option>
+        <option value="filter_change">เปลี่ยนไส้กรอง</option>
+        <option value="PM">PM เครื่อง</option>
+        <option value="membrane_change">เปลี่ยน Membrane</option>
+      </select>
+      <button class="btn-secondary" onclick="loadCarePlans()">
+        <i data-lucide="refresh-cw"></i> รีเฟรช
+      </button>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <div id="careplan-list"><div class="loading-text">⏳ กำลังโหลด...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TAB: มอบหมายงาน (Merged) ══ -->
+<div id="tab-createjob" class="tab-section" style="display:none;">
+  <div class="main">
+    <div class="form-card">
+      <div class="form-header">
+        <div>
+          <div class="form-header-title">⚡ มอบหมายงานใหม่</div>
+          <div class="form-header-sub">สร้างงานใน Lark Base + ส่ง LINE ช่างในคลิกเดียว</div>
+        </div>
+      </div>
+      <div class="form-body">
+
+        <div id="mj-load-txt" style="display:none;font-size:12px;color:var(--muted);text-align:center;padding:6px;">⏳ กำลังโหลดข้อมูลจาก Lark...</div>
+
+        <!-- ① ลูกค้า -->
+        <div class="form-section">
+          <div class="section-title">ลูกค้า</div>
+          <div class="form-group">
+            <label class="form-label">ชื่อร้าน / ลูกค้า <span class="required">*</span></label>
+            <select class="form-select" id="mj-customer" disabled onchange="onMjCustChange()">
+              <option value="">— กำลังโหลด... —</option>
+            </select>
+          </div>
+          <div id="mj-cust-info" style="display:none;margin-top:10px;background:#F8FAFC;border-radius:10px;padding:11px 14px;border:1px solid var(--border);font-size:12px;display:flex;flex-wrap:wrap;gap:10px 20px;color:var(--muted);">
+            <span>📞 <span id="mj-cust-phone">—</span></span>
+            <span>💬 LINE: <span id="mj-cust-line" style="font-weight:600;"></span></span>
+            <span id="mj-maps-link" style="display:none;">🗺️ <a id="mj-maps-a" href="#" target="_blank" style="color:var(--accent);">ดูแผนที่</a></span>
+          </div>
+        </div>
+
+        <!-- ② ประเภทงาน + ความเร่งด่วน -->
+        <div class="form-section">
+          <div class="section-title">รายละเอียดงาน</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">ประเภทงาน <span class="required">*</span></label>
+              <select class="form-select" id="mj-jobtype">
+                <option value="">— เลือกประเภท —</option>
+                <optgroup label="📋 ประเมิน / สำรวจ">
+                  <option>ดูหน้างาน / ประเมินราคา</option>
+                </optgroup>
+                <optgroup label="🔩 ติดตั้ง / ย้าย / ถอด">
+                  <option>งานติดตั้ง</option>
+                  <option>งานถอดการติดตั้ง</option>
+                  <option>งานย้ายที่ติดตั้ง</option>
+                </optgroup>
+                <optgroup label="🧊 ซ่อม — เครื่องทำน้ำแข็ง">
+                  <option>เครื่องทำน้ำแข็ง เปิดไม่ติด</option>
+                  <option>น้ำแข็งไม่ตก</option>
+                  <option>เครื่องทำงานช้า / น้ำแข็งน้อย</option>
+                  <option>ไม่มีน้ำเข้าเครื่อง</option>
+                  <option>เครื่องกรองน้ำมีปัญหา</option>
+                  <option>ไส้กรองตัน / เปลี่ยนไส้กรอง</option>
+                  <option>เครื่องต้องการทำความสะอาด</option>
+                </optgroup>
+                <optgroup label="🍽️ ซ่อม — เครื่องล้างจาน">
+                  <option>เครื่องล้างจาน เปิดไม่ติด</option>
+                  <option>เครื่องล้างจาน ล้างไม่สะอาด</option>
+                  <option>เครื่องล้างจาน น้ำไม่ออก</option>
+                  <option>เครื่องล้างจาน มีเสียงผิดปกติ</option>
+                  <option>เครื่องล้างจาน ต้องการทำความสะอาด</option>
+                </optgroup>
+                <optgroup label="💧 เครื่องกรองน้ำ">
+                  <option>เครื่องกรองน้ำ เปิดไม่ติด</option>
+                  <option>ไส้กรองตัน / เปลี่ยนไส้กรอง RO</option>
+                  <option>เปลี่ยนไส้กรอง Pre-filter</option>
+                  <option>น้ำไหลช้า / แรงดันต่ำ</option>
+                  <option>น้ำมีกลิ่น / รส ผิดปกติ</option>
+                  <option>เครื่องกรองน้ำรั่ว</option>
+                  <option>ล้างทำความสะอาดเครื่องกรองน้ำ</option>
+                  <option>ติดตั้งเครื่องกรองน้ำใหม่</option>
+                </optgroup>
+                <optgroup label="🔧 ทั่วไป">
+                  <option>PM ประจำปี</option>
+                  <option>อื่นๆ</option>
+                </optgroup>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">ความเร่งด่วน</label>
+              <div class="priority-group">
+                <button class="priority-btn selected-low" id="mj-p-low"  onclick="setMjPriority('low',this)">🟢 ปกติ</button>
+                <button class="priority-btn"              id="mj-p-med"  onclick="setMjPriority('med',this)">🟡 ด่วน</button>
+                <button class="priority-btn"              id="mj-p-high" onclick="setMjPriority('high',this)">🔴 ด่วนมาก</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ③ วันนัด -->
+        <div class="form-section">
+          <div class="form-group">
+            <label class="form-label">วัน-เวลานัดหมาย <span class="required">*</span></label>
+            <input type="datetime-local" class="form-input" id="mj-date" oninput="updateMjPreview()" />
+          </div>
+        </div>
+
+        <!-- ④ ช่าง -->
+        <div class="form-section">
+          <div class="section-title">ช่าง</div>
+          <div class="form-group">
+            <label class="form-label">เลือกช่าง <span class="required">*</span></label>
+            <select class="form-select" id="mj-tech" disabled onchange="onMjTechChange()">
+              <option value="">— กำลังโหลด... —</option>
+            </select>
+          </div>
+          <div class="tech-preview" id="mj-tech-preview" style="margin-top:10px;">
+            <div class="tech-av" id="mj-tech-av">👷</div>
+            <div>
+              <div class="tech-info-name" id="mj-tech-name">—</div>
+              <div class="tech-info-line" id="mj-tech-line">LINE: —</div>
+              <div class="tech-info-status status-free">🟢 พร้อมรับงาน</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ⑤ ปัญหา / อาการ -->
+        <div class="form-section">
+          <div class="section-title">ปัญหา / อาการ</div>
+          <div class="form-group" style="margin-bottom:12px;">
+            <label class="form-label">อธิบายอาการที่พบ <span class="required">*</span></label>
+            <textarea class="form-textarea" id="mj-problem" placeholder="เช่น น้ำไม่ออก, เสียงดัง, ไฟกระพริบ, เครื่องไม่ทำงาน..." style="min-height:90px;" oninput="updateMjPreview()"></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">หมายเหตุ <span style="color:var(--muted);font-weight:400;">(ไม่บังคับ)</span></label>
+            <textarea class="form-textarea" id="mj-note" placeholder="ข้อมูลเพิ่มเติม, ข้อควรระวัง..." style="min-height:56px;"></textarea>
+          </div>
+        </div>
+
+      </div>
+
+      <div id="mj-result" style="display:none;margin:0 24px 16px;padding:13px 16px;border-radius:10px;font-size:13px;font-weight:600;text-align:center;white-space:pre-line;"></div>
+
+      <div class="form-footer">
+        <button class="submit-btn" id="mj-btn" onclick="submitMergedJob()">
+          <span id="mj-btn-icon">⚡</span>
+          <span id="mj-btn-txt">สร้างงาน → Lark + ส่ง LINE ช่าง</span>
+        </button>
+      </div>
+    </div>
+
+  <!-- Right panel — LINE Preview -->
+  <div class="right-panel">
+    <div class="preview-card">
+      <div class="preview-header"><i data-lucide="message-square"></i> ตัวอย่าง LINE ที่ช่างจะได้รับ</div>
+      <div class="preview-body">
+        <div class="line-preview">
+          <div class="line-hdr">
+            <div class="line-hdr-av">🧊</div>
+            <div>
+              <div class="line-hdr-name">SK ICE — งาน</div>
+              <div class="line-hdr-sub">Official Account</div>
+            </div>
+          </div>
+          <div class="line-chat">
+            <div class="flex-card-preview">
+              <div class="fcp-hdr">
+                <div class="fcp-hdr-t">🔧 งานใหม่!</div>
+                <div class="fcp-hdr-s">SK ICE — มอบหมายงาน</div>
+              </div>
+              <div class="fcp-body">
+                <div class="fcp-row"><span class="fcp-l">รหัสงาน</span><span class="fcp-v" id="mj-prev-work">—</span></div>
+                <div class="fcp-row"><span class="fcp-l">ลูกค้า</span><span class="fcp-v" id="mj-prev-customer">—</span></div>
+                <div class="fcp-row"><span class="fcp-l">ปัญหา</span><span class="fcp-v" id="mj-prev-problem">—</span></div>
+                <div class="fcp-row"><span class="fcp-l">วันนัด</span><span class="fcp-v" id="mj-prev-date">—</span></div>
+                <button class="fcp-btn">📍 เปิด GPS นำทาง</button>
+              </div>
+            </div>
+            <div class="line-msg-time">ส่งทันทีหลังกด สร้างงาน ✓✓</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  </div><!-- /main -->
+</div><!-- /tab-createjob -->
+
+<div style="height:32px;"></div>
+
+<!-- Modal: บันทึก Care Plan เสร็จ -->
+<div class="modal-overlay" id="cpDoneModal" style="display:none;">
+  <div class="modal">
+    <div class="modal-icon">✅</div>
+    <div class="modal-title">บันทึกแล้ว!</div>
+    <div class="modal-sub" id="cpDoneText">อัปเดตข้อมูลเรียบร้อยครับ</div>
+    <button class="modal-btn" onclick="document.getElementById('cpDoneModal').classList.remove('show');document.getElementById('cpDoneModal').style.display='none';">ปิด</button>
+  </div>
+</div>
 
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal">
@@ -571,6 +1284,7 @@ window.addEventListener('load', () => {
   loadTechnicians();
   loadRecentJobs();
   loadNextJobId();
+  loadCarePlans();
   // set default date
   const now = new Date();
   now.setHours(now.getHours() + 2);
@@ -640,7 +1354,7 @@ function renderJobs(jobs) {
     else if (st === 'traveling') { dotClass = 'dot-blue'; statusText = '🚗 กำลังไป'; statusColor = '#3B82F6'; }
     else if (st === 'new') { dotClass = 'dot-gray'; statusText = '🆕 รอช่าง'; statusColor = '#94A3B8'; }
     const time = j.timestamp ? new Date(j.timestamp).toLocaleTimeString('th-TH', {hour:'2-digit',minute:'2-digit'}) : '';
-    return `<div class="job-item" style="cursor:pointer;" onclick='showJobPreview(${JSON.stringify(j)})'>
+    return `<div class="job-item" onclick='showJobPreview(${JSON.stringify(j)})'>
       <div class="job-dot ${dotClass}"></div>
       <div class="job-id">${j.job_id}</div>
       <div class="job-detail">
@@ -907,13 +1621,20 @@ function switchTab(tab, btn) {
   } else if (tab === 'customers') {
     document.getElementById('tab-customers').style.display = 'block';
     renderCustomerList();
+  } else if (tab === 'careplan') {
+    document.getElementById('tab-careplan').style.display = 'block';
+    if (!carePlanData.length) loadCarePlans();
+    else renderCarePlanList();
+  } else if (tab === 'createjob') {
+    document.getElementById('tab-createjob').style.display = 'block';
+    loadMjDropdowns();
   }
   if (btn) btn.classList.add('active');
 }
 
 function renderOverview() {
   const list = document.getElementById('ov-jobs-list');
-  list.innerHTML = '<div style="color:#888;text-align:center;padding:20px;">⏳ โหลด...</div>';
+  list.innerHTML = '<div class="loading-text">⏳ โหลด...</div>';
   fetch(GAS_URL + '?action=jobs', { redirect: 'follow' })
     .then(r => r.json())
     .then(d => {
@@ -929,58 +1650,159 @@ function renderOverview() {
 
 function renderActiveJobs() {
   const list = document.getElementById('active-jobs-list');
-  list.innerHTML = '<div style="color:#888;text-align:center;padding:20px;">⏳ โหลด...</div>';
+  list.innerHTML = '<div class="loading-text">⏳ โหลด...</div>';
   fetch(GAS_URL + '?action=jobs', { redirect: 'follow' })
     .then(r => r.json())
     .then(d => {
       const jobs = (d.jobs || []).filter(j => j.status !== 'completed');
-      if (!jobs.length) { list.innerHTML = '<div style="color:#888;text-align:center;padding:20px;">ไม่มีงานในมือ</div>'; return; }
+      if (!jobs.length) { list.innerHTML = '<div class="loading-text">ไม่มีงานในมือ</div>'; return; }
       list.innerHTML = jobs.map(j => jobRowHTML(j)).join('');
     })
     .catch(() => { list.innerHTML = '<div style="color:red;padding:12px;">โหลดไม่ได้</div>'; });
 }
 
+// ── Customer view state ──
+let customerView = 'list';
+
+function setCustomerView(v) {
+  customerView = v;
+  ['list','grid','table'].forEach(k => {
+    document.getElementById('vt-' + k)?.classList.toggle('active', k === v);
+  });
+  renderCustomerList();
+  lucide.createIcons();
+}
+
+function custInitial(c) {
+  const n = cName(c);
+  return n && n !== '—' ? n.charAt(0).toUpperCase() : '?';
+}
+
+function customerListHTML(arr) {
+  if (!arr.length) return '<div class="loading-text">ไม่พบลูกค้า</div>';
+  return `<div class="content-card" style="overflow:hidden;">` +
+    arr.map(c => {
+      const pay = cPaymentTag(c);
+      return `<div class="cust-list-item">
+        <div class="cust-av">${custInitial(c)}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;">
+            <span style="font-size:14px;font-weight:600;color:var(--primary);">${cName(c)}</span>
+            <span style="font-size:11px;color:var(--muted);">${cCustId(c)}</span>
+          </div>
+          <div class="cust-meta">
+            <span>👤 ${cContact(c)}</span>
+            <span>📞 ${cPhone(c)}</span>
+            <span>💬 LINE: ${cLineId(c)}</span>
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${cAddr(c)}</div>
+        </div>
+        <span class="cust-type-pill" style="background:${pay.color};">${pay.label}</span>
+      </div>`;
+    }).join('') + `</div>`;
+}
+
+function customerGridHTML(arr) {
+  if (!arr.length) return '<div class="loading-text">ไม่พบลูกค้า</div>';
+  return `<div class="cust-grid">` +
+    arr.map(c => {
+      const pay = cPaymentTag(c);
+      return `<div class="cust-grid-card">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="cust-grid-av">${custInitial(c)}</div>
+          <div>
+            <div class="cust-grid-name">${cName(c)}</div>
+            <div class="cust-grid-id">${cCustId(c)}</div>
+          </div>
+        </div>
+        <div class="cust-grid-info">
+          <span>📞 ${cPhone(c)}</span>
+          <span>👤 ${cContact(c)}</span>
+        </div>
+        <div style="margin-top:auto;">
+          <span class="cust-type-pill" style="background:${pay.color};">${pay.label}</span>
+        </div>
+      </div>`;
+    }).join('') + `</div>`;
+}
+
+function customerTableHTML(arr) {
+  if (!arr.length) return '<div class="loading-text">ไม่พบลูกค้า</div>';
+  return `<div class="content-card cust-table-wrap"><table class="cust-table">
+    <thead><tr>
+      <th>ชื่อร้าน / ลูกค้า</th>
+      <th>รหัส</th>
+      <th>ผู้ติดต่อ</th>
+      <th>เบอร์โทร</th>
+      <th>LINE ID</th>
+      <th>ประเภท</th>
+    </tr></thead>
+    <tbody>` +
+    arr.map(c => {
+      const pay = cPaymentTag(c);
+      return `<tr>
+        <td>${cName(c)}</td>
+        <td style="color:var(--muted);font-size:12px;">${cCustId(c)}</td>
+        <td style="color:var(--muted);">${cContact(c)}</td>
+        <td style="color:var(--muted);">${cPhone(c)}</td>
+        <td style="color:var(--muted);font-size:12px;">${cLineId(c)}</td>
+        <td><span class="cust-type-pill" style="background:${pay.color};">${pay.label}</span></td>
+      </tr>`;
+    }).join('') +
+    `</tbody></table></div>`;
+}
+
+function renderWithView(arr) {
+  const list = document.getElementById('customers-list');
+  const count = document.getElementById('cust-count');
+  if (count) count.textContent = arr.length ? `(${arr.length})` : '';
+  if (customerView === 'grid')  list.innerHTML = customerGridHTML(arr);
+  else if (customerView === 'table') list.innerHTML = customerTableHTML(arr);
+  else list.innerHTML = customerListHTML(arr);
+  lucide.createIcons();
+}
+
 function customerCardHTML(c) {
   const pay = cPaymentTag(c);
-  return `<div style="padding:12px 0;border-bottom:1px solid #F0F4F8;display:flex;gap:12px;align-items:center;">
-    <div style="width:40px;height:40px;border-radius:50%;background:#EEF4FF;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">👤</div>
-    <div style="flex:1;">
-      <div style="font-weight:600;color:#1E3A5F;">${cName(c)} <span style="font-size:11px;color:#888;">${cCustId(c)}</span></div>
-      <div style="font-size:12px;color:#555;margin:2px 0;">👤 ${cContact(c)}</div>
-      <div style="font-size:12px;color:#888;margin:2px 0;">📞 ${cPhone(c)} · 💬 LINE: ${cLineId(c)}</div>
-      <div style="font-size:12px;color:#888;">${cAddr(c)}</div>
+  return `<div class="cust-list-item">
+    <div class="cust-av">${custInitial(c)}</div>
+    <div style="flex:1;min-width:0;">
+      <div style="display:flex;align-items:baseline;gap:6px;">
+        <span style="font-size:14px;font-weight:600;color:var(--primary);">${cName(c)}</span>
+        <span style="font-size:11px;color:var(--muted);">${cCustId(c)}</span>
+      </div>
+      <div class="cust-meta">
+        <span>👤 ${cContact(c)}</span><span>📞 ${cPhone(c)}</span><span>💬 LINE: ${cLineId(c)}</span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:2px;">${cAddr(c)}</div>
     </div>
-    <span style="background:${pay.color};color:#fff;padding:3px 8px;border-radius:20px;font-size:11px;white-space:nowrap;">${pay.label}</span>
+    <span class="cust-type-pill" style="background:${pay.color};">${pay.label}</span>
   </div>`;
 }
 
 function renderCustomerList() {
   const list = document.getElementById('customers-list');
   if (customersData.length) {
-    list.innerHTML = customersData.map(c => customerCardHTML(c)).join('') || '<div style="color:#888;text-align:center;padding:20px;">ไม่พบลูกค้า</div>';
+    renderWithView(customersData);
   } else {
-    list.innerHTML = '<div style="color:#888;text-align:center;padding:20px;">⏳ โหลด...</div>';
+    list.innerHTML = '<div class="loading-text">⏳ โหลด...</div>';
     fetch(GAS_URL + '?action=customers', { redirect: 'follow' })
       .then(r => r.json())
-      .then(d => { customersData = d.customers || []; renderCustomerList(); })
+      .then(d => { customersData = d.customers || []; renderWithView(customersData); })
       .catch(() => { list.innerHTML = '<div style="color:red;padding:12px;">โหลดไม่ได้</div>'; });
   }
 }
 
 function filterCustomers(q) {
-  const list = document.getElementById('customers-list');
   const kw = q.toLowerCase().trim();
-  if (!kw) { list.innerHTML = customersData.map(c => customerCardHTML(c)).join(''); return; }
-  const filtered = customersData.filter(c =>
+  const arr = !kw ? customersData : customersData.filter(c =>
     cName(c).toLowerCase().includes(kw) ||
     cCustId(c).toLowerCase().includes(kw) ||
     cPhone(c).toLowerCase().includes(kw) ||
     cAddr(c).toLowerCase().includes(kw) ||
     cPeakCode(c).toLowerCase().includes(kw)
   );
-  list.innerHTML = filtered.length
-    ? filtered.map(c => customerCardHTML(c)).join('')
-    : '<div style="color:#888;text-align:center;padding:20px;">ไม่พบลูกค้า "' + q + '"</div>';
+  renderWithView(arr);
 }
 
 function jobRowHTML(j) {
@@ -990,11 +1812,11 @@ function jobRowHTML(j) {
   else if (st === 'arrived')   { statusText = '🔧 กำลังซ่อม'; statusColor = '#F59E0B'; }
   else if (st === 'traveling') { statusText = '🚗 กำลังไป';  statusColor = '#3B82F6'; }
   const time = j.timestamp ? new Date(j.timestamp).toLocaleString('th-TH', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
-  return `<div style="padding:12px;border-bottom:1px solid #F0F4F8;display:flex;align-items:center;gap:12px;cursor:pointer;" onclick="showJobPreview(${JSON.stringify(j).replace(/"/g,'&quot;')})">
-    <div style="font-weight:700;color:#1E3A5F;min-width:80px;">${j.job_id||'—'}</div>
+  return `<div style="padding:12px 20px;border-bottom:1px solid #F1F5F9;display:flex;align-items:center;gap:12px;cursor:pointer;transition:background .15s;" onmouseover="this.style.background='#F8FAFC'" onmouseout="this.style.background=''" onclick="showJobPreview(${JSON.stringify(j).replace(/"/g,'&quot;')})">
+    <div style="font-weight:700;color:#1E3A5F;min-width:80px;font-size:13px;">${j.job_id||'—'}</div>
     <div style="flex:1;">
-      <div style="font-size:13px;font-weight:600;">${j.tech_name||'—'} → ${j.customer_name||'—'}</div>
-      <div style="font-size:12px;color:#888;">${j.job_type||''} ${time}</div>
+      <div style="font-size:13px;font-weight:600;color:#0F172A;">${j.tech_name||'—'} → ${j.customer_name||'—'}</div>
+      <div style="font-size:12px;color:#64748B;">${j.job_type||''} ${time}</div>
     </div>
     <div style="font-size:12px;font-weight:600;color:${statusColor}">${statusText}</div>
   </div>`;
@@ -1014,6 +1836,358 @@ function showJobPreview(j) {
   document.querySelector('.preview-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+// ───── Care Plan ─────
+let carePlanData = [];
+
+async function loadCarePlans() {
+  document.getElementById('careplan-list').innerHTML = '<div class="loading-text">⏳ กำลังโหลด...</div>';
+  try {
+    const r = await fetch(GAS_URL + '?action=careplan', { redirect: 'follow' });
+    const d = await r.json();
+    carePlanData = d.plans || [];
+    renderCarePlanList();
+    updateCpBadge();
+  } catch(e) {
+    document.getElementById('careplan-list').innerHTML = '<div style="color:red;text-align:center;padding:32px;">❌ โหลดไม่ได้ กรุณารีเฟรช</div>';
+  }
+}
+
+function cpStatus(plan) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const due = plan.next_due_date ? new Date(plan.next_due_date) : null;
+  if (!due) return 'unknown';
+  due.setHours(0,0,0,0);
+  const diff = Math.ceil((due - today) / 86400000);
+  if (diff < 0)  return 'overdue';
+  if (diff <= 7) return 'soon';
+  return 'ok';
+}
+
+function cpDiffDays(plan) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const due = plan.next_due_date ? new Date(plan.next_due_date) : null;
+  if (!due) return null;
+  due.setHours(0,0,0,0);
+  return Math.ceil((due - today) / 86400000);
+}
+
+function renderCarePlanList() {
+  const kw = (document.getElementById('cp-search')?.value || '').toLowerCase();
+  const filter = document.getElementById('cp-filter')?.value || 'all';
+  const typeFilter = document.getElementById('cp-type-filter')?.value || 'all';
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  let list = carePlanData.filter(p => {
+    const st = cpStatus(p);
+    if (filter !== 'all' && st !== filter) return false;
+    if (typeFilter !== 'all' && (p.plan_type || '') !== typeFilter) return false;
+    if (kw) {
+      const search = [p.customer_name, p.customer_id, p.machine_label, p.filter_system, p.assigned_tech_name].join(' ').toLowerCase();
+      if (!search.includes(kw)) return false;
+    }
+    return true;
+  });
+
+  // sort: overdue first, then soon, then ok
+  const order = { overdue: 0, soon: 1, ok: 2, unknown: 3 };
+  list.sort((a, b) => order[cpStatus(a)] - order[cpStatus(b)]);
+
+  // update summary counts
+  document.getElementById('cp-overdue-count').textContent = carePlanData.filter(p => cpStatus(p) === 'overdue').length;
+  document.getElementById('cp-soon-count').textContent    = carePlanData.filter(p => cpStatus(p) === 'soon').length;
+  document.getElementById('cp-ok-count').textContent      = carePlanData.filter(p => cpStatus(p) === 'ok').length;
+
+  if (!list.length) {
+    document.getElementById('careplan-list').innerHTML = '<div class="loading-text">ไม่พบข้อมูล</div>';
+    return;
+  }
+
+  const planTypeLabel = { filter_change: '💧 เปลี่ยนไส้กรอง', PM: '🔧 PM เครื่อง', membrane_change: '🔬 เปลี่ยน Membrane', inspection: '🔍 ตรวจสภาพ' };
+  const billingLabel  = { ฟรี: '<span style="background:#D1FAE5;color:#065F46;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">ฟรี</span>', จ่ายเอง: '<span style="background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">💰 จ่ายเอง</span>' };
+
+  document.getElementById('careplan-list').innerHTML = `
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>สถานะ</th>
+          <th>ร้าน / ลูกค้า</th>
+          <th>เครื่อง</th>
+          <th>ประเภทงาน</th>
+          <th>กำหนดวันถัดไป</th>
+          <th>ช่างประจำ</th>
+          <th>ค่าบริการ</th>
+          <th style="text-align:center;">จัดการ</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${list.map((p, i) => {
+          const st = cpStatus(p);
+          const diff = cpDiffDays(p);
+          let statusBadge, rowClass = '';
+          if (st === 'overdue') {
+            statusBadge = `<span class="badge badge-danger">🔴 เกิน ${Math.abs(diff)} วัน</span>`;
+            rowClass = 'tr-overdue';
+          } else if (st === 'soon') {
+            statusBadge = `<span class="badge badge-warning">🟡 ${diff === 0 ? 'วันนี้' : diff + ' วัน'}</span>`;
+            rowClass = 'tr-soon';
+          } else {
+            statusBadge = `<span class="badge badge-success">🟢 ${diff} วัน</span>`;
+            rowClass = 'tr-ok';
+          }
+          const dueStr = p.next_due_date ? new Date(p.next_due_date).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'}) : '—';
+          const lastStr = p.last_service_date ? new Date(p.last_service_date).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'}) : '—';
+          const ptLabel = planTypeLabel[p.plan_type] || p.plan_type || '—';
+          const billLabel = billingLabel[p.billing_type] || p.billing_type || '—';
+          const price = p.price > 0 ? `<div style="font-size:12px;color:#888;">${Number(p.price).toLocaleString()} บ.</div>` : '';
+          return `<tr class="${rowClass}">
+            <td>${statusBadge}</td>
+            <td>
+              <div style="font-weight:600;color:#1E3A5F;">${p.customer_name || '—'}</div>
+              <div style="font-size:11px;color:#888;">${p.customer_id || ''}</div>
+            </td>
+            <td>
+              <div style="font-weight:600;color:#374151;">${p.machine_label || 'เครื่องที่ ' + (p.machine_number || '—')}</div>
+              <div style="font-size:11px;color:#888;">${p.filter_system || ''}</div>
+              ${p.location_note ? `<div style="font-size:11px;color:#A0AEC0;">📍 ${p.location_note}</div>` : ''}
+            </td>
+            <td>${ptLabel}</td>
+            <td>
+              <div style="font-weight:600;color:#0F172A;">${dueStr}</div>
+              <div style="font-size:11px;color:#888;">ครั้งล่าสุด: ${lastStr}</div>
+              <div style="font-size:11px;color:#94A3B8;">ทุก ${p.interval_months || '—'} เดือน</div>
+            </td>
+            <td>
+              <div style="font-size:13px;color:#374151;">${p.assigned_tech_name || '—'}</div>
+            </td>
+            <td>${billLabel}${price}</td>
+            <td style="text-align:center;">
+              <button onclick="markCpDone('${p.plan_id}','${p.customer_name || ''}','${p.plan_type || ''}')"
+                style="background:#1E3A5F;color:#fff;border:none;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:var(--font);">
+                ✅ ทำแล้ว
+              </button>
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+
+function updateCpBadge() {
+  const overdue = carePlanData.filter(p => cpStatus(p) === 'overdue').length;
+  const soon    = carePlanData.filter(p => cpStatus(p) === 'soon').length;
+  const total   = overdue + soon;
+  const badge   = document.getElementById('cp-badge');
+  if (total > 0) { badge.style.display = 'inline'; badge.textContent = total; }
+  else { badge.style.display = 'none'; }
+}
+
+async function markCpDone(planId, custName, planType) {
+  if (!confirm(`ยืนยันว่าทำงาน "${planType}" ของ "${custName}" เสร็จแล้ว?\nระบบจะอัปเดต last_service_date = วันนี้ และคำนวณ next_due_date ใหม่`)) return;
+  try {
+    const r = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'careplan_done', plan_id: planId })
+    });
+    const d = await r.json();
+    if (d.success) {
+      document.getElementById('cpDoneText').textContent = `✅ "${custName}" — อัปเดตแล้ว\nครั้งถัดไป: ${d.next_due_date || '—'}`;
+      document.getElementById('cpDoneModal').style.display = 'flex';
+      document.getElementById('cpDoneModal').classList.add('show');
+      loadCarePlans();
+    } else {
+      alert('เกิดข้อผิดพลาด: ' + (d.error || 'unknown'));
+    }
+  } catch(e) {
+    alert('ไม่สามารถเชื่อมต่อ server ได้');
+  }
+}
+
+// ───── สร้างงาน (Lark) ─────
+const N8N_BASE = 'https://n8n-production-b8f6.up.railway.app/webhook';
+let mjDropsLoaded = false;
+let mjCustomers = [];
+let mjTechs = [];
+let mjSelectedCust = null;
+let mjSelectedTech = null;
+let mjPriority = 'low';
+
+function loadMjDropdowns() {
+  if (mjDropsLoaded) return;
+  document.getElementById('mj-load-txt').style.display = 'block';
+  Promise.all([
+    fetch(N8N_BASE + '/get-customers').then(r => r.json()).catch(() => ({ ok: false })),
+    fetch(N8N_BASE + '/get-techs').then(r => r.json()).catch(() => ({ ok: false }))
+  ]).then(([cRes, tRes]) => {
+    document.getElementById('mj-load-txt').style.display = 'none';
+    const custSel = document.getElementById('mj-customer');
+    if (cRes.ok && cRes.customers?.length) {
+      mjCustomers = cRes.customers;
+      custSel.innerHTML = '<option value="">— เลือกลูกค้า —</option>';
+      cRes.customers.forEach((c, i) => {
+        const o = document.createElement('option');
+        o.value = i; o.textContent = c.shop_name;
+        custSel.appendChild(o);
+      });
+    } else {
+      custSel.innerHTML = '<option value="">⚠️ โหลดไม่ได้ — เช็ค N8N workflow</option>';
+    }
+    custSel.disabled = false;
+
+    const techSel = document.getElementById('mj-tech');
+    if (tRes.ok && tRes.techs?.length) {
+      mjTechs = tRes.techs;
+      techSel.innerHTML = '<option value="">— เลือกช่าง —</option>';
+      tRes.techs.forEach((t, i) => {
+        const o = document.createElement('option');
+        o.value = i; o.textContent = t.name + (t.role ? ' (' + t.role + ')' : '');
+        techSel.appendChild(o);
+      });
+    } else {
+      techSel.innerHTML = '<option value="">⚠️ โหลดไม่ได้ — เช็ค T8 Table ID</option>';
+    }
+    techSel.disabled = false;
+    mjDropsLoaded = true;
+  });
+}
+
+function onMjCustChange() {
+  const idx = document.getElementById('mj-customer').value;
+  const info = document.getElementById('mj-cust-info');
+  if (idx === '' || !mjCustomers[idx]) { info.style.display = 'none'; mjSelectedCust = null; updateMjPreview(); return; }
+  mjSelectedCust = mjCustomers[idx];
+  document.getElementById('mj-cust-phone').textContent = mjSelectedCust.phone || '—';
+  const lineEl = document.getElementById('mj-cust-line');
+  lineEl.textContent = mjSelectedCust.line_id || '—';
+  lineEl.style.color = mjSelectedCust.line_id ? '#10B981' : '#EF4444';
+  const mapsRow = document.getElementById('mj-maps-link');
+  if (mjSelectedCust.maps_url) {
+    document.getElementById('mj-maps-a').href = mjSelectedCust.maps_url;
+    mapsRow.style.display = 'inline';
+  } else { mapsRow.style.display = 'none'; }
+  info.style.display = 'flex';
+  updateMjPreview();
+}
+
+function onMjTechChange() {
+  const idx = document.getElementById('mj-tech').value;
+  const preview = document.getElementById('mj-tech-preview');
+  if (idx === '' || !mjTechs[idx]) { preview.classList.remove('show'); mjSelectedTech = null; return; }
+  mjSelectedTech = mjTechs[idx];
+  document.getElementById('mj-tech-av').textContent = mjSelectedTech.name[0].toUpperCase();
+  document.getElementById('mj-tech-name').textContent = mjSelectedTech.name;
+  document.getElementById('mj-tech-line').textContent = 'LINE: ' + (mjSelectedTech.line_id || '—');
+  preview.classList.add('show');
+}
+
+function updateMjPreview() {
+  const custName = mjSelectedCust ? mjSelectedCust.shop_name : '—';
+  const problem  = document.getElementById('mj-problem')?.value || '—';
+  const dateRaw  = document.getElementById('mj-date')?.value || '';
+  const dateStr  = dateRaw ? new Date(dateRaw).toLocaleString('th-TH', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : '—';
+  document.getElementById('mj-prev-customer').textContent = custName;
+  document.getElementById('mj-prev-problem').textContent  = problem || '—';
+  document.getElementById('mj-prev-date').textContent     = dateStr;
+}
+
+function setMjPriority(p, btn) {
+  mjPriority = p;
+  ['low','med','high'].forEach(k => {
+    document.getElementById('mj-p-' + k).className = 'priority-btn' + (k === p ? ' selected-' + k : '');
+  });
+}
+
+async function submitMergedJob() {
+  const custIdx = document.getElementById('mj-customer').value;
+  const jobType = document.getElementById('mj-jobtype').value;
+  const date    = document.getElementById('mj-date').value;
+  const techIdx = document.getElementById('mj-tech').value;
+  const problem = document.getElementById('mj-problem').value.trim();
+  const note    = document.getElementById('mj-note').value.trim();
+
+  if (custIdx === '' || !mjCustomers[custIdx]) { showMjResult('err', '⚠️ กรุณาเลือกลูกค้า'); return; }
+  if (!jobType) { showMjResult('err', '⚠️ กรุณาเลือกประเภทงาน'); return; }
+  if (!date)    { showMjResult('err', '⚠️ กรุณาระบุวัน-เวลานัดหมาย'); return; }
+  if (techIdx === '' || !mjTechs[techIdx]) { showMjResult('err', '⚠️ กรุณาเลือกช่าง'); return; }
+  if (!problem) { showMjResult('err', '⚠️ กรุณาระบุปัญหา / อาการ'); return; }
+
+  const cust = mjCustomers[custIdx];
+  const tech = mjTechs[techIdx];
+  const priorityLabel = mjPriority === 'high' ? 'ด่วนมาก' : mjPriority === 'med' ? 'ด่วน' : 'ปกติ';
+
+  const btn  = document.getElementById('mj-btn');
+  const icon = document.getElementById('mj-btn-icon');
+  const txt  = document.getElementById('mj-btn-txt');
+  btn.disabled = true; icon.textContent = '⏳'; txt.textContent = 'กำลังสร้างงานใน Lark...';
+  document.getElementById('mj-result').style.display = 'none';
+
+  try {
+    // Step 1: สร้าง T5 ใน Lark Base
+    const createRes = await fetch(N8N_BASE + '/create-job', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customer_record_id: cust.record_id,
+        tech_record_id:     tech.record_id || '',
+        job_type: jobType, priority: priorityLabel,
+        scheduled_date: date, problem, note
+      })
+    });
+    const createData = await createRes.json();
+    if (!createData.ok) { showMjResult('err', '❌ สร้างงานใน Lark ไม่ได้\n' + (createData.error || '')); return; }
+
+    const jobNo = createData.job_no || createData.record_id || '—';
+    txt.textContent = 'กำลังส่ง LINE ช่าง...';
+
+    // Step 2: ส่ง LINE ช่าง via gps-init
+    const initRes = await fetch(N8N_INIT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        job_id: jobNo, staff_id: tech.record_id || '',
+        tech_name: tech.name, tech_line_id: tech.line_id || '',
+        customer_name: cust.shop_name, customer_line_id: cust.line_id || '',
+        job_address: cust.address || '', job_maps_url: cust.maps_url || '',
+        job_type: jobType, priority: mjPriority, note, appoint_date: date, status: 'new'
+      })
+    });
+
+    if (initRes.ok) {
+      showMjResult('ok', '✅ สร้างงาน #' + jobNo + ' เรียบร้อย\n📱 ส่ง LINE ช่าง ' + tech.name + ' แล้ว!');
+    } else {
+      showMjResult('ok', '✅ สร้างงาน #' + jobNo + ' ใน Lark แล้ว\n⚠️ LINE ช่างอาจไม่ถึง — เช็ค N8N gps-init');
+    }
+    resetMjForm();
+    loadRecentJobs();
+  } catch(e) {
+    showMjResult('err', '❌ ' + e.message);
+  } finally {
+    btn.disabled = false; icon.textContent = '⚡'; txt.textContent = 'สร้างงาน → Lark + ส่ง LINE ช่าง';
+  }
+}
+
+function showMjResult(type, msg) {
+  const el = document.getElementById('mj-result');
+  el.style.cssText = type === 'ok'
+    ? 'display:block;background:#D1FAE5;color:#065F46;border:1.5px solid #6EE7B7;'
+    : 'display:block;background:#FEE2E2;color:#991B1B;border:1.5px solid #FCA5A5;';
+  el.style.padding = '13px 16px'; el.style.borderRadius = '10px';
+  el.style.fontSize = '13px'; el.style.fontWeight = '600';
+  el.style.textAlign = 'center'; el.style.whiteSpace = 'pre-line';
+  el.textContent = msg;
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function resetMjForm() {
+  ['mj-customer','mj-jobtype','mj-date','mj-tech','mj-problem','mj-note'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('mj-cust-info').style.display = 'none';
+  document.getElementById('mj-tech-preview').classList.remove('show');
+  mjSelectedCust = null; mjSelectedTech = null;
+  setMjPriority('low', document.getElementById('mj-p-low'));
+}
+
 // ───── Close Modal ─────
 function closeModal() {
   document.getElementById('modalOverlay').classList.remove('show');
@@ -1030,5 +2204,8 @@ function closeModal() {
   document.getElementById('customerInfo').classList.remove('show');
 }
 </script>
+
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>lucide.createIcons();</script>
 </body>
 </html>

@@ -1,0 +1,163 @@
+{
+  "name": "WF GPS Arrived v2",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gps-arrived",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "dd001001-0000-0000-0000-000000000001",
+      "name": "Webhook GPS Arrived",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "gps-arrived-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nconst body = d.body || d;\nconst ts = new Date().toISOString();\nreturn [{ json: {\n  job_id:           body.job_id           || '',\n  tech_name:        body.tech_name        || '',\n  customer_name:    body.customer_name    || '',\n  customer_line_id: body.customer_line_id || '',\n  status:           'arrived',\n  arrived_at:       ts,\n  timestamp:        ts\n}}];"
+      },
+      "id": "dd001001-0000-0000-0000-000000000002",
+      "name": "Set Arrived Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "18fq3qk630yllIdbp9Ugybmv8ThON1oE7V4v2Zb9",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "T17_GPS_Tracking",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "job_id":     "={{ $json.job_id }}",
+            "status":     "arrived",
+            "arrived_at": "={{ $json.arrived_at }}",
+            "timestamp":  "={{ $json.timestamp }}"
+          },
+          "matchingColumns": ["job_id"],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "dd001001-0000-0000-0000-000000000003",
+      "name": "Update Sheet Arrived",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/push",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({\"to\": $json.customer_line_id, \"messages\": [{\"type\": \"text\", \"text\": \"🔧 ช่างถึงที่แล้วครับ!\\n\\n📋 รหัสงาน: \" + $json.job_id + \"\\n👨 ช่าง: \" + $json.tech_name + \" ถึงที่แล้วครับ\"}]}) }}",
+        "options": {}
+      },
+      "id": "dd001001-0000-0000-0000-000000000004",
+      "name": "Notify Customer Arrived",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/push",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({\"to\": \"C40b37d81f4e199a7b7357537166a1efd\", \"messages\": [{\"type\": \"text\", \"text\": \"📍 ช่างถึงแล้ว!\\n\\n📋 รหัสงาน: \" + $json.job_id + \"\\n👨 ช่าง: \" + $json.tech_name + \"\\n👤 ลูกค้า: \" + $json.customer_name}]}) }}",
+        "options": {}
+      },
+      "id": "dd001001-0000-0000-0000-000000000005",
+      "name": "Notify Admin Arrived",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 400],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\"status\": \"ok\"}) }}",
+        "options": {}
+      },
+      "id": "dd001001-0000-0000-0000-000000000006",
+      "name": "Respond Arrived",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1120, 300]
+    }
+  ],
+  "connections": {
+    "Webhook GPS Arrived": {
+      "main": [[{"node": "Set Arrived Data", "type": "main", "index": 0}]]
+    },
+    "Set Arrived Data": {
+      "main": [[{"node": "Update Sheet Arrived", "type": "main", "index": 0}]]
+    },
+    "Update Sheet Arrived": {
+      "main": [[
+        {"node": "Notify Customer Arrived", "type": "main", "index": 0},
+        {"node": "Notify Admin Arrived",    "type": "main", "index": 0}
+      ]]
+    },
+    "Notify Customer Arrived": {
+      "main": [[{"node": "Respond Arrived", "type": "main", "index": 0}]]
+    },
+    "Notify Admin Arrived": {
+      "main": [[{"node": "Respond Arrived", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null
+}

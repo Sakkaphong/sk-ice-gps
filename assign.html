@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GPS Assign Flow Mockup</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', Arial, sans-serif; background: #F0F4F8; }
+
+.tabs { display: flex; background: #1E3A5F; }
+.tab-btn {
+  flex: 1; padding: 14px; color: #A8D5F0; font-size: 14px; font-weight: 600;
+  border: none; cursor: pointer; background: transparent; transition: all .2s;
+  border-bottom: 3px solid transparent;
+}
+.tab-btn.active { background: #2E6DA4; color: #fff; border-bottom-color: #5BB8F5; }
+.tab-btn:hover:not(.active) { background: rgba(255,255,255,.08); }
+.panel { display: none; padding: 24px; min-height: calc(100vh - 50px); }
+.panel.active { display: flex; gap: 24px; align-items: flex-start; justify-content: center; }
+
+/* ===== FLOW ARROW ===== */
+.flow-wrap { display: flex; flex-direction: column; align-items: center; gap: 0; }
+.flow-label {
+  background: #1E3A5F; color: #fff; border-radius: 20px;
+  padding: 6px 16px; font-size: 12px; font-weight: 600; margin-bottom: 8px;
+}
+.arrow { font-size: 28px; color: #2E6DA4; margin: 4px 0; }
+
+/* ===== SHEET MOCKUP ===== */
+.sheet-card {
+  background: #fff; border-radius: 12px; overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,.12); width: 380px;
+}
+.sheet-header {
+  background: #1E3A5F; color: #fff; padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600;
+}
+.sheet-header .dot { width: 8px; height: 8px; border-radius: 50%; background: #4CAF50; }
+.sheet-body { padding: 0; }
+.sheet-row {
+  display: grid; grid-template-columns: 90px 1fr 90px 80px;
+  border-bottom: 1px solid #EEF2F7; font-size: 12px;
+}
+.sheet-row.header { background: #F8FAFC; font-weight: 700; color: #666; }
+.sheet-row.active { background: #E3F2FD; }
+.sheet-cell {
+  padding: 8px 10px; border-right: 1px solid #EEF2F7;
+  display: flex; align-items: center;
+}
+.sheet-cell:last-child { border-right: none; }
+.badge {
+  padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;
+}
+.badge-new { background: #E3F2FD; color: #1565C0; }
+.badge-ok { background: #E8F5E9; color: #2E7D32; }
+.badge-wait { background: #FFF3E0; color: #E65100; }
+
+.new-row-highlight {
+  background: linear-gradient(90deg, #E3F2FD, #fff);
+  border-left: 3px solid #1976D2;
+  animation: highlight 2s ease-in-out infinite alternate;
+}
+@keyframes highlight {
+  from { background: linear-gradient(90deg, #E3F2FD, #fff); }
+  to { background: linear-gradient(90deg, #BBDEFB, #E3F2FD); }
+}
+
+/* n8n trigger label */
+.trigger-box {
+  margin: 12px 16px; padding: 10px 14px;
+  background: #F3E5F5; border-radius: 8px; border-left: 3px solid #7B1FA2;
+  font-size: 12px; color: #4A148C;
+}
+.trigger-box b { display: block; margin-bottom: 4px; }
+
+/* ===== LINE MOCKUP ===== */
+.phone-wrap { position: relative; }
+.phone {
+  width: 290px; background: #fff; border-radius: 36px;
+  box-shadow: 0 8px 40px rgba(0,0,0,.2);
+  border: 8px solid #1a1a1a; overflow: hidden;
+  min-height: 560px;
+}
+.phone-notch {
+  background: #1a1a1a; height: 28px; display: flex;
+  align-items: center; justify-content: center;
+}
+.notch-bar { width: 80px; height: 4px; background: #333; border-radius: 4px; }
+
+/* LINE UI */
+.line-header {
+  background: #06C755; color: #fff; padding: 10px 14px;
+  display: flex; align-items: center; gap: 10px;
+}
+.line-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: #fff; display: flex; align-items: center;
+  justify-content: center; font-size: 18px;
+}
+.line-name { font-weight: 700; font-size: 14px; }
+.line-sub { font-size: 11px; opacity: .8; }
+.line-body { background: #BEE3F8; padding: 14px 10px; min-height: 400px; }
+
+.line-msg { margin-bottom: 12px; }
+.line-bubble {
+  background: #fff; border-radius: 0 12px 12px 12px;
+  padding: 10px 12px; max-width: 220px; font-size: 13px; line-height: 1.5;
+  box-shadow: 0 1px 4px rgba(0,0,0,.1);
+}
+.line-time { font-size: 10px; color: #888; margin-top: 4px; padding-left: 4px; }
+
+/* Flex message mockup */
+.flex-card {
+  background: #fff; border-radius: 12px; overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,.12); max-width: 240px;
+}
+.flex-header {
+  background: #1E3A5F; padding: 10px 12px;
+}
+.flex-header-title { color: #fff; font-weight: 700; font-size: 13px; }
+.flex-header-sub { color: #A8D5F0; font-size: 11px; }
+.flex-body { padding: 10px 12px; }
+.flex-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 12px; }
+.flex-label { color: #888; }
+.flex-val { font-weight: 600; color: #1E3A5F; }
+.flex-btn {
+  background: #06C755; color: #fff; border: none; border-radius: 8px;
+  padding: 8px; width: 100%; font-size: 13px; font-weight: 700;
+  margin-top: 8px; cursor: pointer;
+}
+.flex-btn-blue {
+  background: #1976D2; color: #fff; border: none; border-radius: 8px;
+  padding: 8px; width: 100%; font-size: 13px; font-weight: 700;
+  margin-top: 6px; cursor: pointer;
+}
+
+/* ===== TECH PAGE MOCKUP ===== */
+.tech-phone .line-body { background: #F0F4F8; }
+.gps-page {
+  background: #fff; border-radius: 16px; padding: 16px;
+  margin: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+.gps-title { font-size: 16px; font-weight: 700; color: #1E3A5F; margin-bottom: 4px; }
+.gps-sub { font-size: 12px; color: #888; margin-bottom: 12px; }
+.gps-info { background: #F8FAFC; border-radius: 8px; padding: 10px; margin-bottom: 12px; }
+.gps-info-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; }
+.gps-info-label { color: #888; }
+.gps-info-val { font-weight: 600; color: #1E3A5F; }
+.gps-status-box {
+  background: linear-gradient(135deg, #E8F5E9, #C8E6C9);
+  border-radius: 10px; padding: 10px; text-align: center; margin-bottom: 10px;
+}
+.gps-status-icon { font-size: 24px; }
+.gps-status-text { font-size: 12px; color: #2E7D32; font-weight: 600; margin-top: 4px; }
+.gps-accuracy { font-size: 11px; color: #888; margin-bottom: 10px; text-align: center; }
+.gps-arrived-btn {
+  background: linear-gradient(135deg, #1E3A5F, #2E6DA4);
+  color: #fff; border: none; border-radius: 12px;
+  padding: 12px; width: 100%; font-size: 14px; font-weight: 700; cursor: pointer;
+}
+
+/* ===== METHOD B: Dashboard ===== */
+.dashboard-card {
+  background: #fff; border-radius: 12px; overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,.12); width: 500px;
+}
+.dash-header {
+  background: #1E3A5F; color: #fff; padding: 12px 16px;
+  font-size: 13px; font-weight: 600;
+  display: flex; align-items: center; gap: 8px;
+}
+.dash-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.dash-table th {
+  background: #F8FAFC; padding: 8px 10px; text-align: left;
+  color: #666; font-weight: 700; border-bottom: 2px solid #EEF2F7;
+}
+.dash-table td { padding: 8px 10px; border-bottom: 1px solid #EEF2F7; }
+.dash-table tr:hover { background: #F8FAFC; }
+.send-btn {
+  background: #1976D2; color: #fff; border: none; border-radius: 6px;
+  padding: 5px 10px; font-size: 11px; font-weight: 600; cursor: pointer;
+  display: flex; align-items: center; gap: 4px; white-space: nowrap;
+}
+.send-btn.sent { background: #E8F5E9; color: #2E7D32; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot-green { background: #4CAF50; }
+.dot-orange { background: #FF9800; }
+.dot-blue { background: #2196F3; animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+.copy-link-box {
+  margin: 12px 16px; padding: 10px 12px;
+  background: #F3F4F6; border-radius: 8px; font-size: 11px;
+  color: #444; font-family: monospace; word-break: break-all;
+  border: 1px solid #E5E7EB; position: relative;
+}
+.copy-btn {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  background: #1976D2; color: #fff; border: none; border-radius: 4px;
+  padding: 3px 8px; font-size: 11px; cursor: pointer;
+}
+
+/* ===== CREATE JOB FORM ===== */
+.cj-wrap {
+  max-width: 560px; width: 100%; margin: 0 auto;
+}
+.cj-card {
+  background: #fff; border-radius: 14px; overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,.12);
+}
+.cj-header {
+  background: linear-gradient(135deg,#1E3A5F,#2E6DA4);
+  color: #fff; padding: 16px 20px;
+  display: flex; align-items: center; gap: 10px;
+}
+.cj-header h2 { font-size: 16px; font-weight: 700; }
+.cj-header p  { font-size: 12px; color: #A8D5F0; margin-top: 2px; }
+.cj-body { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.cj-field { display: flex; flex-direction: column; gap: 5px; }
+.cj-label {
+  font-size: 12px; font-weight: 700; color: #1E3A5F;
+  display: flex; align-items: center; gap: 4px;
+}
+.cj-label .req { color: #E53935; }
+.cj-input, .cj-select, .cj-textarea {
+  width: 100%; padding: 10px 12px; border: 1.5px solid #D1D9E6;
+  border-radius: 8px; font-size: 13px; color: #2C3E50;
+  background: #F8FAFC; transition: border-color .2s;
+  font-family: inherit;
+}
+.cj-input:focus, .cj-select:focus, .cj-textarea:focus {
+  outline: none; border-color: #2E6DA4; background: #fff;
+}
+.cj-input:disabled, .cj-select:disabled {
+  color: #aaa; background: #F0F0F0; cursor: not-allowed;
+}
+.cj-textarea { min-height: 80px; resize: vertical; }
+.cj-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.cj-submit {
+  width: 100%; padding: 13px; border: none; border-radius: 10px;
+  background: linear-gradient(135deg,#1E3A5F,#2E6DA4);
+  color: #fff; font-size: 15px; font-weight: 700; cursor: pointer;
+  transition: opacity .2s; display: flex; align-items: center;
+  justify-content: center; gap: 8px;
+}
+.cj-submit:disabled { opacity: .55; cursor: not-allowed; }
+.cj-result {
+  display: none; margin-top: 0; padding: 14px 16px;
+  border-radius: 10px; font-size: 13px; font-weight: 600;
+  text-align: center;
+}
+.cj-result.ok  { background: #E8F5E9; color: #2E7D32; border: 1.5px solid #A5D6A7; }
+.cj-result.err { background: #FFEBEE; color: #C62828; border: 1.5px solid #EF9A9A; }
+.cj-loading { font-size: 12px; color: #888; text-align: center; padding: 6px 0; }
+.cj-hint { font-size: 11px; color: #999; margin-top: 2px; }
+
+/* Step labels */
+.step-box {
+  background: #fff; border-radius: 12px; padding: 14px 18px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.08); min-width: 220px;
+}
+.step-num {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: #1976D2; color: #fff; font-weight: 700; font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 8px;
+}
+.step-title { font-size: 14px; font-weight: 700; color: #1E3A5F; margin-bottom: 4px; }
+.step-desc { font-size: 12px; color: #888; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('methodA')">⚡ วิธี A — n8n ส่ง LINE ให้ช่างอัตโนมัติ</button>
+  <button class="tab-btn" onclick="switchTab('methodB')">📋 วิธี B — Dashboard กด 1 ครั้ง</button>
+  <button class="tab-btn" onclick="switchTab('createJob')">➕ สร้างงาน</button>
+</div>
+
+<!-- ===== METHOD A ===== -->
+<div class="panel active" id="panel-methodA">
+
+  <!-- Step 1: Sheet -->
+  <div class="flow-wrap">
+    <div class="flow-label">① Admin กรอกงานใน Sheet</div>
+    <div class="sheet-card">
+      <div class="sheet-header">
+        <div class="dot"></div>
+        🔄 งานในมือ — SK ICE Business Dashboard
+      </div>
+      <div class="sheet-body">
+        <div class="sheet-row header">
+          <div class="sheet-cell">งานที่</div>
+          <div class="sheet-cell">ช่าง</div>
+          <div class="sheet-cell">ลูกค้า</div>
+          <div class="sheet-cell">สถานะ</div>
+        </div>
+        <div class="sheet-row">
+          <div class="sheet-cell">WRK-040</div>
+          <div class="sheet-cell">สมชาย</div>
+          <div class="sheet-cell">คุณสมศรี</div>
+          <div class="sheet-cell"><span class="badge badge-ok">✅ เสร็จ</span></div>
+        </div>
+        <div class="sheet-row">
+          <div class="sheet-cell">WRK-041</div>
+          <div class="sheet-cell">วิชัย</div>
+          <div class="sheet-cell">คุณมานี</div>
+          <div class="sheet-cell"><span class="badge badge-wait">🔄 กำลังไป</span></div>
+        </div>
+        <div class="sheet-row new-row-highlight">
+          <div class="sheet-cell" style="color:#1976D2;font-weight:700;">WRK-042 ✨</div>
+          <div class="sheet-cell" style="color:#1976D2;font-weight:700;">สมชาย</div>
+          <div class="sheet-cell">คุณวรานุพร</div>
+          <div class="sheet-cell"><span class="badge badge-new">🆕 ใหม่</span></div>
+        </div>
+      </div>
+      <div class="trigger-box">
+        <b>⚡ n8n Google Sheets Trigger</b>
+        ตรวจพบแถวใหม่ → สร้างลิงค์ GPS → ส่ง LINE ให้ช่างอัตโนมัติ
+      </div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="flow-label">② ช่างได้รับ LINE ทันที</div>
+  </div>
+
+  <!-- Step 2: LINE to tech -->
+  <div class="flow-wrap">
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-notch"><div class="notch-bar"></div></div>
+        <div class="line-header">
+          <div class="line-avatar">🧊</div>
+          <div>
+            <div class="line-name">SK ICE — งาน</div>
+            <div class="line-sub">Official Account</div>
+          </div>
+        </div>
+        <div class="line-body">
+          <div class="line-msg">
+            <div class="flex-card">
+              <div class="flex-header">
+                <div class="flex-header-title">🔧 งานใหม่มาแล้ว!</div>
+                <div class="flex-header-sub">SK ICE — ระบบมอบหมายงาน</div>
+              </div>
+              <div class="flex-body">
+                <div class="flex-row">
+                  <span class="flex-label">งานที่</span>
+                  <span class="flex-val">WRK-042</span>
+                </div>
+                <div class="flex-row">
+                  <span class="flex-label">ลูกค้า</span>
+                  <span class="flex-val">คุณวรานุพร</span>
+                </div>
+                <div class="flex-row">
+                  <span class="flex-label">ที่อยู่</span>
+                  <span class="flex-val">ลาดพร้าว 71</span>
+                </div>
+                <div class="flex-row">
+                  <span class="flex-label">นัดหมาย</span>
+                  <span class="flex-val">10:00 น.</span>
+                </div>
+                <button class="flex-btn-blue">📍 เปิด GPS นำทาง</button>
+              </div>
+            </div>
+            <div class="line-time">10:45 น. ✓✓</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="flow-label">③ ช่างกดปุ่ม → เปิดหน้า GPS</div>
+  </div>
+
+  <!-- Step 3: Tech GPS Page -->
+  <div class="flow-wrap">
+    <div class="phone-wrap">
+      <div class="phone tech-phone">
+        <div class="phone-notch"><div class="notch-bar"></div></div>
+        <div style="background:#1E3A5F;color:#fff;padding:10px 14px;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;">
+          <span>🧊</span> SK ICE — GPS Tracker
+        </div>
+        <div class="line-body">
+          <div class="gps-page">
+            <div class="gps-title">🔧 WRK-042</div>
+            <div class="gps-sub">คุณวรานุพร — ลาดพร้าว 71</div>
+            <div class="gps-info">
+              <div class="gps-info-row">
+                <span class="gps-info-label">ช่าง</span>
+                <span class="gps-info-val">สมชาย มีแรง</span>
+              </div>
+              <div class="gps-info-row">
+                <span class="gps-info-label">ลูกค้า LINE</span>
+                <span class="gps-info-val">แจ้งแล้ว ✅</span>
+              </div>
+            </div>
+            <div class="gps-status-box">
+              <div class="gps-status-icon">📡</div>
+              <div class="gps-status-text">กำลังส่งตำแหน่ง...</div>
+            </div>
+            <div class="gps-accuracy">GPS ±12 ม. • อัปเดตทุก 30 วิ</div>
+            <button class="gps-arrived-btn">✅ ถึงแล้ว! แจ้งลูกค้า</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== METHOD B ===== -->
+<div class="panel" id="panel-methodB">
+
+  <div class="flow-wrap">
+    <div class="flow-label">① Admin เห็นรายการงาน → กดปุ่ม "ส่ง GPS"</div>
+    <div class="dashboard-card">
+      <div class="dash-header">📋 รายการงานวันนี้ — ส่ง GPS ให้ช่าง</div>
+      <table class="dash-table">
+        <thead>
+          <tr>
+            <th>งานที่</th>
+            <th>ช่าง</th>
+            <th>ลูกค้า</th>
+            <th>สถานะ</th>
+            <th>ส่ง GPS</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>WRK-040</td>
+            <td>สมชาย</td>
+            <td>คุณสมศรี</td>
+            <td><span class="status-dot dot-green"></span> เสร็จแล้ว</td>
+            <td><button class="send-btn sent">✓ ส่งแล้ว</button></td>
+          </tr>
+          <tr>
+            <td>WRK-041</td>
+            <td>วิชัย</td>
+            <td>คุณมานี</td>
+            <td><span class="status-dot dot-blue"></span> กำลังไป</td>
+            <td><button class="send-btn sent">✓ ส่งแล้ว</button></td>
+          </tr>
+          <tr style="background:#E3F2FD;">
+            <td><b>WRK-042</b></td>
+            <td><b>สมชาย</b></td>
+            <td><b>คุณวรานุพร</b></td>
+            <td><span class="status-dot dot-orange"></span> รอมอบหมาย</td>
+            <td><button class="send-btn" onclick="sendGPS(this)">📍 ส่ง GPS</button></td>
+          </tr>
+          <tr>
+            <td>WRK-043</td>
+            <td>ธนา</td>
+            <td>คุณสุดา</td>
+            <td><span class="status-dot dot-orange"></span> รอมอบหมาย</td>
+            <td><button class="send-btn" onclick="sendGPS(this)">📍 ส่ง GPS</button></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="copy-link-box" id="link-box" style="display:none">
+        <span id="link-text"></span>
+        <button class="copy-btn" onclick="copyLink()">Copy</button>
+      </div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="flow-label">② Admin กด → ลิงค์ copy อัตโนมัติ → วางส่งช่างใน LINE</div>
+  </div>
+
+  <!-- Steps comparison -->
+  <div style="display:flex;flex-direction:column;gap:16px;margin-top:32px;">
+    <div class="step-box">
+      <div class="step-num">A</div>
+      <div class="step-title">วิธี A — อัตโนมัติ 100%</div>
+      <div class="step-desc">
+        Admin กรอกงาน → ช่างได้ LINE ทันที<br>
+        ✅ ไม่ต้องทำอะไรเพิ่ม<br>
+        ✅ เร็วที่สุด<br>
+        ⚙️ ต้องเพิ่ม n8n 1 workflow
+      </div>
+    </div>
+    <div class="step-box">
+      <div class="step-num">B</div>
+      <div class="step-title">วิธี B — กด 1 ครั้ง</div>
+      <div class="step-desc">
+        Admin กดปุ่ม → copy link → ส่งเอง<br>
+        ✅ Admin ควบคุมได้<br>
+        ⚠️ ต้อง paste ส่งเองใน LINE<br>
+        🔧 ทำได้ใน Google Sheets Script
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== CREATE JOB PANEL ===== -->
+<div class="panel" id="panel-createJob" style="justify-content:center;align-items:flex-start;padding-top:28px;">
+  <div class="cj-wrap">
+    <div class="cj-card">
+      <div class="cj-header">
+        <div>
+          <h2>➕ สร้างงานใหม่</h2>
+          <p>บันทึกลง Lark Base T5_Jobs ทันที</p>
+        </div>
+      </div>
+      <div class="cj-body">
+
+        <div id="cj-load-status" class="cj-loading" style="display:none">⏳ กำลังโหลดข้อมูล...</div>
+
+        <!-- Shop Name -->
+        <div class="cj-field">
+          <label class="cj-label">🏪 ชื่อร้าน / ลูกค้า <span class="req">*</span></label>
+          <select id="cj-customer" class="cj-select" disabled>
+            <option value="">— กำลังโหลด... —</option>
+          </select>
+        </div>
+
+        <!-- Job Type + Priority -->
+        <div class="cj-row">
+          <div class="cj-field">
+            <label class="cj-label">🔧 ประเภทงาน <span class="req">*</span></label>
+            <select id="cj-jobtype" class="cj-select">
+              <option value="ซ่อม">ซ่อม</option>
+              <option value="PM/เปลี่ยนไส้กรอง" selected>PM/เปลี่ยนไส้กรอง</option>
+              <option value="ติดตั้งเครื่อง">ติดตั้งเครื่อง</option>
+              <option value="รื้อถอน">รื้อถอน</option>
+              <option value="ตรวจสอบ">ตรวจสอบ</option>
+              <option value="อื่นๆ">อื่นๆ</option>
+            </select>
+          </div>
+          <div class="cj-field">
+            <label class="cj-label">🚨 Priority</label>
+            <select id="cj-priority" class="cj-select">
+              <option value="ปกติ" selected>ปกติ</option>
+              <option value="ด่วน">ด่วน</option>
+              <option value="ด่วนมาก">ด่วนมาก</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Scheduled Date -->
+        <div class="cj-field">
+          <label class="cj-label">📅 วัน-เวลานัดหมาย <span class="req">*</span></label>
+          <input type="datetime-local" id="cj-date" class="cj-input">
+        </div>
+
+        <!-- Technician -->
+        <div class="cj-field">
+          <label class="cj-label">👷 ช่างที่รับผิดชอบ</label>
+          <select id="cj-tech" class="cj-select" disabled>
+            <option value="">— กำลังโหลด... —</option>
+          </select>
+          <span class="cj-hint">ไม่เลือกได้ — มอบหมายภายหลัง</span>
+        </div>
+
+        <!-- Problem -->
+        <div class="cj-field">
+          <label class="cj-label">📝 ปัญหา / อาการ <span class="req">*</span></label>
+          <textarea id="cj-problem" class="cj-textarea" placeholder="เช่น น้ำไม่ออก, เสียงดัง, ไฟกระพริบ..."></textarea>
+        </div>
+
+        <!-- Note -->
+        <div class="cj-field">
+          <label class="cj-label">💬 หมายเหตุ</label>
+          <textarea id="cj-note" class="cj-textarea" style="min-height:56px" placeholder="หมายเหตุเพิ่มเติม (ไม่บังคับ)"></textarea>
+        </div>
+
+        <!-- Result -->
+        <div id="cj-result" class="cj-result"></div>
+
+        <!-- Submit -->
+        <button id="cj-btn" class="cj-submit" onclick="submitJob()">
+          <span id="cj-btn-icon">💾</span>
+          <span id="cj-btn-text">บันทึกงานใหม่ → Lark</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const N8N = 'https://n8n-production-b8f6.up.railway.app/webhook';
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + tab).classList.add('active');
+  event.target.classList.add('active');
+  if (tab === 'createJob') loadDropdowns();
+}
+
+let dropsLoaded = false;
+function loadDropdowns() {
+  if (dropsLoaded) return;
+  const status = document.getElementById('cj-load-status');
+  status.style.display = 'block';
+
+  Promise.all([
+    fetch(N8N + '/get-customers').then(r => r.json()).catch(() => ({ ok: false })),
+    fetch(N8N + '/get-techs').then(r => r.json()).catch(() => ({ ok: false }))
+  ]).then(([cRes, tRes]) => {
+    status.style.display = 'none';
+
+    const custSel = document.getElementById('cj-customer');
+    if (cRes.ok && cRes.customers?.length) {
+      custSel.innerHTML = '<option value="">— เลือกลูกค้า —</option>';
+      cRes.customers.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.record_id;
+        opt.textContent = c.shop_name;
+        opt.dataset.lineId = c.line_id || '';
+        opt.dataset.phone  = c.phone  || '';
+        custSel.appendChild(opt);
+      });
+      custSel.disabled = false;
+    } else {
+      custSel.innerHTML = '<option value="">⚠️ โหลดไม่ได้ — กรอกเอง</option>';
+      custSel.disabled = false;
+    }
+
+    const techSel = document.getElementById('cj-tech');
+    if (tRes.ok && tRes.techs?.length) {
+      techSel.innerHTML = '<option value="">— ไม่ระบุ / มอบหมายทีหลัง —</option>';
+      tRes.techs.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.record_id;
+        opt.textContent = t.name + (t.role ? ' (' + t.role + ')' : '');
+        techSel.appendChild(opt);
+      });
+      techSel.disabled = false;
+    } else {
+      techSel.innerHTML = '<option value="">⚠️ โหลดไม่ได้ — มอบหมายทีหลัง</option>';
+      techSel.disabled = false;
+    }
+
+    dropsLoaded = true;
+  });
+}
+
+function submitJob() {
+  const custId  = document.getElementById('cj-customer').value;
+  const jobType = document.getElementById('cj-jobtype').value;
+  const priority= document.getElementById('cj-priority').value;
+  const date    = document.getElementById('cj-date').value;
+  const techId  = document.getElementById('cj-tech').value;
+  const problem = document.getElementById('cj-problem').value.trim();
+  const note    = document.getElementById('cj-note').value.trim();
+  const result  = document.getElementById('cj-result');
+
+  // Validate
+  if (!custId) { showResult('err', '⚠️ กรุณาเลือกลูกค้า'); return; }
+  if (!date)   { showResult('err', '⚠️ กรุณาระบุวัน-เวลานัดหมาย'); return; }
+  if (!problem){ showResult('err', '⚠️ กรุณาระบุปัญหา/อาการ'); return; }
+
+  const btn = document.getElementById('cj-btn');
+  const btnText = document.getElementById('cj-btn-text');
+  const btnIcon = document.getElementById('cj-btn-icon');
+  btn.disabled = true;
+  btnIcon.textContent = '⏳';
+  btnText.textContent = 'กำลังบันทึก...';
+  result.style.display = 'none';
+
+  const body = {
+    customer_record_id: custId,
+    tech_record_id:     techId || '',
+    job_type:           jobType,
+    priority:           priority,
+    scheduled_date:     date,
+    problem:            problem,
+    note:               note
+  };
+
+  fetch(N8N + '/create-job', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  })
+  .then(r => r.json())
+  .then(data => {
+    btn.disabled = false;
+    btnIcon.textContent = '💾';
+    btnText.textContent = 'บันทึกงานใหม่ → Lark';
+    if (data.ok) {
+      const jobLabel = data.job_no ? ' #' + data.job_no : '';
+      showResult('ok', '✅ สร้างงานสำเร็จ' + jobLabel + '\nสถานะ: ' + (data.status || 'นัดแล้ว'));
+      resetForm();
+    } else {
+      showResult('err', '❌ Error: ' + (data.error || 'ไม่ทราบสาเหตุ'));
+    }
+  })
+  .catch(err => {
+    btn.disabled = false;
+    btnIcon.textContent = '💾';
+    btnText.textContent = 'บันทึกงานใหม่ → Lark';
+    showResult('err', '❌ เชื่อมต่อ N8N ไม่ได้: ' + err.message);
+  });
+}
+
+function showResult(type, msg) {
+  const el = document.getElementById('cj-result');
+  el.className = 'cj-result ' + type;
+  el.textContent = msg;
+  el.style.display = 'block';
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function resetForm() {
+  document.getElementById('cj-customer').value = '';
+  document.getElementById('cj-jobtype').value  = 'PM/เปลี่ยนไส้กรอง';
+  document.getElementById('cj-priority').value = 'ปกติ';
+  document.getElementById('cj-date').value     = '';
+  document.getElementById('cj-tech').value     = '';
+  document.getElementById('cj-problem').value  = '';
+  document.getElementById('cj-note').value     = '';
+}
+
+function sendGPS(btn) {
+  const row = btn.closest('tr');
+  const cells = row.querySelectorAll('td');
+  const work = cells[0].textContent.trim();
+  const tech = cells[1].textContent.trim();
+  const customer = cells[2].textContent.trim();
+  const link = `https://n8n-production-b8f6.up.railway.app/webhook/gps-tech?work=${work}&tech=${encodeURIComponent(tech)}&cname=${encodeURIComponent(customer)}&addr=${encodeURIComponent('ลาดพร้าว71')}`;
+
+  const box = document.getElementById('link-box');
+  document.getElementById('link-text').textContent = link;
+  box.style.display = 'block';
+  navigator.clipboard.writeText(link).catch(()=>{});
+
+  btn.textContent = '✓ Copy แล้ว!';
+  btn.className = 'send-btn sent';
+  setTimeout(() => box.style.display = 'none', 5000);
+}
+
+function copyLink() {
+  const txt = document.getElementById('link-text').textContent;
+  navigator.clipboard.writeText(txt);
+  event.target.textContent = '✓';
+  setTimeout(() => event.target.textContent = 'Copy', 1500);
+}
+</script>
+</body>
+</html>
