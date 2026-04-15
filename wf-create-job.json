@@ -425,7 +425,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={\"page_size\":50,\"field_names\":[\"Name\",\"์Name\",\"Tech Name\",\"Lark Open ID\",\"Lark Account\",\"Role\",\"Account Status\"]}",
+        "body": "={\"page_size\":50,\"field_names\":[\"Name\",\"์Name\",\"Tech Name\",\"Tech Lark ID\",\"Role\",\"Account Status\"]}",
         "options": {}
       },
       "id": "ga-004",
@@ -436,7 +436,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const data = $input.first().json;\nconst token = $('Prep Attendance Query').first().json.lark_token;\nconst fromTs = $('Prep Attendance Query').first().json.from_ts;\nconst toTs   = $('Prep Attendance Query').first().json.to_ts;\nconst items = data.data?.items || [];\nconst txt = (v) => {\n  if (!v) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'number') return String(v);\n  if (Array.isArray(v)) { const f = v[0]; if (!f) return ''; return f.text || f.name || String(f); }\n  if (v.value) { const vv = v.value; if (typeof vv === 'string') return vv; if (Array.isArray(vv)) { const f = vv[0]; return f?.text || f?.name || ''; } }\n  return '';\n};\n// สร้าง list ของ Lark Open IDs เพื่อ query Attendance\nconst techs = items.map(it => ({\n  record_id: it.record_id,\n  nickname: txt(it.fields['์Name']) || txt(it.fields['Name']),\n  tech_name: txt(it.fields['Tech Name']),\n  lark_open_id: txt(it.fields['Lark Open ID']) || txt(it.fields['Lark Account']),\n  role: txt(it.fields['Role']),\n  status: txt(it.fields['Account Status'])\n})).filter(t => t.nickname);\nconst openIds = techs.map(t => t.lark_open_id).filter(id => id && id.startsWith('ou_'));\nreturn [{ json: { token, from_ts: fromTs, to_ts: toTs, techs, open_ids: openIds } }];"
+        "jsCode": "const data = $input.first().json;\nconst token = $('Prep Attendance Query').first().json.lark_token;\nconst fromTs = $('Prep Attendance Query').first().json.from_ts;\nconst toTs   = $('Prep Attendance Query').first().json.to_ts;\nconst items = data.data?.items || [];\nconst txt = (v) => {\n  if (!v) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'number') return String(v);\n  if (Array.isArray(v)) { const f = v[0]; if (!f) return ''; return f.text || f.name || String(f); }\n  if (v.value) { const vv = v.value; if (typeof vv === 'string') return vv; if (Array.isArray(vv)) { const f = vv[0]; return f?.text || f?.name || ''; } }\n  return '';\n};\n// สร้าง list ของ Lark Open IDs เพื่อ query Attendance\nconst techs = items.map(it => ({\n  record_id: it.record_id,\n  nickname: txt(it.fields['์Name']) || txt(it.fields['Name']),\n  tech_name: txt(it.fields['Tech Name']),\n  lark_open_id: txt(it.fields['Tech Lark ID']),\n  role: txt(it.fields['Role']),\n  status: txt(it.fields['Account Status'])\n})).filter(t => t.nickname);\nconst openIds = techs.map(t => t.lark_open_id).filter(id => id && id.startsWith('ou_'));\nreturn [{ json: { token, from_ts: fromTs, to_ts: toTs, techs, open_ids: openIds } }];"
       },
       "id": "ga-005",
       "name": "Build Attendance Request",
