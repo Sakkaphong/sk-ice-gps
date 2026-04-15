@@ -70,7 +70,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const data = $input.first().json;\nconst items = data.data?.items || [];\n// Lark pagination — ส่งกลับไปให้ dashboard โหลดหน้าต่อไปได้\nconst larkPageToken = data.data?.page_token || null;\nconst larkHasMore   = !!data.data?.has_more;\nconst txt = (v) => {\n  if (v === null || v === undefined) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'number') return String(v);\n  if (v.link) return v.link;\n  if (Array.isArray(v)) { if (!v.length) return ''; const f = v[0]; if (typeof f === 'string') return f; if (f.link) return f.link; return f.text || f.name || ''; }\n  if (v.value) { if (typeof v.value === 'string') return v.value; if (Array.isArray(v.value)) { const f = v.value[0]; if (!f) return ''; if (typeof f === 'string') return f; return f.text || f.name || ''; } }\n  return '';\n};\nconst customers = items.map(it => {\n  const f = it.fields;\n  const shopName   = txt(f['Shop Name']) || txt(f['Customer']) || '';\n  const lineUserId = txt(f['C.LINE User ID']) || txt(f['C.LINE ID']) || txt(f['LINE User ID']) || '';\n  const phone      = txt(f['Customer Phone 1']) || '';\n  const phone2     = txt(f['Customer Phone 2']) || '';\n  const contact    = txt(f['Customer Contact 1']) || '';\n  const contact2   = txt(f['Customer Contact 2']) || '';\n  const mapsUrl    = txt(f['Google Maps URL']) || txt(f['Machine Location']) || '';\n  const address    = txt(f['Address']) || '';\n  const peakCode   = txt(f['PEAK Code']) || '';\n  const custType   = txt(f['Customer Type']) || '';\n  const equipType  = txt(f['Equipment Type']) || '';\n  const health     = txt(f['Account Status']) || '';\n  const zone       = txt(f['Zone']) || '';\n  return {\n    record_id: it.record_id,\n    'Shop Name':          shopName,\n    'Customer ID':        txt(f['Customer ID']),\n    'Customer Phone 1':   phone,\n    'Customer Phone 2':   phone2,\n    'Customer Contact 1': contact,\n    'Customer Contact 2': contact2,\n    'C.LINE User ID':     lineUserId,\n    'Google Maps URL':    mapsUrl,\n    'Address':            address,\n    'PEAK Code':          peakCode,\n    'Customer Type':      custType,\n    'Equipment Type':     equipType,\n    'Account Status':     health,\n    shop_name: shopName, line_id: lineUserId, phone: phone, phone2: phone2,\n    maps_url: mapsUrl, address: address, contact: contact, contact2: contact2,\n    account_health: health, zone: zone\n  };\n}).filter(c => c['Shop Name']).sort((a, b) => a['Shop Name'].localeCompare(b['Shop Name'], 'th'));\nreturn [{ json: { customers, page_token: larkPageToken, has_more: larkHasMore } }];"
+        "jsCode": "const data = $input.first().json;\nconst items = data.data?.items || [];\n// Lark pagination — ส่งกลับไปให้ dashboard โหลดหน้าต่อไปได้\nconst larkPageToken = data.data?.page_token || null;\nconst larkHasMore   = !!data.data?.has_more;\nconst txt = (v) => {\n  if (v === null || v === undefined) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'number') return String(v);\n  if (v.link) return v.link;\n  if (Array.isArray(v)) { if (!v.length) return ''; const f = v[0]; if (typeof f === 'string') return f; if (f.link) return f.link; return f.text || f.name || ''; }\n  if (v.text) return v.text;\n  if (v.value) { if (typeof v.value === 'string') return v.value; if (Array.isArray(v.value)) { const f = v.value[0]; if (!f) return ''; if (typeof f === 'string') return f; return f.text || f.name || ''; } }\n  return '';\n};\nconst customers = items.map(it => {\n  const f = it.fields;\n  const shopName   = txt(f['Shop Name']) || txt(f['Customer']) || '';\n  const lineUserId = txt(f['C.LINE User ID']) || txt(f['C.LINE ID']) || txt(f['LINE User ID']) || '';\n  const phone      = txt(f['Customer Phone 1']) || '';\n  const phone2     = txt(f['Customer Phone 2']) || '';\n  const contact    = txt(f['Customer Contact 1']) || '';\n  const contact2   = txt(f['Customer Contact 2']) || '';\n  const mapsUrl    = txt(f['Google Maps URL']) || txt(f['Machine Location']) || '';\n  const address    = txt(f['Address']) || '';\n  const peakCode   = txt(f['PEAK Code']) || '';\n  const custType   = txt(f['Customer Type']) || '';\n  const equipType  = txt(f['Equipment Type']) || '';\n  const health     = txt(f['Account Status']) || '';\n  const zone       = txt(f['Zone']) || '';\n  return {\n    record_id: it.record_id,\n    'Shop Name':          shopName,\n    'Customer ID':        txt(f['Customer ID']),\n    'Customer Phone 1':   phone,\n    'Customer Phone 2':   phone2,\n    'Customer Contact 1': contact,\n    'Customer Contact 2': contact2,\n    'C.LINE User ID':     lineUserId,\n    'Google Maps URL':    mapsUrl,\n    'Address':            address,\n    'PEAK Code':          peakCode,\n    'Customer Type':      custType,\n    'Equipment Type':     equipType,\n    'Account Status':     health,\n    shop_name: shopName, line_id: lineUserId, phone: phone, phone2: phone2,\n    maps_url: mapsUrl, address: address, contact: contact, contact2: contact2,\n    account_health: health, zone: zone\n  };\n}).filter(c => c['Shop Name']).sort((a, b) => a['Shop Name'].localeCompare(b['Shop Name'], 'th'));\nreturn [{ json: { customers, page_token: larkPageToken, has_more: larkHasMore } }];"
       },
       "id": "gc-005",
       "name": "Format Customers",
@@ -159,7 +159,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const data = $input.first().json;\nconst items = data.data?.items || [];\nconst txt = (v) => {\n  if (v === null || v === undefined) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'number') return String(v);\n  if (v.link) return v.link;\n  if (Array.isArray(v)) { if (!v.length) return ''; const f = v[0]; if (typeof f === 'string') return f; return f.text || f.name || ''; }\n  if (v.value) { if (typeof v.value === 'string') return v.value; if (Array.isArray(v.value)) { const f = v.value[0]; if (!f) return ''; if (typeof f === 'string') return f; return f.text || f.name || ''; } }\n  return '';\n};\nconst technicians = items.map(it => {\n  const f = it.fields;\n  const staffName = txt(f['์Name']) || txt(f['Name']);\n  const techName = txt(f['Tech Name']);\n  const lineUserId = txt(f['Tech Line User ID']) || '';\n  const lineId = txt(f['Tech Line ID']) || '';\n  const role = txt(f['Role']) || '';\n  const staffId = txt(f['Staff ID']) || '';\n  const phone = txt(f['Staff Phone']) || '';\n  const larkId = txt(f['Tech Lark ID']) || '';\n  return {\n    record_id: it.record_id,\n    'Name': staffName,\n    'Tech Name': techName,\n    'Staff ID': staffId,\n    'Role': role,\n    'Staff Phone': phone,\n    'Tech Lark ID': larkId,\n    'Tech Line User ID': lineUserId,\n    'Tech Line ID': lineId,\n    name: staffName, tech_name: techName, staff_id: staffId,\n    line_id: lineUserId, phone: phone, role: role\n  };\n}).filter(t => t['Name']).sort((a, b) => a['Name'].localeCompare(b['Name'], 'th'));\nreturn [{ json: { technicians } }];"
+        "jsCode": "const data = $input.first().json;\nconst items = data.data?.items || [];\nconst txt = (v) => {\n  if (v === null || v === undefined) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'number') return String(v);\n  if (v.link) return v.link;\n  if (Array.isArray(v)) { if (!v.length) return ''; const f = v[0]; if (typeof f === 'string') return f; return f.text || f.name || ''; }\n  if (v.text) return v.text;\n  if (v.value) { if (typeof v.value === 'string') return v.value; if (Array.isArray(v.value)) { const f = v.value[0]; if (!f) return ''; if (typeof f === 'string') return f; return f.text || f.name || ''; } }\n  return '';\n};\nconst technicians = items.map(it => {\n  const f = it.fields;\n  const staffName = txt(f['์Name']) || txt(f['Name']);\n  const techName = txt(f['Tech Name']);\n  const lineUserId = txt(f['Tech Line User ID']) || '';\n  const lineId = txt(f['Tech Line ID']) || '';\n  const role = txt(f['Role']) || '';\n  const staffId = txt(f['Staff ID']) || '';\n  const phone = txt(f['Staff Phone']) || '';\n  const larkId = txt(f['Tech Lark ID']) || '';\n  return {\n    record_id: it.record_id,\n    'Name': staffName,\n    'Tech Name': techName,\n    'Staff ID': staffId,\n    'Role': role,\n    'Staff Phone': phone,\n    'Tech Lark ID': larkId,\n    'Tech Line User ID': lineUserId,\n    'Tech Line ID': lineId,\n    name: staffName, tech_name: techName, staff_id: staffId,\n    line_id: lineUserId, phone: phone, role: role\n  };\n}).filter(t => t['Name']).sort((a, b) => a['Name'].localeCompare(b['Name'], 'th'));\nreturn [{ json: { technicians } }];"
       },
       "id": "gt-005",
       "name": "Format Techs",
@@ -455,6 +455,123 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [1540, 860]
+    },
+
+    {
+      "parameters": { "httpMethod": "POST", "path": "complete-job", "responseMode": "responseNode", "options": {} },
+      "id": "cmpj-001", "name": "Webhook Complete Job",
+      "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [0, 1100],
+      "webhookId": "complete-job-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const b = $input.first().json.body || $input.first().json;\nconst parts = (b.parts || []).map(function(p){ return p.name + ' x' + p.qty; }).join(', ');\nreturn [{ json: {\n  job_id:           b.job_id           || '',\n  tech_name:        b.tech_name        || '',\n  customer_line_id: b.customer_line_id || '',\n  customer_name:    b.customer_name    || '',\n  parts_text:       parts,\n  notes:            b.notes            || '',\n  photo_count:      b.photo_count      || 0,\n  completed_at:     b.completed_at     || new Date().toISOString()\n}}];"
+      },
+      "id": "cmpj-002", "name": "Parse Complete Body",
+      "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [220, 1100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.larksuite.com/open-apis/auth/v3/tenant_access_token/internal",
+        "sendBody": true, "contentType": "json",
+        "bodyParameters": { "parameters": [
+          { "name": "app_id",     "value": "cli_a9500a1d84f89e18" },
+          { "name": "app_secret", "value": "GfKOk3vVSU4WwtXJKZEmHb2Q51JDOLgp" }
+        ]}, "options": {}
+      },
+      "id": "cmpj-003", "name": "Get Token [Complete]",
+      "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [440, 1100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const token = $('Get Token [Complete]').first().json.tenant_access_token;\nconst src = $('Parse Complete Body').first().json;\nreturn [{ json: {\n  ...src,\n  lark_token: token,\n  searchBody: JSON.stringify({ filter: { conjunction: 'and', conditions: [{ field_name: 'Job No.', operator: 'is', value: [src.job_id] }] } })\n}}];"
+      },
+      "id": "cmpj-004", "name": "Prep Search T5 Complete",
+      "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [660, 1100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.larksuite.com/open-apis/bitable/v1/apps/UOZZb0ImVaRYy1sDjUNjm3jqpye/tables/tblXb6wG3DI7FmzJ/records/search",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Authorization", "value": "={{ 'Bearer ' + $json.lark_token }}" }] },
+        "sendBody": true, "contentType": "raw", "rawContentType": "application/json",
+        "body": "={{ $json.searchBody }}", "options": {}
+      },
+      "id": "cmpj-005", "name": "Search T5 Complete",
+      "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [880, 1100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const res = $input.first().json;\nconst items = res.data && res.data.items ? res.data.items : [];\nconst record_id = items.length > 0 ? items[0].record_id : '';\nconst src = $('Parse Complete Body').first().json;\nconst token = $('Get Token [Complete]').first().json.tenant_access_token;\nconst fields = {\n  'Status': 'เสร็จแล้ว',\n  'Parts Used': src.parts_text || '',\n  'Note': src.notes || '',\n  'Photo Count': src.photo_count || 0\n};\nreturn [{ json: { ...src, record_id, lark_token: token, updateBody: JSON.stringify({ fields }) } }];"
+      },
+      "id": "cmpj-006", "name": "Prep Update T5 Complete",
+      "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [1100, 1100]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ 'https://open.larksuite.com/open-apis/bitable/v1/apps/UOZZb0ImVaRYy1sDjUNjm3jqpye/tables/tblXb6wG3DI7FmzJ/records/' + $json.record_id }}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Authorization", "value": "={{ 'Bearer ' + $json.lark_token }}" }] },
+        "sendBody": true, "contentType": "raw", "rawContentType": "application/json",
+        "body": "={{ $json.updateBody }}", "options": {}
+      },
+      "id": "cmpj-007", "name": "Update T5 Complete",
+      "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [1320, 1100]
+    },
+    {
+      "parameters": {
+        "conditions": { "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [{ "id": "cmpj-if-line", "leftValue": "={{ $('Parse Complete Body').first().json.customer_line_id }}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty", "singleValue": true } }],
+          "combinator": "and" }
+      },
+      "id": "cmpj-008", "name": "If LINE Complete",
+      "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [1540, 1100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const src = $('Parse Complete Body').first().json;\nconst text = '✅ งานเสร็จเรียบร้อยแล้วครับ!\\n\\n📋 รหัสงาน: ' + src.job_id + '\\n👷 ช่าง: ' + src.tech_name + (src.parts_text ? '\\n🔧 อะไหล่: ' + src.parts_text : '') + (src.notes ? '\\n📝 หมายเหตุ: ' + src.notes : '') + '\\n\\nขอบคุณที่ใช้บริการ SK ICE นะครับ 🧊';\nreturn [{ json: { lineBody: JSON.stringify({ to: src.customer_line_id, messages: [{ type: 'text', text: text }] }) } }];"
+      },
+      "id": "cmpj-009a", "name": "Prep LINE Complete",
+      "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [1760, 1000]
+    },
+    {
+      "parameters": {
+        "method": "POST", "url": "https://api.line.me/v2/bot/message/push",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Authorization", "value": "Bearer Ng84+hoTD9tPknpLmBAt1cwStuEhjo79Snj7EtTZOK8GBzOZvwQj0LnpspyFLu7GjVc6Y/kvCPmo/lLsvgjAqv+RGKHLpKA6fq7/nkHCW9otlToTdeAwoi+/f6Pcy24QMkqdI8hn1ceyqQXlN6+pUQdB04t89/1O/w1cDnyilFU=" }] },
+        "sendBody": true, "contentType": "raw", "rawContentType": "application/json",
+        "body": "={{ $json.lineBody }}", "options": {}
+      },
+      "id": "cmpj-009b", "name": "LINE Notify Complete",
+      "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [1980, 1000]
+    },
+    {
+      "parameters": {
+        "jsCode": "const src = $('Parse Complete Body').first().json;\nconst msg = 'SK ICE: งาน ' + src.job_id + ' เสร็จเรียบร้อยแล้วครับ ขอบคุณที่ใช้บริการ';\nreturn [{ json: { smsBody: JSON.stringify({ username: 'YOUR_SMS2PRO_USER', password: 'YOUR_SMS2PRO_PASS', from: 'SKICE', to: src.customer_phone || '', message: msg }) } }];"
+      },
+      "id": "cmpj-010a", "name": "Prep SMS Complete",
+      "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [1760, 1200]
+    },
+    {
+      "parameters": {
+        "method": "POST", "url": "https://portal.sms2pro.com/api/send",
+        "sendBody": true, "contentType": "raw", "rawContentType": "application/json",
+        "body": "={{ $json.smsBody }}", "options": {}
+      },
+      "id": "cmpj-010b", "name": "SMS Notify Complete",
+      "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [1980, 1200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"status\":\"ok\",\"message\":\"job completed\"}",
+        "options": { "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }] } }
+      },
+      "id": "cmpj-011", "name": "Respond Complete",
+      "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.1, "position": [2200, 1100]
     }
 
   ],
@@ -488,12 +605,28 @@
     "Get Token [GA]":          { "main": [[{ "node": "Prep Attendance Query",    "type": "main", "index": 0 }]] },
     "Prep Attendance Query":   { "main": [[{ "node": "Fetch T8 for Attendance", "type": "main", "index": 0 }]] },
     "Fetch T8 for Attendance": { "main": [[{ "node": "Format Team Status",      "type": "main", "index": 0 }]] },
-    "Format Team Status":      { "main": [[{ "node": "Respond Attendance",      "type": "main", "index": 0 }]] }
+    "Format Team Status":      { "main": [[{ "node": "Respond Attendance",      "type": "main", "index": 0 }]] },
+
+    "Webhook Complete Job":    { "main": [[{ "node": "Parse Complete Body",     "type": "main", "index": 0 }]] },
+    "Parse Complete Body":     { "main": [[{ "node": "Get Token [Complete]",    "type": "main", "index": 0 }]] },
+    "Get Token [Complete]":    { "main": [[{ "node": "Prep Search T5 Complete", "type": "main", "index": 0 }]] },
+    "Prep Search T5 Complete": { "main": [[{ "node": "Search T5 Complete",      "type": "main", "index": 0 }]] },
+    "Search T5 Complete":      { "main": [[{ "node": "Prep Update T5 Complete", "type": "main", "index": 0 }]] },
+    "Prep Update T5 Complete": { "main": [[{ "node": "Update T5 Complete",      "type": "main", "index": 0 }]] },
+    "Update T5 Complete":      { "main": [[{ "node": "If LINE Complete",        "type": "main", "index": 0 }]] },
+    "If LINE Complete":        { "main": [
+      [{ "node": "Prep LINE Complete",  "type": "main", "index": 0 }],
+      [{ "node": "Prep SMS Complete",   "type": "main", "index": 0 }]
+    ]},
+    "Prep LINE Complete":      { "main": [[{ "node": "LINE Notify Complete",    "type": "main", "index": 0 }]] },
+    "Prep SMS Complete":       { "main": [[{ "node": "SMS Notify Complete",     "type": "main", "index": 0 }]] },
+    "LINE Notify Complete":    { "main": [[{ "node": "Respond Complete",        "type": "main", "index": 0 }]] },
+    "SMS Notify Complete":     { "main": [[{ "node": "Respond Complete",        "type": "main", "index": 0 }]] }
   },
   "settings": { "executionOrder": "v1" },
   "staticData": null,
   "tags": [],
-  "triggerCount": 5,
+  "triggerCount": 6,
   "updatedAt": "2026-04-15T00:00:00.000Z",
   "versionId": "1"
 }
