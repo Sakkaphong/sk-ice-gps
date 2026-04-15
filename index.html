@@ -4,92 +4,225 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <title>SK ICE — เดินทาง</title>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBD2P5eugiU8LQg9rMsyA4bv8zu3xJqVRg"></script>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Helvetica Neue',Arial,sans-serif;background:#F0F4F8;min-height:100vh}
-.hdr{background:linear-gradient(135deg,#1E3A5F,#2E6DA4);padding:20px;text-align:center}
-.hdr h1{color:#fff;font-size:20px;font-weight:700}.hdr p{color:#A8D5F0;font-size:13px;margin-top:4px}
-.card{background:#fff;margin:14px;border-radius:12px;padding:18px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
-.status-box{text-align:center;padding:16px}
-.status-icon{font-size:52px;margin-bottom:10px}
-.status-text{font-size:17px;font-weight:700;color:#2C3E50}
-.status-sub{font-size:13px;color:#888;margin-top:4px}
-.info-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #F5F5F5}
-.info-row:last-child{border:none}
-.lbl{color:#999;font-size:13px}.val{color:#2C3E50;font-size:13px;font-weight:600;text-align:right;max-width:60%}
-.btn{width:100%;padding:15px;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;margin-top:10px}
-.btn-go{background:#27AE60;color:#fff}.btn-go:disabled{background:#ccc}
-.btn-here{background:#2E6DA4;color:#fff}.btn-here:disabled{background:#ccc}
-.gps-bar{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#F8F9FA;border-radius:8px;margin-top:10px;font-size:12px;color:#666}
-.dot{width:9px;height:9px;border-radius:50%;background:#ccc;flex-shrink:0}
-.dot.on{background:#27AE60;animation:pulse 1.5s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.nav-btn{background:#FF6B35;color:#fff;text-decoration:none;text-align:center;padding:13px;border-radius:10px;font-weight:700;font-size:14px;margin-top:10px;display:none}
-/* In-app browser warning */
-.browser-warn{background:#FFF3CD;border:2px solid #FFC107;border-radius:12px;padding:16px;margin:14px;display:none}
-.browser-warn h3{color:#856404;font-size:15px;margin-bottom:8px}
-.browser-warn p{color:#664d03;font-size:13px;line-height:1.6;margin-bottom:8px}
-.copy-btn{background:#1E3A5F;color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:700;width:100%;cursor:pointer;margin-bottom:8px}
-.chrome-btn{background:#4285F4;color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:700;width:100%;cursor:pointer;margin-bottom:8px}
-.safari-btn{background:#006CFF;color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:700;width:100%;cursor:pointer}
-/* Open in Chrome bar — ใต้ header */
-.open-bar{display:flex;gap:0;margin:0;background:#1a1a2e}
-/* GPS fix steps */
-.fix-box{background:#FFF5F5;border:2px solid #F44336;border-radius:12px;padding:16px;margin-top:12px;display:none}
-.fix-box h3{color:#C62828;font-size:14px;margin-bottom:10px}
-.fix-step{display:flex;gap:10px;margin-bottom:8px;align-items:flex-start}
-.fix-num{background:#C62828;color:#fff;width:22px;height:22px;border-radius:50%;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
-.fix-text{font-size:12px;color:#555;line-height:1.5}
-.fix-path{font-family:monospace;background:#F5F5F5;padding:2px 6px;border-radius:4px;font-size:11px;color:#C62828}
+@font-face { font-family:'SukhumvitSet'; src:url('fonts/SukhumvitSet-Bold.ttf'); font-weight:700; font-display:swap; }
+@font-face { font-family:'SukhumvitSet'; src:url('fonts/SukhumvitSet-SemiBold.ttf'); font-weight:600; font-display:swap; }
+@font-face { font-family:'SukhumvitSet'; src:url('fonts/SukhumvitSet-Medium.ttf'); font-weight:500; font-display:swap; }
+@font-face { font-family:'SukhumvitSet'; src:url('fonts/SukhumvitSet-Text.ttf'); font-weight:400; font-display:swap; }
+
+:root {
+  --font: 'SukhumvitSet', 'Helvetica Neue', Arial, sans-serif;
+  --bg: #F5F5F7;
+  --card: #FFFFFF;
+  --text: #1D1D1F;
+  --muted: #6E6E73;
+  --border: #E5E5EA;
+  --accent: #0071E3;
+  --green: #34C759;
+  --red: #FF3B30;
+  --radius: 16px;
+  --radius-pill: 980px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { font-family:var(--font); background:var(--bg); min-height:100vh; overflow-x:hidden; }
+
+/* ── Nav ── */
+.topnav {
+  background: #000; height: 64px;
+  display: flex; align-items: center; gap: 14px;
+  padding: 0 20px; position: sticky; top: 0; z-index: 100;
+}
+.topnav-logo { width:32px; height:32px; border-radius:50%; overflow:hidden; flex-shrink:0; }
+.topnav-logo img { width:100%; height:auto; display:block; }
+.topnav-info { flex: 1; }
+.topnav-title { font-size:15px; font-weight:700; color:#F5F5F7; letter-spacing:-.3px; }
+.topnav-sub { font-size:11px; color:rgba(245,245,247,.5); margin-top:1px; font-weight:400; }
+.topnav-tag {
+  font-size:12px; font-weight:700; color:#fff;
+  background: #0071E3; padding:5px 12px; border-radius:var(--radius-pill);
+}
+
+/* ── Open-bar ── */
+.open-bar {
+  display: none; gap: 8px; padding: 10px 16px;
+  background: #FFF9E6; border-bottom: 1px solid #FFE082;
+}
+.open-bar button {
+  flex:1; border:none; border-radius:var(--radius-pill);
+  padding: 10px; font-size:13px; font-weight:700; cursor:pointer;
+  font-family: var(--font);
+}
+.btn-chrome { background:#4285F4; color:#fff; }
+.btn-safari { background:#006CFF; color:#fff; }
+
+/* ── In-app warning ── */
+.inapp-warn {
+  display:none; margin:16px; border-radius:var(--radius);
+  background:#FFF3CD; padding:18px; border:none;
+}
+.inapp-warn h3 { font-size:15px; font-weight:700; color:#856404; margin-bottom:8px; }
+.inapp-warn p { font-size:13px; color:#664d03; line-height:1.6; margin-bottom:12px; }
+.inapp-btn {
+  width:100%; border:none; border-radius:var(--radius-pill);
+  padding:12px; font-size:13px; font-weight:700; cursor:pointer;
+  margin-bottom:8px; font-family:var(--font);
+}
+
+/* ── Content ── */
+.content { padding: 28px 16px; max-width: 520px; margin: 0 auto; }
+
+/* ── Status card ── */
+.status-card {
+  background: var(--card); border-radius: var(--radius);
+  padding: 32px 22px; text-align: center; margin-bottom: 24px;
+  box-shadow: 0 2px 12px rgba(0,0,0,.06);
+}
+.status-icon { font-size: 58px; margin-bottom: 16px; line-height: 1; }
+.status-text { font-size: 21px; font-weight: 700; color: var(--text); letter-spacing: -.4px; }
+.status-sub { font-size: 13px; color: var(--muted); margin-top: 7px; }
+
+/* ── GPS bar ── */
+.gps-bar {
+  display:flex; align-items:center; gap:8px;
+  background:#F5F5F7; border-radius:10px;
+  padding:10px 14px; margin-top:16px; font-size:12px; color:var(--muted);
+}
+.dot { width:9px; height:9px; border-radius:50%; background:#ccc; flex-shrink:0; }
+.dot.on { background:var(--green); animation:pulse 1.5s infinite; }
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:.4} }
+
+/* ── Fix box ── */
+.fix-box {
+  display:none; background:#FFF5F5; border-radius:12px;
+  padding:16px; margin-top:14px;
+}
+.fix-box h3 { color:#C62828; font-size:14px; font-weight:700; margin-bottom:10px; }
+.fix-step { display:flex; gap:10px; margin-bottom:8px; align-items:flex-start; }
+.fix-num {
+  background:#C62828; color:#fff; width:22px; height:22px; border-radius:50%;
+  font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; margin-top:1px;
+}
+.fix-text { font-size:12px; color:#555; line-height:1.6; }
+
+/* ── Info card ── */
+.info-card {
+  background:var(--card); border-radius:var(--radius);
+  padding:4px 20px; margin-bottom:14px;
+  box-shadow:0 2px 12px rgba(0,0,0,.06);
+}
+.info-row {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:13px 0; border-bottom:1px solid var(--border);
+}
+.info-row:last-child { border:none; }
+.lbl { font-size:13px; color:var(--muted); }
+.val { font-size:13px; font-weight:600; color:var(--text); text-align:right; max-width:65%; }
+
+/* ── Map button ── */
+.nav-btn {
+  display:none; width:100%; padding:14px; border-radius:var(--radius-pill);
+  background: linear-gradient(to right, #0A84FF, #0071E3);
+  color:#fff; text-align:center; text-decoration:none;
+  font-size:15px; font-weight:700; margin-top:14px;
+}
+
+/* ── Action buttons ── */
+.btn-card {
+  background:var(--card); border-radius:var(--radius);
+  padding:20px; box-shadow:0 2px 12px rgba(0,0,0,.06);
+  display:flex; flex-direction:column; gap:10px;
+}
+.btn {
+  width:100%; padding:16px; border:none; border-radius:var(--radius-pill);
+  font-size:16px; font-weight:700; cursor:pointer; font-family:var(--font);
+  transition:opacity .15s, transform .1s;
+}
+.btn:active { transform:scale(.98); opacity:.85; }
+.btn-go { background:var(--green); color:#fff; }
+.btn-go:disabled { background:#C7F5D5; color:#A0D5B0; }
+.btn-here { background:var(--accent); color:#fff; }
+.btn-here:disabled { background:#D0E8FF; color:#A0C0E0; }
+
+/* ── Map ── */
+.map-card { background:var(--card); border-radius:var(--radius); overflow:hidden; margin:14px 0; box-shadow:0 2px 12px rgba(0,0,0,.06); }
+#map { width:100%; height:300px; }
 </style>
 </head>
 <body>
 
-<!-- In-app browser warning -->
-<div class="browser-warn" id="inapp-warn">
-  <h3>⚠️ GPS ใช้งานไม่ได้ใน browser นี้</h3>
+<!-- Nav -->
+<div class="topnav">
+  <div class="topnav-logo">
+    <img src="../SK LOGO.png" alt="SK ICE">
+  </div>
+  <div class="topnav-info">
+    <div class="topnav-title">SK ICE</div>
+    <div class="topnav-sub" id="hdr-sub">กำลังโหลด...</div>
+  </div>
+  <div class="topnav-tag" id="nav-work-tag">-</div>
+</div>
+
+<!-- Open-bar -->
+<div class="open-bar" id="open-bar">
+  <button class="btn-chrome" onclick="openChrome()">เปิดใน Chrome</button>
+  <button class="btn-safari" onclick="openSafari()">เปิดใน Safari</button>
+</div>
+
+<!-- In-app warning -->
+<div class="inapp-warn" id="inapp-warn">
+  <h3>GPS ใช้งานไม่ได้ใน browser นี้</h3>
   <p>กรุณาเปิดใน <b>Chrome</b> หรือ <b>Safari</b> เพื่อใช้ GPS</p>
-  <button class="chrome-btn" onclick="openChrome()">🟢 เปิดใน Google Chrome</button>
-  <button class="safari-btn" onclick="openSafari()">🧭 เปิดใน Safari</button>
-  <button class="copy-btn" onclick="copyURL()">📋 Copy ลิงค์ (วางใน browser เอง)</button>
+  <button class="inapp-btn" style="background:#4285F4;color:#fff;" onclick="openChrome()">เปิดใน Google Chrome</button>
+  <button class="inapp-btn" style="background:#006CFF;color:#fff;" onclick="openSafari()">เปิดใน Safari</button>
+  <button class="inapp-btn" style="background:#1D1D1F;color:#fff;" onclick="copyURL()">Copy ลิงค์</button>
 </div>
 
-<div class="hdr"><h1>🧊 SK ICE</h1><p id="hdr-sub">กำลังโหลด...</p></div>
+<div class="content">
 
-<!-- Open in browser bar — ใต้ header -->
-<div class="open-bar" id="open-bar" style="display:none">
-  <button onclick="openChrome()" style="flex:1;background:#4285F4;color:#fff;border:none;border-radius:0;padding:12px 8px;font-size:14px;font-weight:700;cursor:pointer">🟢 เปิดใน Chrome</button>
-  <button onclick="openSafari()" style="flex:1;background:#006CFF;color:#fff;border:none;border-radius:0;padding:12px 8px;font-size:14px;font-weight:700;cursor:pointer">🧭 เปิดใน Safari</button>
-</div>
-
-<div class="card">
-  <div class="status-box">
-    <div class="status-icon" id="s-icon">📍</div>
+  <!-- Status -->
+  <div class="status-card">
+    <div class="status-icon" id="s-icon">🧭</div>
     <div class="status-text" id="s-text">กดเริ่มเดินทาง</div>
     <div class="status-sub" id="s-sub">ระบบจะติดตาม GPS และแจ้งลูกค้าอัตโนมัติ</div>
+    <div class="gps-bar">
+      <div class="dot" id="dot"></div>
+      <span id="gps-label">รอเริ่มต้น</span>
+    </div>
+    <div class="fix-box" id="fix-box">
+      <h3>วิธีแก้ GPS บน iPhone</h3>
+      <div class="fix-step"><div class="fix-num">1</div><div class="fix-text">เปิด <b>การตั้งค่า</b> → <b>ความเป็นส่วนตัว</b> → <b>บริการระบุตำแหน่ง</b></div></div>
+      <div class="fix-step"><div class="fix-num">2</div><div class="fix-text">หา <b>Safari</b> → ตั้งเป็น <b>"ขณะใช้แอป"</b></div></div>
+      <div class="fix-step"><div class="fix-num">3</div><div class="fix-text">กลับมา Safari → <b>ปิดแล้วเปิดใหม่</b> → กดปุ่มอีกครั้ง</div></div>
+    </div>
   </div>
-  <div class="gps-bar"><div class="dot" id="dot"></div><span id="gps-label">รอเริ่มต้น</span></div>
-  <div class="fix-box" id="fix-box">
-    <h3>🔧 วิธีแก้ GPS บน iPhone</h3>
-    <div class="fix-step"><div class="fix-num">1</div><div class="fix-text">เปิด <b>การตั้งค่า</b> → <b>ความเป็นส่วนตัว</b> → <b>บริการระบุตำแหน่ง</b></div></div>
-    <div class="fix-step"><div class="fix-num">2</div><div class="fix-text">หา <b>Safari</b> → ตั้งเป็น <b>"ขณะใช้แอป"</b></div></div>
-    <div class="fix-step"><div class="fix-num">3</div><div class="fix-text">กลับมา Safari → <b>ปิดแล้วเปิดใหม่</b> → กดปุ่มอีกครั้ง</div></div>
+
+  <!-- Map -->
+  <div class="map-card">
+    <div id="map"></div>
   </div>
+
+  <!-- Info -->
+  <div class="info-card">
+    <div class="info-row"><span class="lbl">รหัสงาน</span><span class="val" id="d-work">-</span></div>
+    <div class="info-row"><span class="lbl">ช่าง</span><span class="val" id="d-tech">-</span></div>
+    <div class="info-row"><span class="lbl">ลูกค้า</span><span class="val" id="d-cust">-</span></div>
+    <div class="info-row"><span class="lbl">ที่อยู่</span><span class="val" id="d-addr">-</span></div>
+    <div class="info-row"><span class="lbl">อัปเดตล่าสุด</span><span class="val" id="d-time">-</span></div>
+    <a id="nav-btn" class="nav-btn" target="_blank">เปิด Google Maps นำทาง</a>
+  </div>
+
+  <!-- Buttons -->
+  <div class="btn-card">
+    <button class="btn btn-go" id="btn-go" onclick="startGPS()">เริ่มเดินทาง</button>
+    <button class="btn btn-here" id="btn-here" onclick="arrived()" disabled>ถึงที่แล้ว</button>
+  </div>
+
 </div>
 
-<div class="card">
-  <div class="info-row"><span class="lbl">รหัสงาน</span><span class="val" id="d-work">-</span></div>
-  <div class="info-row"><span class="lbl">ช่าง</span><span class="val" id="d-tech">-</span></div>
-  <div class="info-row"><span class="lbl">ลูกค้า</span><span class="val" id="d-cust">-</span></div>
-  <div class="info-row"><span class="lbl">ที่อยู่</span><span class="val" id="d-addr">-</span></div>
-  <div class="info-row"><span class="lbl">อัปเดตล่าสุด</span><span class="val" id="d-time">-</span></div>
-  <a id="nav-btn" class="nav-btn" target="_blank">🗺 เปิด Google Maps นำทาง</a>
-</div>
-
-<div class="card">
-  <button class="btn btn-go" id="btn-go" onclick="startGPS()">🚗 เริ่มเดินทาง</button>
-  <button class="btn btn-here" id="btn-here" onclick="arrived()" disabled>✅ ถึงที่แล้ว</button>
-</div>
+<script src="https://unpkg.com/lucide@latest"></script>
 
 <script>
 const p = new URLSearchParams(location.search);
@@ -103,11 +236,57 @@ const DLAT = p.get('dlat') || '';
 const DLNG = p.get('dlng') || '';
 const BASE = 'https://n8n-production-b8f6.up.railway.app/webhook';
 
-document.getElementById('hdr-sub').textContent = '👷 ' + T;
-document.getElementById('d-work').textContent  = W;
-document.getElementById('d-tech').textContent  = T;
-document.getElementById('d-cust').textContent  = CN;
-document.getElementById('d-addr').textContent  = AD || '-';
+document.getElementById('hdr-sub').textContent = T;
+document.getElementById('nav-work-tag').textContent = W;
+document.getElementById('d-work').textContent = W;
+document.getElementById('d-tech').textContent = T;
+document.getElementById('d-cust').textContent = CN;
+document.getElementById('d-addr').textContent = AD || '-';
+
+// ── Initialize Google Maps ──
+const map = new google.maps.Map(document.getElementById('map'), {
+  center: { lat: 13.75, lng: 100.5 },
+  zoom: 14,
+  zoomControl: true,
+  mapTypeControl: false,
+  streetViewControl: false,
+  fullscreenControl: false
+});
+
+function makeIcon(emoji, bg) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44">
+    <circle cx="22" cy="22" r="19" fill="${bg}" stroke="white" stroke-width="3"/>
+    <text x="22" y="29" text-anchor="middle" font-size="18">${emoji}</text>
+  </svg>`;
+  return {
+    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+    scaledSize: new google.maps.Size(44, 44),
+    anchor: new google.maps.Point(22, 22)
+  };
+}
+
+const techIcon    = makeIcon('🚗', '#FFD60A');
+const arrivedIcon = makeIcon('🔧', '#FF9500');
+const doneIcon    = makeIcon('✅', '#34C759');
+const custIcon    = makeIcon('📍', '#FF3B30');
+
+const infoWindow = new google.maps.InfoWindow();
+
+let techMarker = null, custMarker = null;
+
+// Show customer location if available
+if(DLAT && DLNG) {
+  custMarker = new google.maps.Marker({
+    position: { lat: parseFloat(DLAT), lng: parseFloat(DLNG) },
+    map: map, icon: custIcon, title: CN
+  });
+  custMarker.addListener('click', () => {
+    infoWindow.setContent('<b>' + CN + '</b><br>' + AD);
+    infoWindow.open(map, custMarker);
+  });
+  map.setCenter({ lat: parseFloat(DLAT), lng: parseFloat(DLNG) });
+  map.setZoom(15);
+}
 if(MAPS || AD || (DLAT && DLNG)){
   const n = document.getElementById('nav-btn');
   n.style.display = 'block';
@@ -116,108 +295,83 @@ if(MAPS || AD || (DLAT && DLNG)){
     : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(AD)}&travelmode=driving`);
 }
 
-// ── ตรวจ session เก่าเมื่อโหลด ──
-window.addEventListener('load', ()=>{ setTimeout(checkResume, 500); });
-
-// In-App Browser Detection
 (function(){
   const ua = navigator.userAgent || '';
   const isInApp = /Line\/|FBAN|FBAV|FB_IAB|Instagram|Snapchat|Twitter|MicroMessenger/.test(ua)
     || (/(iPhone|iPod|iPad)/.test(ua) && !/Safari\//.test(ua) && /AppleWebKit/.test(ua));
-  const isChrome = /CriOS/.test(ua);
-  const isSafari = /Safari\//.test(ua) && !/CriOS/.test(ua) && !/Chrome/.test(ua);
-
   if(isInApp){
     document.getElementById('inapp-warn').style.display = 'block';
     document.getElementById('btn-go').disabled = true;
-    document.getElementById('btn-go').textContent = '⚠️ กรุณาเปิดใน Chrome หรือ Safari';
+    document.getElementById('btn-go').textContent = 'กรุณาเปิดใน Chrome หรือ Safari';
   } else {
-    // Always show open-bar on mobile
     const isMobile = /iPhone|iPad|iPod|Android/.test(ua);
-    if(isMobile){
-      document.getElementById('open-bar').style.display = 'flex';
-    }
+    if(isMobile) document.getElementById('open-bar').style.display = 'flex';
   }
 })();
 
 function openChrome(){
-  // googlechromes:// opens HTTPS URLs in Chrome iOS
-  const chromeUrl = location.href.replace('https://', 'googlechromes://').replace('http://', 'googlechrome://');
-  location.href = chromeUrl;
-  // fallback after 2s if Chrome not installed
+  const u = location.href.replace('https://','googlechromes://').replace('http://','googlechrome://');
+  location.href = u;
   setTimeout(()=>{ copyURL(); }, 2000);
 }
-
-function openSafari(){
-  // x-web-search:// doesn't work well; best is to copy URL
-  copyURL();
-  alert('วาง (Paste) URL ใน Safari แล้วเปิดครับ');
-}
-
+function openSafari(){ copyURL(); alert('วาง (Paste) URL ใน Safari แล้วเปิดครับ'); }
 function copyURL(){
   const url = location.href;
   if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(url).then(()=>alert('✅ Copy แล้ว!\nวาง (Paste) ใน Chrome หรือ Safari แล้วเปิด'));
-  } else {
-    prompt('Copy URL นี้:', url);
-  }
+    navigator.clipboard.writeText(url).then(()=>alert('Copy แล้ว!\nวาง (Paste) ใน Chrome หรือ Safari แล้วเปิด'));
+  } else { prompt('Copy URL นี้:', url); }
 }
 
 let watchId = null, count = 0;
 const SESSION_KEY = 'gps_session_' + W;
 
-// ── บันทึก session ลง localStorage ──
 function saveSession(status){
   localStorage.setItem(SESSION_KEY, JSON.stringify({
-    active: true, status: status || 'traveling',
+    active:true, status:status||'traveling',
     job_id:W, tech_name:T, customer_line_id:CL,
     customer_name:CN, job_address:AD, count:count,
-    saved_at: new Date().toISOString()
+    saved_at:new Date().toISOString()
   }));
 }
 function clearSession(){ localStorage.removeItem(SESSION_KEY); }
 
-// ── ตรวจสอบ session เก่าเมื่อโหลดหน้า ──
 function checkResume(){
-  let s;
-  try { s = JSON.parse(localStorage.getItem(SESSION_KEY)); } catch(e){}
-  if(!s || !s.active) return;
-  // session เก่าไม่เกิน 4 ชั่วโมง
-  if(new Date() - new Date(s.saved_at) > 4*60*60*1000){ clearSession(); return; }
-
-  count = s.count || 1; // ไม่ส่ง is_first อีก
-  if(s.status === 'arrived'){
-    // ถึงแล้ว — แสดงปุ่มจบงาน
-    document.getElementById('s-icon').textContent = '🔧';
-    document.getElementById('s-text').textContent = 'ถึงแล้ว (resume)';
-    document.getElementById('s-sub').textContent  = 'กดจบงานเมื่อเสร็จ';
-    const btnGo = document.getElementById('btn-go');
-    btnGo.textContent = '🔧 จบงาน'; btnGo.style.background='#E74C3C';
-    btnGo.disabled = false; btnGo.onclick = done;
-    document.getElementById('btn-here').disabled = true;
+  let s; try{ s=JSON.parse(localStorage.getItem(SESSION_KEY)); }catch(e){}
+  if(!s||!s.active) return;
+  if(new Date()-new Date(s.saved_at) > 4*60*60*1000){ clearSession(); return; }
+  count = s.count||1;
+  if(s.status==='arrived'){
+    document.getElementById('s-icon').textContent='🔧';
+    document.getElementById('s-text').textContent='ถึงแล้ว (resume)';
+    document.getElementById('s-sub').textContent='กดจบงานเมื่อเสร็จ';
+    const btnGo=document.getElementById('btn-go');
+    btnGo.textContent='จบงาน'; btnGo.style.background='var(--red)';
+    btnGo.disabled=false; btnGo.onclick=done;
+    document.getElementById('btn-here').disabled=true;
+    if(techMarker) techMarker.setIcon(arrivedIcon);
   } else {
-    // traveling — resume GPS อัตโนมัติ
-    document.getElementById('s-text').textContent = '🔄 เชื่อมต่อ GPS ใหม่...';
-    document.getElementById('gps-label').textContent = 'กำลัง resume...';
-    startGPS(true); // true = resume, ไม่ต้องส่ง is_first
+    document.getElementById('s-text').textContent='เชื่อมต่อ GPS ใหม่...';
+    document.getElementById('gps-label').textContent='กำลัง resume...';
+    startGPS(true);
   }
 }
 
+window.addEventListener('load', ()=>{ setTimeout(checkResume, 500); });
+document.addEventListener('visibilitychange', ()=>{
+  if(!document.hidden && watchId===null) checkResume();
+});
+
 function startGPS(isResume){
-  if(!navigator.geolocation){
-    showFixBox('เบราว์เซอร์ไม่รองรับ GPS');
-    return;
-  }
-  if(!isResume) count = 0; // reset เฉพาะตอนเริ่มใหม่จริงๆ
+  if(!navigator.geolocation){ showFixBox('เบราว์เซอร์ไม่รองรับ GPS'); return; }
+  if(!isResume) count=0;
   document.getElementById('btn-go').disabled = true;
-  document.getElementById('btn-go').textContent = '📍 Tracking...';
+  document.getElementById('btn-go').textContent = 'Tracking...';
   document.getElementById('btn-here').disabled = false;
   document.getElementById('s-icon').textContent = '🚗';
-  document.getElementById('s-text').textContent = isResume ? '🚗 กำลังเดินทาง (ต่อ)' : 'กำลังเดินทาง';
+  document.getElementById('s-text').textContent = isResume?'กำลังเดินทาง (ต่อ)':'กำลังเดินทาง';
   document.getElementById('s-sub').textContent  = 'ลูกค้าได้รับลิงค์แผนที่แล้ว';
   document.getElementById('dot').className = 'dot on';
   document.getElementById('gps-label').textContent = 'กำลังขอ GPS...';
-  // ส่ง GPS ทุก 30 วินาที (ไม่ใช้ watchPosition เพราะยิงถี่เกิน)
   sendOnce();
   watchId = setInterval(sendOnce, 60000);
 }
@@ -229,75 +383,78 @@ function sendOnce(){
 
 function sendGPS(pos){
   const data = {
-    job_id: W, tech_name: T, customer_line_id: CL, customer_name: CN,
-    lat: pos.coords.latitude, lng: pos.coords.longitude,
-    accuracy: Math.round(pos.coords.accuracy),
-    timestamp: new Date().toISOString(),
-    is_first: (count === 0),
-    job_address: AD
+    job_id:W, tech_name:T, customer_line_id:CL, customer_name:CN,
+    lat:pos.coords.latitude, lng:pos.coords.longitude,
+    accuracy:Math.round(pos.coords.accuracy),
+    timestamp:new Date().toISOString(),
+    is_first:(count===0), job_address:AD
   };
   count++;
-  saveSession('traveling'); // บันทึกทุกครั้งที่ส่ง GPS
+  saveSession('traveling');
   document.getElementById('d-time').textContent = new Date().toLocaleTimeString('th-TH');
   document.getElementById('gps-label').textContent = 'ส่งแล้ว ' + count + ' ครั้ง | ±' + data.accuracy + 'm';
   document.getElementById('fix-box').style.display = 'none';
-  fetch(BASE + '/gps-update', {
-    method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)
-  }).catch(()=>{});
-}
 
-// ── resume เมื่อกลับมาที่ tab ──
-document.addEventListener('visibilitychange', ()=>{
-  if(!document.hidden && watchId === null){
-    checkResume();
+  // Update map with technician location
+  const ll = { lat: data.lat, lng: data.lng };
+  if(!techMarker) {
+    techMarker = new google.maps.Marker({
+      position: ll, map: map, icon: techIcon, title: T
+    });
+    techMarker.addListener('click', () => {
+      infoWindow.setContent('<b>' + T + '</b><br>ตำแหน่งปัจจุบัน');
+      infoWindow.open(map, techMarker);
+    });
+    if(custMarker) {
+      const bounds = new google.maps.LatLngBounds();
+      bounds.extend(ll);
+      bounds.extend(custMarker.getPosition());
+      map.fitBounds(bounds);
+    } else { map.setCenter(ll); map.setZoom(15); }
+  } else {
+    techMarker.setPosition(ll);
   }
-});
+
+  fetch(BASE+'/gps-update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).catch(()=>{});
+}
 
 function gpsErr(e){
   document.getElementById('dot').className = 'dot';
-  if(e.code === 1){
-    showFixBox('ไม่ได้รับอนุญาต GPS');
-  } else if(e.code === 2){
-    document.getElementById('gps-label').textContent = 'ไม่พบสัญญาณ GPS — ออกไปที่โล่ง';
-  } else {
-    document.getElementById('gps-label').textContent = 'GPS timeout — ลองใหม่';
-    document.getElementById('btn-go').disabled = false;
-    document.getElementById('btn-go').textContent = '🔄 ลองใหม่';
-  }
+  if(e.code===1){ showFixBox('ไม่ได้รับอนุญาต GPS'); }
+  else if(e.code===2){ document.getElementById('gps-label').textContent='ไม่พบสัญญาณ GPS — ออกไปที่โล่ง'; }
+  else { document.getElementById('gps-label').textContent='GPS timeout — ลองใหม่'; document.getElementById('btn-go').disabled=false; document.getElementById('btn-go').textContent='ลองใหม่'; }
 }
 
 function showFixBox(msg){
-  document.getElementById('gps-label').textContent = '❌ ' + msg;
+  document.getElementById('gps-label').textContent = msg;
   document.getElementById('fix-box').style.display = 'block';
   document.getElementById('btn-go').disabled = false;
-  document.getElementById('btn-go').textContent = '🔄 ลองใหม่';
-  document.getElementById('s-icon').textContent  = '⚠️';
+  document.getElementById('btn-go').textContent = 'ลองใหม่';
+  document.getElementById('s-icon').textContent = '⚠️';
   document.getElementById('s-text').textContent  = 'GPS ถูกบล็อค';
   document.getElementById('s-sub').textContent   = 'ดูวิธีแก้ด้านล่าง';
 }
 
 function arrived(){
-  saveSession('arrived'); // บันทึกว่าถึงแล้ว
-  if(watchId) clearInterval(watchId);
+  saveSession('arrived');
+  if(watchId){ clearInterval(watchId); watchId=null; }
   document.getElementById('btn-here').disabled = true;
   document.getElementById('s-icon').textContent = '🔧';
   document.getElementById('s-text').textContent = 'ถึงแล้ว!';
   document.getElementById('s-sub').textContent  = 'กำลังแจ้งลูกค้า...';
   document.getElementById('dot').className = 'dot';
   document.getElementById('gps-label').textContent = 'หยุด tracking';
-  fetch(BASE + '/gps-arrived', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({job_id:W, tech_name:T, customer_line_id:CL, customer_name:CN})
+  if(techMarker){ techMarker.setIcon(arrivedIcon); infoWindow.setContent('<b>'+T+'</b><br>🔧 ถึงแล้ว!'); }
+  fetch(BASE+'/gps-arrived',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({job_id:W,tech_name:T,customer_line_id:CL,customer_name:CN})
   }).then(()=>{
-    document.getElementById('s-sub').textContent = 'แจ้งลูกค้าแล้ว ✅';
+    document.getElementById('s-sub').textContent = 'แจ้งลูกค้าแล้ว';
     const btnGo = document.getElementById('btn-go');
-    btnGo.textContent = '🔧 จบงาน';
-    btnGo.style.background = '#E74C3C';
+    btnGo.textContent = 'จบงาน';
+    btnGo.style.background = 'var(--red)';
     btnGo.disabled = false;
     btnGo.onclick = done;
-  }).catch(()=>{
-    document.getElementById('s-sub').textContent = 'แจ้งแล้ว (offline)';
-  });
+  }).catch(()=>{ document.getElementById('s-sub').textContent='แจ้งแล้ว (offline)'; });
 }
 
 function done(){
@@ -306,17 +463,18 @@ function done(){
   document.getElementById('s-icon').textContent = '✅';
   document.getElementById('s-text').textContent = 'จบงานแล้ว!';
   document.getElementById('s-sub').textContent  = 'กำลังแจ้งลูกค้าและหัวหน้า...';
-  fetch(BASE + '/gps-done', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({job_id:W, tech_name:T, customer_line_id:CL, customer_name:CN})
+  if(techMarker){ techMarker.setIcon(doneIcon); infoWindow.setContent('<b>'+T+'</b><br>✅ งานเสร็จแล้ว'); }
+  fetch(BASE+'/gps-done',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({job_id:W,tech_name:T,customer_line_id:CL,customer_name:CN})
   }).then(()=>{
-    clearSession(); // ล้าง session เมื่อจบงาน
-    document.getElementById('s-sub').textContent = 'แจ้งเรียบร้อยแล้ว ✅';
-    btnGo.textContent = '✅ เสร็จสิ้น';
-  }).catch(()=>{
-    document.getElementById('s-sub').textContent = 'แจ้งแล้ว (offline)';
-  });
+    clearSession();
+    document.getElementById('s-sub').textContent = 'แจ้งเรียบร้อยแล้ว';
+    btnGo.textContent = 'เสร็จสิ้น';
+  }).catch(()=>{ document.getElementById('s-sub').textContent='แจ้งแล้ว (offline)'; });
 }
+
+// Initialize Lucide icons
+if(typeof lucide !== 'undefined') lucide.createIcons();
 </script>
 </body>
 </html>
