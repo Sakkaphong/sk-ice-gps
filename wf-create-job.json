@@ -425,7 +425,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={\"page_size\":50,\"field_names\":[\"Name\",\"์Name\",\"Tech Name\",\"Tech Lark ID\",\"Role\",\"Account Status\"]}",
+        "body": "={\"page_size\":50,\"field_names\":[\"Name\",\"์Name\",\"Tech Name\",\"Tech Lark ID\",\"Role\",\"Account Status\",\"Work Status\"]}",
         "options": {}
       },
       "id": "ga-004",
@@ -436,45 +436,13 @@
     },
     {
       "parameters": {
-        "jsCode": "const data = $input.first().json;\nconst token = $('Prep Attendance Query').first().json.lark_token;\nconst fromTs = $('Prep Attendance Query').first().json.from_ts;\nconst toTs   = $('Prep Attendance Query').first().json.to_ts;\nconst items = data.data?.items || [];\nconst txt = (v) => {\n  if (!v) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'number') return String(v);\n  if (Array.isArray(v)) { const f = v[0]; if (!f) return ''; return f.text || f.name || String(f); }\n  if (v.value) { const vv = v.value; if (typeof vv === 'string') return vv; if (Array.isArray(vv)) { const f = vv[0]; return f?.text || f?.name || ''; } }\n  return '';\n};\n// สร้าง list ของ Lark Open IDs เพื่อ query Attendance\nconst techs = items.map(it => ({\n  record_id: it.record_id,\n  nickname: txt(it.fields['์Name']) || txt(it.fields['Name']),\n  tech_name: txt(it.fields['Tech Name']),\n  lark_open_id: txt(it.fields['Tech Lark ID']),\n  role: txt(it.fields['Role']),\n  status: txt(it.fields['Account Status'])\n})).filter(t => t.nickname);\nconst openIds = techs.map(t => t.lark_open_id).filter(id => id && id.startsWith('ou_'));\nreturn [{ json: { token, from_ts: fromTs, to_ts: toTs, techs, open_ids: openIds } }];"
+        "jsCode": "const data = $input.first().json;\nconst items = data.data?.items || [];\nconst txt = (v) => {\n  if (!v) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'number') return String(v);\n  if (Array.isArray(v)) { const f = v[0]; if (!f) return ''; return f.text || f.name || String(f); }\n  if (v.value) { const vv = v.value; if (typeof vv === 'string') return vv; if (Array.isArray(vv)) { const f = vv[0]; return f?.text || f?.name || ''; } }\n  return '';\n};\nconst team = items.map(it => {\n  const f = it.fields;\n  const nickname  = txt(f['์Name']) || txt(f['Name']);\n  const techName  = txt(f['Tech Name']);\n  const workSt    = txt(f['Work Status']) || 'หยุด';\n  const acctSt    = txt(f['Account Status']);\n  const statusMap = { 'เข้างาน': 'working', 'ลา': 'leave', 'หยุด': 'off' };\n  const status    = statusMap[workSt] || 'off';\n  return { nickname, tech_name: techName, name: nickname, checked_in: status === 'working', check_in_time: null, status, work_status: workSt, acct_status: acctSt };\n}).filter(t => t.nickname && t.acct_status !== 'Inactive');\nteam.sort((a, b) => (b.checked_in ? 1 : 0) - (a.checked_in ? 1 : 0));\nreturn [{ json: { team } }];"
       },
       "id": "ga-005",
-      "name": "Build Attendance Request",
+      "name": "Format Team Status",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [880, 860]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://open.larksuite.com/open-apis/attendance/v1/user_flows/query?employee_type=open_id",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "Authorization", "value": "={{ 'Bearer ' + $('Build Attendance Request').first().json.token }}" }
-          ]
-        },
-        "sendBody": true,
-        "contentType": "raw",
-        "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ user_ids: $('Build Attendance Request').first().json.open_ids, check_time_from: String($('Build Attendance Request').first().json.from_ts), check_time_to: String($('Build Attendance Request').first().json.to_ts), need_overtime_result: false }) }}",
-        "options": {}
-      },
-      "id": "ga-006",
-      "name": "Fetch Lark Attendance",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [1100, 860]
-    },
-    {
-      "parameters": {
-        "jsCode": "const attData = $input.first().json;\nconst { techs } = $('Build Attendance Request').first().json;\nconst flows = attData.data?.user_flow_results || [];\n// สร้าง map: open_id → latest check_in record\nconst checkMap = {};\nflows.forEach(f => {\n  if (f.type === 1) { // type 1 = เข้างาน\n    if (!checkMap[f.user_id] || f.check_time > checkMap[f.user_id]) {\n      checkMap[f.user_id] = f.check_time;\n    }\n  }\n});\n// ตรวจว่าใครมี check_out หลัง check_in (type 2 = ออกงาน)\nconst checkOutMap = {};\nflows.forEach(f => {\n  if (f.type === 2) {\n    if (!checkOutMap[f.user_id] || f.check_time > checkOutMap[f.user_id]) {\n      checkOutMap[f.user_id] = f.check_time;\n    }\n  }\n});\nconst team = techs.map(t => {\n  const oid = t.lark_open_id;\n  const checkIn = checkMap[oid] || null;\n  const checkOut = checkOutMap[oid] || null;\n  let status = 'off';\n  if (checkIn) {\n    // ถ้า check_out หลัง check_in = ออกงานแล้ว, ถ้าไม่มี check_out = ยังทำงานอยู่\n    status = (checkOut && checkOut > checkIn) ? 'off' : 'working';\n  }\n  return {\n    nickname: t.nickname,\n    tech_name: t.tech_name,\n    name: t.nickname,\n    checked_in: !!checkIn,\n    check_in_time: checkIn,\n    check_out_time: checkOut,\n    status\n  };\n});\n// เรียงลำดับ: ทำงานอยู่ก่อน\nteam.sort((a, b) => (b.checked_in ? 1 : 0) - (a.checked_in ? 1 : 0));\nreturn [{ json: { team } }];"
-      },
-      "id": "ga-007",
-      "name": "Merge Attendance",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [1320, 860]
     },
     {
       "parameters": {
@@ -519,10 +487,8 @@
     "Webhook Get Attendance":  { "main": [[{ "node": "Get Token [GA]",          "type": "main", "index": 0 }]] },
     "Get Token [GA]":          { "main": [[{ "node": "Prep Attendance Query",    "type": "main", "index": 0 }]] },
     "Prep Attendance Query":   { "main": [[{ "node": "Fetch T8 for Attendance", "type": "main", "index": 0 }]] },
-    "Fetch T8 for Attendance": { "main": [[{ "node": "Build Attendance Request","type": "main", "index": 0 }]] },
-    "Build Attendance Request":{ "main": [[{ "node": "Fetch Lark Attendance",   "type": "main", "index": 0 }]] },
-    "Fetch Lark Attendance":   { "main": [[{ "node": "Merge Attendance",        "type": "main", "index": 0 }]] },
-    "Merge Attendance":        { "main": [[{ "node": "Respond Attendance",      "type": "main", "index": 0 }]] }
+    "Fetch T8 for Attendance": { "main": [[{ "node": "Format Team Status",      "type": "main", "index": 0 }]] },
+    "Format Team Status":      { "main": [[{ "node": "Respond Attendance",      "type": "main", "index": 0 }]] }
   },
   "settings": { "executionOrder": "v1" },
   "staticData": null,
