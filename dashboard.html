@@ -1303,8 +1303,8 @@ async function loadCustomers() {
     const sel = document.getElementById('customerSelect');
     sel.innerHTML = '<option value="">— เลือกลูกค้า —</option><option value="NEW">➕ ลูกค้าใหม่ (กรอกเอง)</option>';
     // แสดง active ก่อน แล้วตามด้วย inactive (เพื่อให้เลือกได้ทุกคน)
-    const active   = customersData.filter(c => cHealth(c) !== 'Inactive');
-    const inactive = customersData.filter(c => cHealth(c) === 'Inactive');
+    const active   = customersData.filter(c => cHealth(c) !== 'Inactive' && !cHealth(c).toLowerCase().includes('inact'));
+    const inactive = customersData.filter(c => cHealth(c) === 'Inactive' || cHealth(c).toLowerCase().includes('inact'));
     active.forEach((c, i) => {
       const opt = document.createElement('option');
       opt.value = customersData.indexOf(c);
@@ -1412,10 +1412,11 @@ function cMaps(c)       { return c['Google Maps URL'] || c.maps_url || c['Maps U
 function cCustId(c)     { return c['Customer ID'] || c.customer_id || '—'; }
 function cPeakCode(c)   { return c['PEAK Code'] || c.peak_code || '—'; }
 function cCustType(c)   { return c['Customer Type'] || c.customer_type || '—'; }
-function cHealth(c)     { return c['Account Health'] || c.account_health || ''; }
+function cHealth(c)     { return c['Account Status'] || c.account_health || c.account_status || ''; }
 function cHealthBadge(c) {
   const h = cHealth(c);
   if (!h || h === '—') return '';
+  if (h === 'Active')        return ''; // Active = ปกติ ไม่ต้องแสดง badge
   if (h === 'Inactive')      return `<span style="font-size:10px;font-weight:700;color:#EF4444;background:#FEE2E2;padding:2px 7px;border-radius:20px;">⛔ Inactive</span>`;
   if (h === 'Overdue')       return `<span style="font-size:10px;font-weight:700;color:#F59E0B;background:#FEF3C7;padding:2px 7px;border-radius:20px;">⚠️ Overdue</span>`;
   if (h === 'Critical')      return `<span style="font-size:10px;font-weight:700;color:#EF4444;background:#FEE2E2;padding:2px 7px;border-radius:20px;">🔴 Critical</span>`;
@@ -1804,7 +1805,7 @@ function renderWithView(arr) {
 function customerCardHTML(c) {
   const pay = cPaymentTag(c);
   const health = cHealthBadge(c);
-  const isInactive = cHealth(c) === 'Inactive';
+  const isInactive = cHealth(c) === 'Inactive' || (cHealth(c) !== '' && cHealth(c) !== 'Active' && cHealth(c) !== 'Healthy' && cHealth(c) !== '—' && cHealth(c).toLowerCase().includes('inact'));
   return `<div class="cust-list-item" style="${isInactive ? 'opacity:.6;' : ''}">
     <div class="cust-av" style="${isInactive ? 'background:#94A3B8;' : ''}">${custInitial(c)}</div>
     <div style="flex:1;min-width:0;">
