@@ -153,7 +153,7 @@ html, body {
 
 <script>
 const BASE = 'https://n8n-production-b8f6.up.railway.app/webhook';
-const GPS_POS_URL = 'https://script.google.com/macros/s/AKfycby4bz_lqC2mVSd1PTN6Qa0v-debtTZmxKa2A6VlnXL0qxJHHQR5ghe7bvQqe3JR1jWK/exec';
+const GPS_POS_URL = BASE + '/gps-position';
 const POLL_MS = 60000;
 
 const p = new URLSearchParams(location.search);
@@ -197,14 +197,7 @@ let techMarker=null, meMarker=null;
 let myLat=null, myLng=null, techLat=null, techLng=null;
 let firstLoad=true, pollTimer=null, isDone=false;
 
-// Test/Dummy technician marker for demo
-techLat=13.7563; techLng=100.5018; // Near Lumpini Park Bangkok
-techMarker=L.marker([techLat,techLng],{icon:techIcon}).bindPopup('<b>ช่างทดสอบ</b><br>กำลังเดินทาง').addTo(map);
-document.getElementById('btn-tech').style.display='flex';
-document.getElementById('s-icon').textContent='🚗';
-document.getElementById('s-text').textContent='ช่างกำลังเดินทางมาหาคุณ';
-document.getElementById('s-sub').textContent='อัปเดตล่าสุด: '+new Date().toLocaleTimeString('th-TH');
-document.getElementById('dot').className='dot on';
+// Marker จะแสดงเมื่อดึงข้อมูลจริงจาก GAS
 
 // Browser detection
 (function(){
