@@ -38,7 +38,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const token = $input.first().json.tenant_access_token;\nreturn [{ json: { lark_token: token, searchBody: JSON.stringify({ page_size: 200 }) } }];"
+        "jsCode": "const token = $input.first().json.tenant_access_token;\n// รับ page_token จาก query string สำหรับ pagination (โหลดเพิ่ม)\nconst webhookData = $('Webhook Get Customers').first().json;\nconst incomingPageToken = (webhookData.query && webhookData.query.page_token) ? webhookData.query.page_token : '';\n// ไม่ระบุ field_names เพราะ Lark จะ return primary field ไม่ครบถ้า specify\nconst body = { page_size: 500 };\nif (incomingPageToken) body.page_token = incomingPageToken;\nreturn [{ json: { lark_token: token, searchBody: JSON.stringify(body) } }];"
       },
       "id": "gc-003",
       "name": "Prep Search T1",
@@ -49,7 +49,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://open.larksuite.com/open-apis/bitable/v1/apps/UOZZb0ImVaRYy1sDjUNjm3jqpye/tables/tblU7hDhX2UG4Tbi/records/search",
+        "url": "https://open.larksuite.com/open-apis/bitable/v1/apps/UOZZb0ImVaRYy1sDjUNjm3jqpye/tables/tblKZmsPEQ1jmRlx/records/search",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -70,7 +70,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const data = $input.first().json;\nconst items = data.data?.items || [];\nconst txt = (v) => {\n  if (v === null || v === undefined) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'number') return String(v);\n  if (v.link) return v.link;\n  if (v.number !== undefined) return String(v.number || '');\n  if (Array.isArray(v)) { if (!v.length) return ''; const f = v[0]; if (typeof f === 'string') return f; if (f.link) return f.link; return f.text || f.name || ''; }\n  if (v.value) { if (typeof v.value === 'string') return v.value; if (Array.isArray(v.value)) { const f = v.value[0]; if (!f) return ''; if (typeof f === 'string') return f; return f.text || f.name || ''; } }\n  return '';\n};\nconst customers = items.map(it => {\n  const f = it.fields;\n  // T1: shop name is in 'Customer' field (text array), NOT 'Shop Name' (linked record)\n  const shopName = txt(f['Customer']);\n  const lineId = txt(f['LINE User ID']) || txt(f['C.LINE User ID']) || txt(f['LINE']) || '';\n  const phone = txt(f['Phone 1']) || txt(f['Phone']) || txt(f['Tel']) || '';\n  // T1: maps URL is in 'Machine Location' field (URL type), NOT 'Google Maps URL'\n  const mapsUrl = txt(f['Machine Location']) || txt(f['Google Maps URL']) || '';\n  const address = txt(f['Address']) || txt(f['Shop Address']) || '';\n  const equipType = txt(f['Equipment Type']) || '';\n  const machineStatus = txt(f['Machine Status']) || '';\n  return {\n    record_id: it.record_id,\n    'Shop Name': shopName,\n    'Customer ID': txt(f['Customer ID']),\n    'Phone 1': phone,\n    'Contact Person 1': txt(f['Contact Person 1']) || '',\n    'LINE User ID': lineId,\n    'Google Maps URL': mapsUrl,\n    'Address': address,\n    'PEAK Code': txt(f['PEAK Code']) || '',\n    'Customer Type': txt(f['Customer Type']) || '',\n    'Equipment Type': equipType,\n    'Machine Status': machineStatus,\n    shop_name: shopName, line_id: lineId, phone: phone, maps_url: mapsUrl, address: address\n  };\n}).filter(c => c['Shop Name']).sort((a, b) => a['Shop Name'].localeCompare(b['Shop Name'], 'th'));\nreturn [{ json: { customers } }];"
+        "jsCode": "const data = $input.first().json;\nconst items = data.data?.items || [];\n// Lark pagination — ส่งกลับไปให้ dashboard โหลดหน้าต่อไปได้\nconst larkPageToken = data.data?.page_token || null;\nconst larkHasMore   = !!data.data?.has_more;\nconst txt = (v) => {\n  if (v === null || v === undefined) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'number') return String(v);\n  if (v.link) return v.link;\n  if (Array.isArray(v)) { if (!v.length) return ''; const f = v[0]; if (typeof f === 'string') return f; if (f.link) return f.link; return f.text || f.name || ''; }\n  if (v.value) { if (typeof v.value === 'string') return v.value; if (Array.isArray(v.value)) { const f = v.value[0]; if (!f) return ''; if (typeof f === 'string') return f; return f.text || f.name || ''; } }\n  return '';\n};\nconst customers = items.map(it => {\n  const f = it.fields;\n  const shopName   = txt(f['Shop Name']) || txt(f['Customer']) || '';\n  const lineUserId = txt(f['C.LINE User ID']) || txt(f['C.LINE ID']) || txt(f['LINE User ID']) || '';\n  const phone      = txt(f['Customer Phone 1']) || '';\n  const phone2     = txt(f['Customer Phone 2']) || '';\n  const contact    = txt(f['Customer Contact 1']) || '';\n  const contact2   = txt(f['Customer Contact 2']) || '';\n  const mapsUrl    = txt(f['Google Maps URL']) || txt(f['Machine Location']) || '';\n  const address    = txt(f['Address']) || '';\n  const peakCode   = txt(f['PEAK Code']) || '';\n  const custType   = txt(f['Customer Type']) || '';\n  const equipType  = txt(f['Equipment Type']) || '';\n  const health     = txt(f['Account Status']) || '';\n  const zone       = txt(f['Zone']) || '';\n  return {\n    record_id: it.record_id,\n    'Shop Name':          shopName,\n    'Customer ID':        txt(f['Customer ID']),\n    'Customer Phone 1':   phone,\n    'Customer Phone 2':   phone2,\n    'Customer Contact 1': contact,\n    'Customer Contact 2': contact2,\n    'C.LINE User ID':     lineUserId,\n    'Google Maps URL':    mapsUrl,\n    'Address':            address,\n    'PEAK Code':          peakCode,\n    'Customer Type':      custType,\n    'Equipment Type':     equipType,\n    'Account Status':     health,\n    shop_name: shopName, line_id: lineUserId, phone: phone, phone2: phone2,\n    maps_url: mapsUrl, address: address, contact: contact, contact2: contact2,\n    account_health: health, zone: zone\n  };\n}).filter(c => c['Shop Name']).sort((a, b) => a['Shop Name'].localeCompare(b['Shop Name'], 'th'));\nreturn [{ json: { customers, page_token: larkPageToken, has_more: larkHasMore } }];"
       },
       "id": "gc-005",
       "name": "Format Customers",
@@ -81,7 +81,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ ok: true, customers: $json.customers }) }}",
+        "responseBody": "={{ JSON.stringify({ ok: true, customers: $json.customers, page_token: $json.page_token, has_more: $json.has_more }) }}",
         "options": { "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }] } }
       },
       "id": "gc-006",
@@ -159,7 +159,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const data = $input.first().json;\nconst items = data.data?.items || [];\nconst txt = (v) => {\n  if (v === null || v === undefined) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'number') return String(v);\n  if (v.link) return v.link;\n  if (Array.isArray(v)) { if (!v.length) return ''; const f = v[0]; if (typeof f === 'string') return f; return f.text || f.name || ''; }\n  if (v.value) { if (typeof v.value === 'string') return v.value; if (Array.isArray(v.value)) { const f = v.value[0]; if (!f) return ''; if (typeof f === 'string') return f; return f.text || f.name || ''; } }\n  return '';\n};\nconst technicians = items.map(it => {\n  const f = it.fields;\n  const name = txt(f['Name']);\n  const techName = txt(f['Tech Name']);\n  const lineUserId = txt(f['Tech Line User ID']) || '';\n  const lineId = txt(f['Tech Line ID']) || '';\n  const role = txt(f['Role']) || '';\n  const staffId = txt(f['Staff ID']) || '';\n  const phone = txt(f['Staff Phone']) || '';\n  const larkId = txt(f['Tech Lark ID']) || '';\n  return {\n    record_id: it.record_id,\n    'Name': name,\n    'Tech Name': techName,\n    'Staff ID': staffId,\n    'Role': role,\n    'Staff Phone': phone,\n    'Tech Lark ID': larkId,\n    'Tech Line User ID': lineUserId,\n    'Tech Line ID': lineId,\n    name: name, tech_name: techName, staff_id: staffId,\n    line_id: lineUserId, phone: phone, role: role\n  };\n}).filter(t => t['Name']).sort((a, b) => a['Name'].localeCompare(b['Name'], 'th'));\nreturn [{ json: { technicians } }];"
+        "jsCode": "const data = $input.first().json;\nconst items = data.data?.items || [];\nconst txt = (v) => {\n  if (v === null || v === undefined) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'number') return String(v);\n  if (v.link) return v.link;\n  if (Array.isArray(v)) { if (!v.length) return ''; const f = v[0]; if (typeof f === 'string') return f; return f.text || f.name || ''; }\n  if (v.value) { if (typeof v.value === 'string') return v.value; if (Array.isArray(v.value)) { const f = v.value[0]; if (!f) return ''; if (typeof f === 'string') return f; return f.text || f.name || ''; } }\n  return '';\n};\nconst technicians = items.map(it => {\n  const f = it.fields;\n  const staffName = txt(f['์Name']) || txt(f['Name']);\n  const techName = txt(f['Tech Name']);\n  const lineUserId = txt(f['Tech Line User ID']) || '';\n  const lineId = txt(f['Tech Line ID']) || '';\n  const role = txt(f['Role']) || '';\n  const staffId = txt(f['Staff ID']) || '';\n  const phone = txt(f['Staff Phone']) || '';\n  const larkId = txt(f['Tech Lark ID']) || '';\n  return {\n    record_id: it.record_id,\n    'Name': staffName,\n    'Tech Name': techName,\n    'Staff ID': staffId,\n    'Role': role,\n    'Staff Phone': phone,\n    'Tech Lark ID': larkId,\n    'Tech Line User ID': lineUserId,\n    'Tech Line ID': lineId,\n    name: staffName, tech_name: techName, staff_id: staffId,\n    line_id: lineUserId, phone: phone, role: role\n  };\n}).filter(t => t['Name']).sort((a, b) => a['Name'].localeCompare(b['Name'], 'th'));\nreturn [{ json: { technicians } }];"
       },
       "id": "gt-005",
       "name": "Format Techs",
@@ -226,7 +226,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const token = $('Get Token [CJ]').first().json.tenant_access_token;\nconst src   = $('Parse Body').first().json;\n\nlet scheduledMs = null;\nif (src.scheduled_date) {\n  try { scheduledMs = new Date(src.scheduled_date).getTime(); } catch(e) {}\n}\n\nconst fields = {};\nfields['Status'] = 'นัดแล้ว';\nif (src.job_type)    fields['Job Type']       = src.job_type;\nif (src.priority)    fields['Priority']       = src.priority;\nif (src.problem)     fields['Problem']        = src.problem;\nif (src.note)        fields['Note']           = src.note;\nfields['Source'] = src.source;\nif (scheduledMs)     fields['Scheduled Date'] = scheduledMs;\nif (src.customer_record_id) fields['Customer']    = { link_record_ids: [src.customer_record_id] };\nif (src.tech_record_id)     fields['Technician']  = { link_record_ids: [src.tech_record_id] };\n\nreturn [{ json: { ...src, lark_token: token, createBody: JSON.stringify({ fields }) } }];"
+        "jsCode": "const token = $('Get Token [CJ]').first().json.tenant_access_token;\nconst src   = $('Parse Body').first().json;\n\nlet scheduledMs = null;\nif (src.scheduled_date) {\n  try { scheduledMs = new Date(src.scheduled_date).getTime(); } catch(e) {}\n}\n\nconst fields = {};\nfields['Status'] = 'นัดแล้ว';\nif (src.job_type)    fields['Job Type']       = src.job_type;\nif (src.priority)    fields['Priority']       = src.priority;\nif (src.problem)     fields['Defect']         = src.problem;\nif (src.note)        fields['Note']           = src.note;\nfields['Source'] = src.source;\nif (scheduledMs)     fields['Scheduled Date'] = scheduledMs;\nif (src.customer_record_id) fields['Customer']    = { link_record_ids: [src.customer_record_id] };\nif (src.tech_record_id)     fields['Technician']  = { link_record_ids: [src.tech_record_id] };\n\nreturn [{ json: { ...src, lark_token: token, createBody: JSON.stringify({ fields }) } }];"
       },
       "id": "cj-004",
       "name": "Prep T5 Body",
@@ -366,6 +366,95 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [1100, 660]
+    },
+
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "get-attendance",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "ga-001",
+      "name": "Webhook Get Attendance",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 860],
+      "webhookId": "get-attendance-webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.larksuite.com/open-apis/auth/v3/tenant_access_token/internal",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "app_id",     "value": "cli_a9500a1d84f89e18" },
+            { "name": "app_secret", "value": "GfKOk3vVSU4WwtXJKZEmHb2Q51JDOLgp" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ga-002",
+      "name": "Get Token [GA]",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 860]
+    },
+    {
+      "parameters": {
+        "jsCode": "const token = $input.first().json.tenant_access_token;\n// วันนี้ 00:00 - 23:59 (UTC+7)\nconst now = new Date();\nconst bkkOffset = 7 * 60 * 60 * 1000;\nconst todayBKK = new Date(Math.floor((now.getTime() + bkkOffset) / 86400000) * 86400000 - bkkOffset);\nconst from = Math.floor(todayBKK.getTime() / 1000);\nconst to   = from + 86399;\nreturn [{ json: { lark_token: token, from_ts: from, to_ts: to } }];"
+      },
+      "id": "ga-003",
+      "name": "Prep Attendance Query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 860]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.larksuite.com/open-apis/bitable/v1/apps/UOZZb0ImVaRYy1sDjUNjm3jqpye/tables/tbl8YdXSoeanL8FO/records/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "={{ 'Bearer ' + $('Prep Attendance Query').first().json.lark_token }}" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={\"page_size\":50,\"field_names\":[\"Name\",\"์Name\",\"Tech Name\",\"Tech Lark ID\",\"Role\",\"Account Status\",\"Work Status\"]}",
+        "options": {}
+      },
+      "id": "ga-004",
+      "name": "Fetch T8 for Attendance",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 860]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst items = data.data?.items || [];\nconst txt = (v) => {\n  if (!v) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'number') return String(v);\n  if (Array.isArray(v)) { const f = v[0]; if (!f) return ''; return f.text || f.name || String(f); }\n  if (v.value) { const vv = v.value; if (typeof vv === 'string') return vv; if (Array.isArray(vv)) { const f = vv[0]; return f?.text || f?.name || ''; } }\n  return '';\n};\nconst team = items.map(it => {\n  const f = it.fields;\n  const nickname  = txt(f['์Name']) || txt(f['Name']);\n  const techName  = txt(f['Tech Name']);\n  const workSt    = txt(f['Work Status']) || 'หยุด';\n  const acctSt    = txt(f['Account Status']);\n  const statusMap = { 'เข้างาน': 'working', 'ลา': 'leave', 'หยุด': 'off' };\n  const status    = statusMap[workSt] || 'off';\n  return { nickname, tech_name: techName, name: nickname, checked_in: status === 'working', check_in_time: null, status, work_status: workSt, acct_status: acctSt };\n}).filter(t => t.nickname && t.acct_status !== 'Inactive');\nteam.sort((a, b) => (b.checked_in ? 1 : 0) - (a.checked_in ? 1 : 0));\nreturn [{ json: { team } }];"
+      },
+      "id": "ga-005",
+      "name": "Format Team Status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 860]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, team: $json.team }) }}",
+        "options": { "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }] } }
+      },
+      "id": "ga-008",
+      "name": "Respond Attendance",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1540, 860]
     }
 
   ],
@@ -393,12 +482,18 @@
     "Get Token [GJ]":   { "main": [[{ "node": "Prep Search T5",  "type": "main", "index": 0 }]] },
     "Prep Search T5":   { "main": [[{ "node": "Fetch T5 Jobs",   "type": "main", "index": 0 }]] },
     "Fetch T5 Jobs":    { "main": [[{ "node": "Format Jobs",     "type": "main", "index": 0 }]] },
-    "Format Jobs":      { "main": [[{ "node": "Respond Jobs",    "type": "main", "index": 0 }]] }
+    "Format Jobs":      { "main": [[{ "node": "Respond Jobs",    "type": "main", "index": 0 }]] },
+
+    "Webhook Get Attendance":  { "main": [[{ "node": "Get Token [GA]",          "type": "main", "index": 0 }]] },
+    "Get Token [GA]":          { "main": [[{ "node": "Prep Attendance Query",    "type": "main", "index": 0 }]] },
+    "Prep Attendance Query":   { "main": [[{ "node": "Fetch T8 for Attendance", "type": "main", "index": 0 }]] },
+    "Fetch T8 for Attendance": { "main": [[{ "node": "Format Team Status",      "type": "main", "index": 0 }]] },
+    "Format Team Status":      { "main": [[{ "node": "Respond Attendance",      "type": "main", "index": 0 }]] }
   },
   "settings": { "executionOrder": "v1" },
   "staticData": null,
   "tags": [],
-  "triggerCount": 4,
+  "triggerCount": 5,
   "updatedAt": "2026-04-15T00:00:00.000Z",
   "versionId": "1"
 }
