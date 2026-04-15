@@ -1270,8 +1270,8 @@ body { font-family: var(--font); background: var(--bg); min-height: 100vh; color
 </div>
 
 <script>
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbwi2yQ_sYem7lMTyNDcw4VPJ416hgPQcHERioJRhsmIe2Ih8SIFoU9OUTKMkPgOPAW9/exec';
-const N8N_INIT = 'https://n8n-production-b8f6.up.railway.app/webhook/gps-init';
+const N8N_BASE = 'https://n8n-production-b8f6.up.railway.app/webhook';
+const N8N_INIT = N8N_BASE + '/gps-init';
 
 let currentJobId = 'WRK-001';
 let selectedPriority = 'med';
@@ -1295,7 +1295,7 @@ window.addEventListener('load', () => {
 // ───── Load Customers ─────
 async function loadCustomers() {
   try {
-    const r = await fetch(GAS_URL + '?action=customers', { redirect: 'follow' });
+    const r = await fetch(N8N_BASE + '/get-customers', { redirect: 'follow' });
     const d = await r.json();
     customersData = d.customers || [];
     const sel = document.getElementById('customerSelect');
@@ -1314,7 +1314,7 @@ async function loadCustomers() {
 // ───── Load Technicians ─────
 async function loadTechnicians() {
   try {
-    const r = await fetch(GAS_URL + '?action=technicians', { redirect: 'follow' });
+    const r = await fetch(N8N_BASE + '/get-techs', { redirect: 'follow' });
     const d = await r.json();
     techsData = d.technicians || [];
     const sel = document.getElementById('techSelect');
@@ -1335,11 +1335,11 @@ async function loadRecentJobs() {
   const list = document.getElementById('jobsList');
   list.innerHTML = '<div class="loading-text">⏳ กำลังโหลด...</div>';
   try {
-    const r = await fetch(GAS_URL + '?action=jobs', { redirect: 'follow' });
+    const r = await fetch(N8N_BASE + '/get-jobs', { redirect: 'follow' });
     const d = await r.json();
     renderJobs(d.jobs || []);
   } catch(e) {
-    list.innerHTML = '<div class="loading-text">❌ โหลดไม่ได้</div>';
+    list.textContent = '❌ โหลดไม่ได้';
   }
 }
 
@@ -1369,9 +1369,15 @@ function renderJobs(jobs) {
 // ───── Load Next Job ID ─────
 async function loadNextJobId() {
   try {
-    const r = await fetch(GAS_URL + '?action=nextjobid', { redirect: 'follow' });
+    const r = await fetch(N8N_BASE + '/get-jobs', { redirect: 'follow' });
     const d = await r.json();
-    currentJobId = d.next_job_id || 'WRK-001';
+    const jobs = d.jobs || [];
+    let maxNum = 0;
+    jobs.forEach(j => {
+      const m = (j.job_id || '').match(/WRK-(\d+)/i);
+      if (m) { const n = parseInt(m[1]); if (n > maxNum) maxNum = n; }
+    });
+    currentJobId = 'WRK-' + String(maxNum + 1).padStart(3, '0');
   } catch(e) {
     currentJobId = 'WRK-001';
   }
@@ -1635,14 +1641,17 @@ function switchTab(tab, btn) {
 function renderOverview() {
   const list = document.getElementById('ov-jobs-list');
   list.innerHTML = '<div class="loading-text">⏳ โหลด...</div>';
-  fetch(GAS_URL + '?action=jobs', { redirect: 'follow' })
+  const NEW_ST  = ['new','นัดแล้ว','รอช่าง','รอยืนยัน','Scheduled'];
+  const ACT_ST  = ['traveling','arrived','กำลังเดินทาง','ถึงแล้ว'];
+  const DONE_ST = ['completed','เสร็จแล้ว','ยกเลิก'];
+  fetch(N8N_BASE + '/get-jobs', { redirect: 'follow' })
     .then(r => r.json())
     .then(d => {
       const jobs = d.jobs || [];
-      document.getElementById('ov-total').textContent = jobs.length;
-      document.getElementById('ov-new').textContent = jobs.filter(j => j.status === 'new' || !j.status).length;
-      document.getElementById('ov-active').textContent = jobs.filter(j => j.status === 'traveling' || j.status === 'arrived').length;
-      document.getElementById('ov-done').textContent = jobs.filter(j => j.status === 'completed').length;
+      document.getElementById('ov-total').textContent  = jobs.length;
+      document.getElementById('ov-new').textContent    = jobs.filter(j => NEW_ST.includes(j.status)  || !j.status).length;
+      document.getElementById('ov-active').textContent = jobs.filter(j => ACT_ST.includes(j.status)).length;
+      document.getElementById('ov-done').textContent   = jobs.filter(j => DONE_ST.includes(j.status)).length;
       list.innerHTML = jobs.slice(0,20).map(j => jobRowHTML(j)).join('');
     })
     .catch(() => { list.innerHTML = '<div style="color:red;padding:12px;">โหลดไม่ได้</div>'; });
@@ -1651,10 +1660,11 @@ function renderOverview() {
 function renderActiveJobs() {
   const list = document.getElementById('active-jobs-list');
   list.innerHTML = '<div class="loading-text">⏳ โหลด...</div>';
-  fetch(GAS_URL + '?action=jobs', { redirect: 'follow' })
+  const DONE_ST = ['completed','เสร็จแล้ว','ยกเลิก'];
+  fetch(N8N_BASE + '/get-jobs', { redirect: 'follow' })
     .then(r => r.json())
     .then(d => {
-      const jobs = (d.jobs || []).filter(j => j.status !== 'completed');
+      const jobs = (d.jobs || []).filter(j => !DONE_ST.includes(j.status));
       if (!jobs.length) { list.innerHTML = '<div class="loading-text">ไม่มีงานในมือ</div>'; return; }
       list.innerHTML = jobs.map(j => jobRowHTML(j)).join('');
     })
@@ -1786,7 +1796,7 @@ function renderCustomerList() {
     renderWithView(customersData);
   } else {
     list.innerHTML = '<div class="loading-text">⏳ โหลด...</div>';
-    fetch(GAS_URL + '?action=customers', { redirect: 'follow' })
+    fetch(N8N_BASE + '/get-customers', { redirect: 'follow' })
       .then(r => r.json())
       .then(d => { customersData = d.customers || []; renderWithView(customersData); })
       .catch(() => { list.innerHTML = '<div style="color:red;padding:12px;">โหลดไม่ได้</div>'; });
@@ -1842,7 +1852,7 @@ let carePlanData = [];
 async function loadCarePlans() {
   document.getElementById('careplan-list').innerHTML = '<div class="loading-text">⏳ กำลังโหลด...</div>';
   try {
-    const r = await fetch(GAS_URL + '?action=careplan', { redirect: 'follow' });
+    const r = await fetch(N8N_BASE + '/get-careplan', { redirect: 'follow' });
     const d = await r.json();
     carePlanData = d.plans || [];
     renderCarePlanList();
@@ -2004,7 +2014,6 @@ async function markCpDone(planId, custName, planType) {
 }
 
 // ───── สร้างงาน (Lark) ─────
-const N8N_BASE = 'https://n8n-production-b8f6.up.railway.app/webhook';
 let mjDropsLoaded = false;
 let mjCustomers = [];
 let mjTechs = [];
@@ -2014,41 +2023,57 @@ let mjPriority = 'low';
 
 function loadMjDropdowns() {
   if (mjDropsLoaded) return;
+  // ถ้า customersData โหลดแล้ว ใช้เลย
+  if (customersData.length || techsData.length) {
+    syncMjDropdowns();
+    if (customersData.length && techsData.length) { mjDropsLoaded = true; return; }
+  }
   document.getElementById('mj-load-txt').style.display = 'block';
   Promise.all([
-    fetch(N8N_BASE + '/get-customers').then(r => r.json()).catch(() => ({ ok: false })),
-    fetch(N8N_BASE + '/get-techs').then(r => r.json()).catch(() => ({ ok: false }))
+    customersData.length ? Promise.resolve({ customers: customersData }) :
+      fetch(N8N_BASE + '/get-customers').then(r => r.json()).catch(() => ({ customers: [] })),
+    techsData.length ? Promise.resolve({ technicians: techsData }) :
+      fetch(N8N_BASE + '/get-techs').then(r => r.json()).catch(() => ({ technicians: [] }))
   ]).then(([cRes, tRes]) => {
     document.getElementById('mj-load-txt').style.display = 'none';
-    const custSel = document.getElementById('mj-customer');
-    if (cRes.ok && cRes.customers?.length) {
-      mjCustomers = cRes.customers;
+    if (cRes.customers?.length) customersData = cRes.customers;
+    if (tRes.technicians?.length) techsData = tRes.technicians;
+    syncMjDropdowns();
+    mjDropsLoaded = true;
+  });
+}
+
+function syncMjDropdowns() {
+  const custSel = document.getElementById('mj-customer');
+  if (custSel) {
+    if (customersData.length) {
       custSel.innerHTML = '<option value="">— เลือกลูกค้า —</option>';
-      cRes.customers.forEach((c, i) => {
+      customersData.forEach((c, i) => {
         const o = document.createElement('option');
-        o.value = i; o.textContent = c.shop_name;
+        o.value = i; o.textContent = cName(c);
         custSel.appendChild(o);
       });
+      custSel.disabled = false;
     } else {
-      custSel.innerHTML = '<option value="">⚠️ โหลดไม่ได้ — เช็ค N8N workflow</option>';
+      custSel.innerHTML = '<option value="">⚠️ โหลดไม่ได้ — เช็ค N8N</option>';
     }
-    custSel.disabled = false;
-
-    const techSel = document.getElementById('mj-tech');
-    if (tRes.ok && tRes.techs?.length) {
-      mjTechs = tRes.techs;
+  }
+  const techSel = document.getElementById('mj-tech');
+  if (techSel) {
+    if (techsData.length) {
       techSel.innerHTML = '<option value="">— เลือกช่าง —</option>';
-      tRes.techs.forEach((t, i) => {
+      techsData.forEach((t, i) => {
         const o = document.createElement('option');
-        o.value = i; o.textContent = t.name + (t.role ? ' (' + t.role + ')' : '');
+        o.value = i; o.textContent = tName(t) + (t['Role'] ? ' (' + t['Role'] + ')' : '');
         techSel.appendChild(o);
       });
+      techSel.disabled = false;
     } else {
       techSel.innerHTML = '<option value="">⚠️ โหลดไม่ได้ — เช็ค T8 Table ID</option>';
     }
-    techSel.disabled = false;
-    mjDropsLoaded = true;
-  });
+  }
+  mjCustomers = customersData;
+  mjTechs = techsData;
 }
 
 function onMjCustChange() {
@@ -2056,15 +2081,15 @@ function onMjCustChange() {
   const info = document.getElementById('mj-cust-info');
   if (idx === '' || !mjCustomers[idx]) { info.style.display = 'none'; mjSelectedCust = null; updateMjPreview(); return; }
   mjSelectedCust = mjCustomers[idx];
-  document.getElementById('mj-cust-phone').textContent = mjSelectedCust.phone || '—';
+  document.getElementById('mj-cust-phone').textContent = cPhone(mjSelectedCust) || '—';
   const lineEl = document.getElementById('mj-cust-line');
-  lineEl.textContent = mjSelectedCust.line_id || '—';
-  lineEl.style.color = mjSelectedCust.line_id ? '#10B981' : '#EF4444';
+  const lid = cLineId(mjSelectedCust);
+  lineEl.textContent = lid !== '—' ? lid : '—';
+  lineEl.style.color = lid !== '—' ? '#10B981' : '#EF4444';
+  const mapsUrl = cMaps(mjSelectedCust);
   const mapsRow = document.getElementById('mj-maps-link');
-  if (mjSelectedCust.maps_url) {
-    document.getElementById('mj-maps-a').href = mjSelectedCust.maps_url;
-    mapsRow.style.display = 'inline';
-  } else { mapsRow.style.display = 'none'; }
+  if (mapsUrl) { document.getElementById('mj-maps-a').href = mapsUrl; mapsRow.style.display = 'inline'; }
+  else { mapsRow.style.display = 'none'; }
   info.style.display = 'flex';
   updateMjPreview();
 }
@@ -2074,14 +2099,15 @@ function onMjTechChange() {
   const preview = document.getElementById('mj-tech-preview');
   if (idx === '' || !mjTechs[idx]) { preview.classList.remove('show'); mjSelectedTech = null; return; }
   mjSelectedTech = mjTechs[idx];
-  document.getElementById('mj-tech-av').textContent = mjSelectedTech.name[0].toUpperCase();
-  document.getElementById('mj-tech-name').textContent = mjSelectedTech.name;
-  document.getElementById('mj-tech-line').textContent = 'LINE: ' + (mjSelectedTech.line_id || '—');
+  const name = tName(mjSelectedTech);
+  document.getElementById('mj-tech-av').textContent = name[0]?.toUpperCase() || '?';
+  document.getElementById('mj-tech-name').textContent = name;
+  document.getElementById('mj-tech-line').textContent = 'LINE: ' + (tLineId(mjSelectedTech) || '—');
   preview.classList.add('show');
 }
 
 function updateMjPreview() {
-  const custName = mjSelectedCust ? mjSelectedCust.shop_name : '—';
+  const custName = mjSelectedCust ? cName(mjSelectedCust) : '—';
   const problem  = document.getElementById('mj-problem')?.value || '—';
   const dateRaw  = document.getElementById('mj-date')?.value || '';
   const dateStr  = dateRaw ? new Date(dateRaw).toLocaleString('th-TH', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : '—';
@@ -2145,9 +2171,9 @@ async function submitMergedJob() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         job_id: jobNo, staff_id: tech.record_id || '',
-        tech_name: tech.name, tech_line_id: tech.line_id || '',
-        customer_name: cust.shop_name, customer_line_id: cust.line_id || '',
-        job_address: cust.address || '', job_maps_url: cust.maps_url || '',
+        tech_name: tName(tech), tech_line_id: tLineId(tech) || '',
+        customer_name: cName(cust), customer_line_id: cLineId(cust) || '',
+        job_address: cAddr(cust) || '', job_maps_url: cMaps(cust) || '',
         job_type: jobType, priority: mjPriority, note, appoint_date: date, status: 'new'
       })
     });

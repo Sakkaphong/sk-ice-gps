@@ -70,7 +70,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const data = $input.first().json;\nconst items = data.data?.items || [];\nconst txt = (v) => {\n  if (!v) return '';\n  if (typeof v === 'string') return v;\n  if (Array.isArray(v)) { const f = v[0]; if (!f) return ''; if (typeof f === 'string') return f; return f.text || f.name || ''; }\n  if (v.value && Array.isArray(v.value)) { const f = v.value[0]; if (!f) return ''; if (typeof f === 'string') return f; return f.text || f.name || ''; }\n  return '';\n};\nconst customers = items.map(it => ({\n  record_id: it.record_id,\n  shop_name: txt(it.fields['Shop Name']),\n  line_id:   txt(it.fields['LINE User ID']) || txt(it.fields['C.LINE User ID']) || '',\n  phone:     txt(it.fields['Phone']) || ''\n})).filter(c => c.shop_name).sort((a,b) => a.shop_name.localeCompare(b.shop_name, 'th'));\nreturn [{ json: { customers } }];"
+        "jsCode": "const data = $input.first().json;\nconst items = data.data?.items || [];\nconst txt = (v) => {\n  if (v === null || v === undefined) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'number') return String(v);\n  if (v.link) return v.link;\n  if (v.number !== undefined) return String(v.number || '');\n  if (Array.isArray(v)) { if (!v.length) return ''; const f = v[0]; if (typeof f === 'string') return f; return f.text || f.name || ''; }\n  if (v.value) { if (typeof v.value === 'string') return v.value; if (Array.isArray(v.value)) { const f = v.value[0]; if (!f) return ''; if (typeof f === 'string') return f; return f.text || f.name || ''; } }\n  return '';\n};\nconst customers = items.map(it => {\n  const f = it.fields;\n  const shopName = txt(f['Shop Name']);\n  const lineId = txt(f['LINE User ID']) || txt(f['C.LINE User ID']) || '';\n  const phone = txt(f['Phone 1']) || txt(f['Phone']) || '';\n  const mapsUrl = txt(f['Google Maps URL']) || '';\n  const address = txt(f['Address']) || '';\n  return {\n    record_id: it.record_id,\n    'Shop Name': shopName,\n    'Customer ID': txt(f['Customer ID']),\n    'Phone 1': phone,\n    'Contact Person 1': txt(f['Contact Person 1']),\n    'LINE User ID': lineId,\n    'Google Maps URL': mapsUrl,\n    'Address': address,\n    'PEAK Code': txt(f['PEAK Code']),\n    'Customer Type': txt(f['Customer Type']),\n    'Filter System': txt(f['Filter System']) || txt(f['Filter System 1']),\n    'Machine 1 (Type)': txt(f['Machine 1 (Type)']),\n    'Machine 1 (Model)': txt(f['Machine 1 (Model)']),\n    'Machine 2 (Type)': txt(f['Machine 2 (Type)']),\n    'Machine 2 (Model)': txt(f['Machine 2 (Model)']),\n    'Machine 3 (Type)': txt(f['Machine 3 (Type)']),\n    'Machine 3 (Model)': txt(f['Machine 3 (Model)']),\n    shop_name: shopName, line_id: lineId, phone: phone, maps_url: mapsUrl, address: address\n  };\n}).filter(c => c['Shop Name']).sort((a, b) => a['Shop Name'].localeCompare(b['Shop Name'], 'th'));\nreturn [{ json: { customers } }];"
       },
       "id": "gc-005",
       "name": "Format Customers",
@@ -159,7 +159,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const data = $input.first().json;\nconst items = data.data?.items || [];\nconst txt = (v) => {\n  if (!v) return '';\n  if (typeof v === 'string') return v;\n  if (Array.isArray(v)) { const f = v[0]; if (!f) return ''; if (typeof f === 'string') return f; return f.text || f.name || ''; }\n  if (v.value && Array.isArray(v.value)) { const f = v.value[0]; if (!f) return ''; if (typeof f === 'string') return f; return f.text || f.name || ''; }\n  return '';\n};\nconst techs = items.map(it => ({\n  record_id: it.record_id,\n  name:       txt(it.fields['Name']),\n  role:       txt(it.fields['Role']) || '',\n  line_id:    txt(it.fields['LINE User ID']) || txt(it.fields['tech_line_id']) || '',\n  phone:      txt(it.fields['Phone']) || ''\n})).filter(t => t.name).sort((a,b) => a.name.localeCompare(b.name, 'th'));\nreturn [{ json: { techs } }];"
+        "jsCode": "const data = $input.first().json;\nconst items = data.data?.items || [];\nconst txt = (v) => {\n  if (v === null || v === undefined) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'number') return String(v);\n  if (v.link) return v.link;\n  if (Array.isArray(v)) { if (!v.length) return ''; const f = v[0]; if (typeof f === 'string') return f; return f.text || f.name || ''; }\n  if (v.value) { if (typeof v.value === 'string') return v.value; if (Array.isArray(v.value)) { const f = v.value[0]; if (!f) return ''; if (typeof f === 'string') return f; return f.text || f.name || ''; } }\n  return '';\n};\nconst technicians = items.map(it => {\n  const f = it.fields;\n  const name = txt(f['Name']);\n  const lineId = txt(f['tech_line_id']) || txt(f['LINE User ID']) || '';\n  const role = txt(f['Role']) || '';\n  const staffId = txt(f['staff_id']) || txt(f['Staff ID']) || '';\n  return {\n    record_id: it.record_id,\n    'Name': name,\n    'tech_line_id': lineId,\n    'Lark Account': txt(f['Lark Account']),\n    'staff_id': staffId,\n    'Role': role,\n    'Phone': txt(f['Phone']),\n    name: name, line_id: lineId, role: role\n  };\n}).filter(t => t['Name']).sort((a, b) => a['Name'].localeCompare(b['Name'], 'th'));\nreturn [{ json: { technicians } }];"
       },
       "id": "gt-005",
       "name": "Format Techs",
@@ -170,7 +170,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ ok: true, techs: $json.techs }) }}",
+        "responseBody": "={{ JSON.stringify({ ok: true, technicians: $json.technicians }) }}",
         "options": { "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }] } }
       },
       "id": "gt-006",
@@ -277,6 +277,95 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [1320, 460]
+    },
+
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "get-jobs",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "gj-001",
+      "name": "Webhook Get Jobs",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 660],
+      "webhookId": "get-jobs-webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.larksuite.com/open-apis/auth/v3/tenant_access_token/internal",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "app_id",     "value": "cli_a9500a1d84f89e18" },
+            { "name": "app_secret", "value": "GfKOk3vVSU4WwtXJKZEmHb2Q51JDOLgp" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "gj-002",
+      "name": "Get Token [GJ]",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 660]
+    },
+    {
+      "parameters": {
+        "jsCode": "const token = $input.first().json.tenant_access_token;\nreturn [{ json: { lark_token: token, searchBody: JSON.stringify({ page_size: 100, sort: [{ field_name: 'Created Time', order: 'DESC' }] }) } }];"
+      },
+      "id": "gj-003",
+      "name": "Prep Search T5",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 660]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.larksuite.com/open-apis/bitable/v1/apps/UOZZb0ImVaRYy1sDjUNjm3jqpye/tables/tblXb6wG3DI7FmzJ/records/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "={{ 'Bearer ' + $('Prep Search T5').first().json.lark_token }}" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $('Prep Search T5').first().json.searchBody }}",
+        "options": {}
+      },
+      "id": "gj-004",
+      "name": "Fetch T5 Jobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 660]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst items = data.data?.items || [];\nconst txt = (v) => {\n  if (v === null || v === undefined) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'number') return String(v);\n  if (Array.isArray(v)) { if (!v.length) return ''; const f = v[0]; if (typeof f === 'string') return f; return f.text || f.name || ''; }\n  if (v.value) { if (typeof v.value === 'string') return v.value; if (Array.isArray(v.value)) { const f = v.value[0]; if (!f) return ''; if (typeof f === 'string') return f; return f.text || f.name || ''; } }\n  return '';\n};\nconst jobs = items.map(it => {\n  const f = it.fields;\n  const created = f['Created Time'] || it.created_time;\n  const scheduled = f['Scheduled Date'];\n  return {\n    record_id: it.record_id,\n    job_id: txt(f['Job ID']) || txt(f['Job No.']) || txt(f['job_id']) || it.record_id,\n    status: txt(f['Status']) || 'new',\n    tech_name: txt(f['Tech Name']) || txt(f['Technician']) || txt(f['tech_name']),\n    customer_name: txt(f['Shop Name']) || txt(f['Customer Name']) || txt(f['Customer']),\n    job_type: txt(f['Job Type']),\n    priority: txt(f['Priority']),\n    job_address: txt(f['Job Address']) || txt(f['Address']),\n    scheduled_date: typeof scheduled === 'number' ? new Date(scheduled).toISOString() : txt(scheduled),\n    timestamp: typeof created === 'number' ? new Date(created).toISOString() : (typeof created === 'string' ? created : null)\n  };\n});\nreturn [{ json: { jobs } }];"
+      },
+      "id": "gj-005",
+      "name": "Format Jobs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 660]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, jobs: $json.jobs }) }}",
+        "options": { "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }] } }
+      },
+      "id": "gj-006",
+      "name": "Respond Jobs",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1100, 660]
     }
 
   ],
@@ -298,12 +387,18 @@
     "Get Token [CJ]":     { "main": [[{ "node": "Prep T5 Body",      "type": "main", "index": 0 }]] },
     "Prep T5 Body":       { "main": [[{ "node": "Create T5 Record",  "type": "main", "index": 0 }]] },
     "Create T5 Record":   { "main": [[{ "node": "Format Response",   "type": "main", "index": 0 }]] },
-    "Format Response":    { "main": [[{ "node": "Respond Create Job", "type": "main", "index": 0 }]] }
+    "Format Response":    { "main": [[{ "node": "Respond Create Job", "type": "main", "index": 0 }]] },
+
+    "Webhook Get Jobs": { "main": [[{ "node": "Get Token [GJ]", "type": "main", "index": 0 }]] },
+    "Get Token [GJ]":   { "main": [[{ "node": "Prep Search T5",  "type": "main", "index": 0 }]] },
+    "Prep Search T5":   { "main": [[{ "node": "Fetch T5 Jobs",   "type": "main", "index": 0 }]] },
+    "Fetch T5 Jobs":    { "main": [[{ "node": "Format Jobs",     "type": "main", "index": 0 }]] },
+    "Format Jobs":      { "main": [[{ "node": "Respond Jobs",    "type": "main", "index": 0 }]] }
   },
   "settings": { "executionOrder": "v1" },
   "staticData": null,
   "tags": [],
-  "triggerCount": 3,
+  "triggerCount": 4,
   "updatedAt": "2026-04-15T00:00:00.000Z",
   "versionId": "1"
 }
