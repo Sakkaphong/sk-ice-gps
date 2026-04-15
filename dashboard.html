@@ -1376,7 +1376,7 @@ async function loadCustomers(pageToken = null) {
 
 function updateCustFilterCounts() {
   const total    = customersData.length;
-  const active   = customersData.filter(c => cHealth(c) !== 'Inactive').length;
+  const active   = customersData.filter(c => cHealth(c) === 'Active').length;
   const inactive = customersData.filter(c => cHealth(c) === 'Inactive').length;
   const el = (id, val) => { const e = document.getElementById(id); if(e) e.textContent = '(' + val + ')'; };
   el('cf-count-all', total + (custHasMore ? '+' : ''));
@@ -1990,7 +1990,7 @@ function filterCustomers(q) {
   const kw = (q || '').toLowerCase().trim();
   // 1. Apply status filter first
   let arr = customersData;
-  if (custFilter === 'active')   arr = arr.filter(c => cHealth(c) !== 'Inactive');
+  if (custFilter === 'active')   arr = arr.filter(c => cHealth(c) === 'Active');
   if (custFilter === 'inactive') arr = arr.filter(c => cHealth(c) === 'Inactive');
   // 2. Apply keyword filter on top
   if (kw) arr = arr.filter(c =>
