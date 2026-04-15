@@ -1302,12 +1302,27 @@ async function loadCustomers() {
     customersData = d.customers || [];
     const sel = document.getElementById('customerSelect');
     sel.innerHTML = '<option value="">— เลือกลูกค้า —</option><option value="NEW">➕ ลูกค้าใหม่ (กรอกเอง)</option>';
-    customersData.forEach((c, i) => {
+    // แสดง active ก่อน แล้วตามด้วย inactive (เพื่อให้เลือกได้ทุกคน)
+    const active   = customersData.filter(c => cHealth(c) !== 'Inactive');
+    const inactive = customersData.filter(c => cHealth(c) === 'Inactive');
+    active.forEach((c, i) => {
       const opt = document.createElement('option');
-      opt.value = i;
-      opt.textContent = cName(c);
+      opt.value = customersData.indexOf(c);
+      opt.textContent = cName(c) + (cHealth(c) && cHealth(c) !== '—' && cHealth(c) !== 'Healthy' ? ' [' + cHealth(c) + ']' : '');
       sel.appendChild(opt);
     });
+    if (inactive.length) {
+      const sep = document.createElement('option');
+      sep.disabled = true;
+      sep.textContent = '── ลูกค้าเดิม (Inactive) ──';
+      sel.appendChild(sep);
+      inactive.forEach((c) => {
+        const opt = document.createElement('option');
+        opt.value = customersData.indexOf(c);
+        opt.textContent = '⛔ ' + cName(c);
+        sel.appendChild(opt);
+      });
+    }
   } catch(e) {
     document.getElementById('customerSelect').innerHTML = '<option value="">❌ โหลดไม่ได้ ลองรีเฟรช</option>';
   }
@@ -1397,12 +1412,24 @@ function cMaps(c)       { return c['Google Maps URL'] || c.maps_url || c['Maps U
 function cCustId(c)     { return c['Customer ID'] || c.customer_id || '—'; }
 function cPeakCode(c)   { return c['PEAK Code'] || c.peak_code || '—'; }
 function cCustType(c)   { return c['Customer Type'] || c.customer_type || '—'; }
+function cHealth(c)     { return c['Account Health'] || c.account_health || ''; }
+function cHealthBadge(c) {
+  const h = cHealth(c);
+  if (!h || h === '—') return '';
+  if (h === 'Inactive')      return `<span style="font-size:10px;font-weight:700;color:#EF4444;background:#FEE2E2;padding:2px 7px;border-radius:20px;">⛔ Inactive</span>`;
+  if (h === 'Overdue')       return `<span style="font-size:10px;font-weight:700;color:#F59E0B;background:#FEF3C7;padding:2px 7px;border-radius:20px;">⚠️ Overdue</span>`;
+  if (h === 'Critical')      return `<span style="font-size:10px;font-weight:700;color:#EF4444;background:#FEE2E2;padding:2px 7px;border-radius:20px;">🔴 Critical</span>`;
+  if (h === 'High Frequency') return `<span style="font-size:10px;font-weight:700;color:#7C3AED;background:#EDE9FE;padding:2px 7px;border-radius:20px;">⚡ HiFreq</span>`;
+  if (h === 'Healthy')       return `<span style="font-size:10px;font-weight:700;color:#10B981;background:#D1FAE5;padding:2px 7px;border-radius:20px;">✅ Healthy</span>`;
+  return `<span style="font-size:10px;color:#64748B;background:#F1F5F9;padding:2px 7px;border-radius:20px;">${h}</span>`;
+}
 function cPaymentTag(c) {
   const t = cCustType(c).toLowerCase();
-  if (t.includes('เช่า'))        return { label: '📦 เช่า — ไม่ต้องเก็บเงิน', color: '#10B981' };
-  if (t.includes('ซื้อ'))        return { label: '💰 ซื้อ — เก็บเงินด้วย',    color: '#F59E0B' };
-  if (t.includes('นิติ'))        return { label: '🏢 นิติบุคคล — ออกบิล',      color: '#3B82F6' };
-  return { label: '❓ ' + cCustType(c), color: '#94A3B8' };
+  if (t.includes('เช่า'))        return { label: '📦 เช่า', color: '#10B981' };
+  if (t.includes('ซื้อ'))        return { label: '💰 ซื้อ', color: '#F59E0B' };
+  if (t.includes('นิติ'))        return { label: '🏢 นิติ', color: '#3B82F6' };
+  if (t === '—' || !t)           return { label: '', color: 'transparent' };
+  return { label: cCustType(c), color: '#94A3B8' };
 }
 function tName(t)    { return t.tech_name || t.Name || t.name || '—'; }
 function tLineId(t)  { return t['tech_line_id'] || t['LINE User ID'] || t.line_id || t.LINE_ID || '—'; }
@@ -1776,19 +1803,22 @@ function renderWithView(arr) {
 
 function customerCardHTML(c) {
   const pay = cPaymentTag(c);
-  return `<div class="cust-list-item">
-    <div class="cust-av">${custInitial(c)}</div>
+  const health = cHealthBadge(c);
+  const isInactive = cHealth(c) === 'Inactive';
+  return `<div class="cust-list-item" style="${isInactive ? 'opacity:.6;' : ''}">
+    <div class="cust-av" style="${isInactive ? 'background:#94A3B8;' : ''}">${custInitial(c)}</div>
     <div style="flex:1;min-width:0;">
-      <div style="display:flex;align-items:baseline;gap:6px;">
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
         <span style="font-size:14px;font-weight:600;color:var(--primary);">${cName(c)}</span>
         <span style="font-size:11px;color:var(--muted);">${cCustId(c)}</span>
+        ${health}
       </div>
       <div class="cust-meta">
         <span>👤 ${cContact(c)}</span><span>📞 ${cPhone(c)}</span><span>💬 LINE: ${cLineId(c)}</span>
       </div>
       <div style="font-size:12px;color:var(--muted);margin-top:2px;">${cAddr(c)}</div>
     </div>
-    <span class="cust-type-pill" style="background:${pay.color};">${pay.label}</span>
+    ${pay.label ? `<span class="cust-type-pill" style="background:${pay.color};">${pay.label}</span>` : ''}
   </div>`;
 }
 
