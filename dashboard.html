@@ -1473,8 +1473,10 @@ async function loadNextJobId() {
 // ───── helpers: flexible field names ─────
 function cName(c)       { return c['Shop Name'] || c['shop_name'] || c.name || c['ชื่อ'] || c.customer_name || c['Customer ID'] || Object.values(c)[0] || '—'; }
 function cAddr(c) { return c.Address || c.address || c['ที่อยู่'] || '—'; }
-function cPhone(c)      { return c['Customer Phone 1'] || c['Customer Phone 2'] || c.phone || c['Phone 1'] || c['เบอร์โทร'] || '—'; }
-function cContact(c)    { return c['Customer Contact 1'] || c.contact || c['Contact Person 1'] || c['ชื่อผู้ติดต่อ'] || '—'; }
+function cPhone(c)      { return c['Customer Phone 1'] || c.phone || '—'; }
+function cPhone2(c)     { return c['Customer Phone 2'] || c.phone2 || ''; }
+function cContact(c)    { return c['Customer Contact 1'] || c.contact || '—'; }
+function cContact2(c)   { return c['Customer Contact 2'] || c.contact2 || ''; }
 function cLineId(c)     { return c['C.LINE User ID'] || c['C.LINE ID'] || c.line_id || c['LINE User ID'] || '—'; }
 function cMaps(c)       { return c['Google Maps URL'] || c.maps_url || c['Maps URL'] || c.google_maps || ''; }
 function cCustId(c)     { return c['Customer ID'] || c.customer_id || '—'; }
@@ -1824,8 +1826,10 @@ function customerGridHTML(arr) {
           </div>
         </div>
         <div class="cust-grid-info">
-          <span>📞 ${cPhone(c)}</span>
           <span>👤 ${cContact(c)}</span>
+          <span>📞 ${cPhone(c)}</span>
+          ${cPhone2(c) ? `<span style="font-size:11px;color:#94A3B8;">📞 ${cPhone2(c)}</span>` : ''}
+          ${cContact2(c) ? `<span style="font-size:11px;color:#94A3B8;">👤 ${cContact2(c)}</span>` : ''}
         </div>
         <div style="margin-top:auto;">
           <span class="cust-type-pill" style="background:${pay.color};">${pay.label}</span>
@@ -1851,8 +1855,8 @@ function customerTableHTML(arr) {
       return `<tr>
         <td>${cName(c)}</td>
         <td style="color:var(--muted);font-size:12px;">${cCustId(c)}</td>
-        <td style="color:var(--muted);">${cContact(c)}</td>
-        <td style="color:var(--muted);">${cPhone(c)}</td>
+        <td style="color:var(--muted);">${cContact(c)}${cContact2(c) ? '<br><span style="font-size:11px;color:#94A3B8;">'+cContact2(c)+'</span>' : ''}</td>
+        <td style="color:var(--muted);">${cPhone(c)}${cPhone2(c) ? '<br><span style="font-size:11px;color:#94A3B8;">'+cPhone2(c)+'</span>' : ''}</td>
         <td style="color:var(--muted);font-size:12px;">${cLineId(c)}</td>
         <td><span class="cust-type-pill" style="background:${pay.color};">${pay.label}</span></td>
       </tr>`;
@@ -1883,8 +1887,13 @@ function customerCardHTML(c) {
         ${health}
       </div>
       <div class="cust-meta">
-        <span>👤 ${cContact(c)}</span><span>📞 ${cPhone(c)}</span><span>💬 LINE: ${cLineId(c)}</span>
+        <span>👤 ${cContact(c)}</span><span>📞 ${cPhone(c)}</span>
       </div>
+      ${(cContact2(c) || cPhone2(c)) ? `<div class="cust-meta" style="margin-top:2px;">
+        ${cContact2(c) ? `<span>👤 ${cContact2(c)}</span>` : ''}
+        ${cPhone2(c) ? `<span>📞 ${cPhone2(c)}</span>` : ''}
+      </div>` : ''}
+      <div class="cust-meta" style="margin-top:2px;"><span>💬 LINE: ${cLineId(c)}</span></div>
       <div style="font-size:12px;color:var(--muted);margin-top:2px;">${cAddr(c)}</div>
     </div>
     ${pay.label ? `<span class="cust-type-pill" style="background:${pay.color};">${pay.label}</span>` : ''}
