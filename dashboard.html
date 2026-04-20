@@ -626,9 +626,41 @@ body { font-family: var(--font); background: var(--bg); min-height: 100vh; color
   .form-header { padding: 12px 16px; }
   .form-header-title { font-size: 14px; }
 }
+
+/* ── Google Auth Overlay ── */
+#auth-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: #000;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 24px;
+}
+#auth-overlay.hidden { display: none; }
+.auth-card {
+  background: #1C1C1E; border-radius: 24px;
+  padding: 48px 40px; text-align: center;
+  width: 340px; box-shadow: 0 24px 64px rgba(0,0,0,.6);
+}
+.auth-logo { width: 64px; height: 64px; border-radius: 16px; overflow: hidden; margin: 0 auto 20px; background: #000; }
+.auth-logo img { width: 100%; height: auto; display: block; }
+.auth-title { font-size: 22px; font-weight: 700; color: #F5F5F7; margin-bottom: 4px; }
+.auth-sub { font-size: 13px; color: rgba(245,245,247,.45); margin-bottom: 32px; }
+.auth-error { font-size: 12px; color: #FF3B30; margin-top: 16px; display: none; }
 </style>
 </head>
 <body>
+
+<!-- ══ Google Auth Overlay ══ -->
+<div id="auth-overlay">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <img src="../SK LOGO.png" alt="SK ICE">
+    </div>
+    <div class="auth-title">SK ICE Dashboard</div>
+    <div class="auth-sub">เข้าสู่ระบบด้วย Google Account</div>
+    <div id="g_id_signin"></div>
+    <div class="auth-error" id="auth-error">⛔ ไม่มีสิทธิ์เข้าใช้งาน</div>
+  </div>
+</div>
 
 <!-- ══ Topnav ══ -->
 <div class="topnav">
@@ -661,8 +693,10 @@ body { font-family: var(--font); background: var(--bg); min-height: 100vh; color
   </div>
   <div class="nav-user">
     <button class="nav-bell"><i data-lucide="bell"></i></button>
-    <div class="nav-avatar">A</div>
-    <div class="nav-name">Admin</div>
+    <img id="nav-avatar-img" class="nav-avatar" src="" alt="" style="display:none;padding:0;object-fit:cover;">
+    <div id="nav-avatar-text" class="nav-avatar">A</div>
+    <div class="nav-name" id="nav-user-name">Admin</div>
+    <button onclick="signOut()" style="background:rgba(255,255,255,.08);border:none;color:rgba(245,245,247,.6);font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;font-family:var(--font);">ออกจากระบบ</button>
   </div>
 </div>
 
@@ -2429,5 +2463,59 @@ function closeModal() {
 
 <script src="https://unpkg.com/lucide@latest"></script>
 <script>lucide.createIcons();</script>
+
+<!-- ══ Google Auth ══ -->
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script>
+const ALLOWED_EMAILS = ['sakkaphongex@gmail.com'];
+const CLIENT_ID = '270619691575-6i1so9pfe5m090gorm0ifhj9r9s55l6i.apps.googleusercontent.com';
+
+function decodeJwt(token) {
+  const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+  return JSON.parse(atob(base64));
+}
+
+function applyUser(payload) {
+  document.getElementById('nav-user-name').textContent = payload.given_name || payload.name;
+  const img = document.getElementById('nav-avatar-img');
+  const txt = document.getElementById('nav-avatar-text');
+  if (payload.picture) {
+    img.src = payload.picture;
+    img.style.display = 'block';
+    txt.style.display = 'none';
+  } else {
+    txt.textContent = (payload.name || 'A')[0].toUpperCase();
+  }
+}
+
+function handleCredentialResponse(response) {
+  const payload = decodeJwt(response.credential);
+  if (!ALLOWED_EMAILS.includes(payload.email)) {
+    document.getElementById('auth-error').style.display = 'block';
+    return;
+  }
+  sessionStorage.setItem('sk_auth', JSON.stringify({ email: payload.email, name: payload.name, picture: payload.picture, given_name: payload.given_name }));
+  document.getElementById('auth-overlay').classList.add('hidden');
+  applyUser(payload);
+}
+
+function signOut() {
+  sessionStorage.removeItem('sk_auth');
+  location.reload();
+}
+
+window.addEventListener('load', () => {
+  const saved = sessionStorage.getItem('sk_auth');
+  if (saved) {
+    document.getElementById('auth-overlay').classList.add('hidden');
+    applyUser(JSON.parse(saved));
+    return;
+  }
+  google.accounts.id.initialize({ client_id: CLIENT_ID, callback: handleCredentialResponse });
+  google.accounts.id.renderButton(document.getElementById('g_id_signin'), {
+    theme: 'filled_blue', size: 'large', shape: 'pill', width: 260, locale: 'th'
+  });
+});
+</script>
 </body>
 </html>
