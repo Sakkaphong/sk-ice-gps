@@ -2316,6 +2316,837 @@
       ],
       "id": "note001",
       "name": "Note T5 Field"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "id": "cp-001",
+      "name": "Cron 07:00 Daily",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.larksuite.com/open-apis/auth/v3/tenant_access_token/internal",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "app_id",
+              "value": "cli_a9500a1d84f89e18"
+            },
+            {
+              "name": "app_secret",
+              "value": "GfKOk3vVSU4WwtXJKZEmHb2Q51JDOLgp"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cp-002",
+      "name": "Get Lark Token",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// Prep T4 Search: หา CarePlan records ที่ Active\n// และ Next_Due_Date ≤ TODAY + max alert days (14)\n// ⚠️ Lark filter ไม่มี isOnOrBefore/isOnOrAfter — ใช้ isLessEqual/isGreaterEqual\n// ⚠️ today + horizon ต้องใช้ Bangkok TZ (server UTC) — ไม่งั้น cron 07:00 BKK = 00:00 UTC วันเดิม\n// ────────────────────────────────────────────\nconst token = $input.first().json.tenant_access_token;\n\n// Bangkok-aware today (shift +7h then getUTC*)\nfunction bkkDateStr(d) {\n  const bkk = new Date(d.getTime() + 7 * 3600 * 1000);\n  const yyyy = bkk.getUTCFullYear();\n  const mm = String(bkk.getUTCMonth() + 1).padStart(2, '0');\n  const dd = String(bkk.getUTCDate()).padStart(2, '0');\n  return yyyy + '-' + mm + '-' + dd;\n}\n\nconst now = new Date();\nconst todayStr = bkkDateStr(now);\nconst horizonStr = bkkDateStr(new Date(now.getTime() + 14 * 86400000));\n\n// Lark filter date value = ms timestamp (BKK midnight) — string YYYY-MM-DD ใช้ได้เฉพาะ text field\n// Next Due Date เป็น Date field → ต้องส่ง ms\nconst horizonMs = new Date(horizonStr + 'T23:59:59+07:00').getTime();\n\n// Lark filter (verified 2026-04-20):\n//   CP Status ≠ Done       ← SingleSelect, no colon in field name\n//   Auto Create Ticket=true ← Checkbox; false = admin schedules manually, cron skips\n//   Next Due Date ≤ horizon (14 days ahead max)\nconst searchBody = JSON.stringify({\n  filter: {\n    conjunction: 'and',\n    conditions: [\n      { field_name: 'CP Status', operator: 'isNot', value: ['Done'] },\n      { field_name: 'Auto Create Ticket', operator: 'is', value: [true] },\n      { field_name: 'Next Due Date', operator: 'isNotEmpty', value: [] },\n      { field_name: 'Next Due Date', operator: 'isLessEqual', value: [String(horizonMs)] }\n    ]\n  },\n  page_size: 500\n  // ⚠️ ห้ามระบุ field_names — Lark จะไม่ return primary field ถ้า specify\n});\n\nreturn [{ json: { lark_token: token, searchBody, horizonStr, today: todayStr } }];"
+      },
+      "id": "cp-003",
+      "name": "Prep Search T4",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.larksuite.com/open-apis/bitable/v1/apps/UOZZb0ImVaRYy1sDjUNjm3jqpye/tables/tblyA9sHFA9AJVEi/records/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.lark_token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.searchBody }}",
+        "options": {}
+      },
+      "id": "cp-004",
+      "name": "Fetch T4 CarePlan",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// Parse T4 records → flat array\n// - Machine (Link→T2) / Customer (Link→T1): ใช้ extractLinkedRecord → record_id (group key)\n// - Shop Name / Customer ID: 2-hop Lookup → Lark คืน plain text → txt() พอ\n// ⚠️ Lark Date field = ms number (read) — ต้องใช้ dateStr() แปลง ไม่ใช่ txt().split('T')[0]\n// ────────────────────────────────────────────\nconst res = $input.first().json;\nconst items = (res.data && res.data.items) || [];\nconst today = $('Prep Search T4').first().json.today;\n\nfunction txt(v) {\n  if (v === null || v === undefined) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'number') return String(v);\n  if (v.text) return v.text;\n  if (v.value !== undefined) {\n    if (typeof v.value === 'string') return v.value;\n    if (Array.isArray(v.value) && v.value[0]) {\n      const f = v.value[0];\n      return typeof f === 'string' ? f : (f.text || f.name || '');\n    }\n  }\n  if (Array.isArray(v) && v[0]) {\n    const f = v[0];\n    return typeof f === 'string' ? f : (f.text || f.link || f.name || '');\n  }\n  return '';\n}\n\nfunction numVal(v) {\n  if (v === null || v === undefined) return 0;\n  if (typeof v === 'number') return v;\n  const n = Number(txt(v));\n  return isNaN(n) ? 0 : n;\n}\n\n// Lark Date field = Unix ms number. Convert to YYYY-MM-DD in Bangkok TZ.\n// รองรับทั้ง number (ms) / string (YYYY-MM-DD หรือ YYYY/MM/DD)\nfunction dateStr(v) {\n  if (v === null || v === undefined || v === '') return '';\n  if (typeof v === 'number') {\n    const bkk = new Date(v + 7 * 3600 * 1000);\n    const yyyy = bkk.getUTCFullYear();\n    const mm = String(bkk.getUTCMonth() + 1).padStart(2, '0');\n    const dd = String(bkk.getUTCDate()).padStart(2, '0');\n    return yyyy + '-' + mm + '-' + dd;\n  }\n  const s = typeof v === 'string' ? v : txt(v);\n  if (!s) return '';\n  return s.split('T')[0].replace(/\\//g, '-');\n}\n\n// รองรับ 3 รูปแบบ response ของ linked field จาก Lark Base\n//  1) [{ record_id, name }]\n//  2) [{ record_ids, text }]   ← record_ids เป็น array\n//  3) { value: [{ record_id, text }] }\nfunction extractLinkedRecord(v) {\n  if (!v) return { record_id: '', display: '' };\n  const arr = Array.isArray(v) ? v : (Array.isArray(v.value) ? v.value : []);\n  if (!arr.length) return { record_id: '', display: '' };\n  const f = arr[0];\n  if (typeof f === 'string') return { record_id: '', display: f };\n  const rid = f.record_id || (Array.isArray(f.record_ids) ? f.record_ids[0] : f.record_ids) || '';\n  const display = f.name || f.text || '';\n  return { record_id: rid || '', display: display || '' };\n}\n\nconst records = items.map(it => {\n  const f = it.fields || {};\n  const dueDate = dateStr(f['Next Due Date']);\n  const stageNum = numVal(f['Stage Number']);\n\n  // Lead Time priority: Lead Time Override (per-machine) > Alert Before (Days) (default) > stage-based fallback\n  // เคส VIP อยากได้แจ้ง 21 วัน → admin ใส่ 21 ใน Lead Time Override field → cron ใช้ค่านั้น\n  const leadOverride = numVal(f['Lead Time Override']);\n  const alertBase = numVal(f['Alert Before (Days)']) || (stageNum <= 3 ? 7 : 14);\n  const alertDays = leadOverride > 0 ? leadOverride : alertBase;\n\n  // Linked fields → record_id เป็น group key\n  const machine = extractLinkedRecord(f['Machine']);\n  const customer = extractLinkedRecord(f['Customer']);\n  // Assigned Technician (optional) → pre-fill ใน T5 ตอนสร้าง admin override ได้\n  const assignedTech = extractLinkedRecord(f['Assigned Technician']);\n\n  // 2-hop Lookup → Lark คืน plain text ผ่าน txt()\n  const shopName = txt(f['Shop Name']);\n  const customerIdText = txt(f['Customer ID']);\n\n  // Check if within alert window: due_date - alert_days ≤ today\n  const dueMs = new Date(dueDate + 'T00:00:00').getTime();\n  const alertMs = dueMs - (alertDays * 86400000);\n  const todayMs = new Date(today + 'T00:00:00').getTime();\n  const withinAlert = todayMs >= alertMs;\n\n  return {\n    record_id: it.record_id,\n    care_plan_id: txt(f['Care Plan ID']),\n    machine_record_id: machine.record_id,          // ← group key (stable)\n    machine_code: machine.display,                  // T2 primary (อาจว่าง) — metadata\n    customer_record_id: customer.record_id,\n    customer_id: customerIdText,                    // business key 'CUS-041' จาก Lookup\n    shop_name: shopName,\n    stage_number: stageNum,\n    filter_name: txt(f['Filter Stage']) || txt(f['Service Item']),\n    care_type: txt(f['Care Type']),\n    next_due_date: dueDate,\n    alert_before_days: alertDays,\n    lead_override_used: leadOverride > 0,           // audit: ส่งต่อให้ Build T5 log ว่า override ทำงาน\n    assigned_technician_id: assignedTech.record_id,  // '' ถ้ายังไม่ assign\n    qty_per_visit: numVal(f['Qty per Visit']) || 1,\n    within_alert: withinAlert\n  };\n}).filter(r => r.within_alert && r.next_due_date && r.machine_record_id);\n\nif (records.length === 0) {\n  return [{ json: { has_records: false, count: 0, records: [] } }];\n}\n\nreturn [{ json: { has_records: true, count: records.length, records, lark_token: $('Prep Search T4').first().json.lark_token } }];"
+      },
+      "id": "cp-005",
+      "name": "Parse T4 Records",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "cp-if-has",
+              "leftValue": "={{ $json.has_records }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "cp-006",
+      "name": "If Has Due Records",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// Group by (Machine_ID, ISO_WEEK(due_date))\n// เพื่อรวม stages ที่ due สัปดาห์เดียวกัน → 1 visit\n// ────────────────────────────────────────────\nconst data = $input.first().json;\nconst records = data.records;\nconst lark_token = data.lark_token;\n\nfunction getISOWeek(dateStr) {\n  const d = new Date(dateStr + 'T00:00:00');\n  d.setHours(0, 0, 0, 0);\n  d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));\n  const week1 = new Date(d.getFullYear(), 0, 4);\n  return d.getFullYear() + '-W' + String(1 + Math.round(((d.getTime() - week1.getTime()) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7)).padStart(2, '0');\n}\n\nconst groups = {};\nfor (const rec of records) {\n  const weekKey = getISOWeek(rec.next_due_date);\n  const key = rec.machine_record_id + '_' + weekKey;\n\n  if (!groups[key]) {\n    groups[key] = {\n      machine_record_id: rec.machine_record_id,\n      machine_code: rec.machine_code,\n      customer_record_id: rec.customer_record_id,\n      customer_id: rec.customer_id,\n      shop_name: rec.shop_name,\n      week_key: weekKey,\n      stages: [],\n      stage_names: [],\n      stage_details: [],\n      care_types: [],\n      t4_record_ids: [],\n      care_plan_ids: [],\n      assigned_technician_id: '',       // first non-empty wins (all stages of same machine should share tech)\n      total_qty_per_visit: 0,            // sum across stages → ช่างพกของรวม\n      max_due_date: rec.next_due_date,\n      max_lead_time: 0\n    };\n  }\n\n  const g = groups[key];\n  g.stages.push(rec.stage_number);\n  g.stage_names.push('Stage ' + rec.stage_number + ' (' + rec.filter_name + ')');\n  // checklist line: ☐ Stage N — FilterName [CareType] × Qty\n  const qtyLabel = rec.qty_per_visit > 1 ? ' × ' + rec.qty_per_visit : '';\n  g.stage_details.push('☐ Stage ' + rec.stage_number + ' — ' + rec.filter_name + ' [' + (rec.care_type || 'Service') + ']' + qtyLabel);\n  if (rec.care_type && !g.care_types.includes(rec.care_type)) g.care_types.push(rec.care_type);\n  g.t4_record_ids.push(rec.record_id);\n  if (rec.care_plan_id && !g.care_plan_ids.includes(rec.care_plan_id)) {\n    g.care_plan_ids.push(rec.care_plan_id);\n  }\n  if (!g.assigned_technician_id && rec.assigned_technician_id) {\n    g.assigned_technician_id = rec.assigned_technician_id;\n  }\n  g.total_qty_per_visit += (rec.qty_per_visit || 1);\n  if (rec.next_due_date > g.max_due_date) g.max_due_date = rec.next_due_date;\n\n  // ใช้ alert_before_days จาก T4 (ไม่มี Interval field แยกในขั้นตอนนี้)\n  const lt = rec.alert_before_days || (rec.stage_number <= 3 ? 7 : 14);\n  if (lt > g.max_lead_time) g.max_lead_time = lt;\n}\n\nconst groupList = Object.values(groups).sort((a, b) => a.max_due_date.localeCompare(b.max_due_date));\n\nreturn [{ json: { groups: groupList, group_count: groupList.length, lark_token } }];"
+      },
+      "id": "cp-007",
+      "name": "Group by Machine+Week",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// Prep: Search T5 for existing open jobs\n// เพื่อ idempotency check — ไม่สร้าง T5 ซ้ำ\n// ⚠️ ห้ามระบุ field_names — Lark จะตัด primary field ทิ้ง\n// ────────────────────────────────────────────\nconst data = $input.first().json;\n\n// Query T5: Status NOT IN (เสร็จแล้ว, Cancelled) AND Source Ref ID = AUTO-CAREPLAN\nconst searchBody = JSON.stringify({\n  filter: {\n    conjunction: 'and',\n    conditions: [\n      { field_name: 'Source Ref ID', operator: 'is', value: ['AUTO-CAREPLAN'] },\n      { field_name: 'Status', operator: 'isNot', value: ['เสร็จแล้ว'] },\n      { field_name: 'Status', operator: 'isNot', value: ['Cancelled'] }\n    ]\n  },\n  page_size: 500\n});\n\nreturn [{ json: { ...data, t5SearchBody: searchBody } }];"
+      },
+      "id": "cp-008",
+      "name": "Prep T5 Idempotency Search",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.larksuite.com/open-apis/bitable/v1/apps/UOZZb0ImVaRYy1sDjUNjm3jqpye/tables/tblXb6wG3DI7FmzJ/records/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.lark_token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.t5SearchBody }}",
+        "options": {}
+      },
+      "id": "cp-009",
+      "name": "Fetch Existing T5 (Open)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1760,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// Idempotency: Filter out groups ที่มี T5 open อยู่แล้ว\n// Logic: อ่าน T5.Related Care Plan (DuplexLink → T4) ถ้า overlap กับ group.t4_record_ids → skip\n// ⚠️ Fixed 2026-04-20: เดิมอ่าน 'T4 Refs' (field ไม่มีใน T5 schema) → refs='' เสมอ → ไม่ skip อะไรเลย → สร้าง T5 ซ้ำทุกวัน\n//                     T5 schema จริงใช้ 'Related Care Plan' (DuplexLink) → ต้อง extract record_id[]\n// ────────────────────────────────────────────\nconst prevData = $('Prep T5 Idempotency Search').first().json;\nconst groups = prevData.groups;\nconst lark_token = prevData.lark_token;\n\n// Parse existing T5 records\nconst t5Res = $input.first().json;\nconst t5Items = (t5Res.data && t5Res.data.items) || [];\n\nfunction txt(v) {\n  if (v === null || v === undefined) return '';\n  if (typeof v === 'string') return v;\n  if (v.text) return v.text;\n  if (Array.isArray(v)) return v.map(i => typeof i === 'string' ? i : (i.text || '')).join(',');\n  return '';\n}\n\n// DuplexLink response format: [{ record_id, name/text }] หรือ { value: [...] }\nfunction extractLinkedIds(v) {\n  if (!v) return [];\n  const arr = Array.isArray(v) ? v : (Array.isArray(v.value) ? v.value : []);\n  return arr.map(r => {\n    if (typeof r === 'string') return '';\n    return r.record_id || (Array.isArray(r.record_ids) ? r.record_ids[0] : r.record_ids) || '';\n  }).filter(Boolean);\n}\n\nconst existingT5s = t5Items.map(it => {\n  const f = it.fields || {};\n  return {\n    record_id: it.record_id,\n    job_no: txt(f['Job No.']),\n    status: txt(f['Status']),\n    t4_refs: extractLinkedIds(f['Related Care Plan'])\n  };\n});\n\n// Filter: keep groups that have NO overlap with existing open T5\nconst newGroups = groups.filter(group => {\n  const hasOverlap = existingT5s.some(t5 => {\n    return t5.t4_refs.some(ref => group.t4_record_ids.includes(ref));\n  });\n  return !hasOverlap;\n});\n\nconst skipped = groups.length - newGroups.length;\n\nif (newGroups.length === 0) {\n  return [{ json: { has_new: false, new_count: 0, skipped, lark_token } }];\n}\n\n// Generate Job Numbers: CP-YYYY-MM-DD-NNN\nconst today = new Date().toISOString().split('T')[0];\nconst dated = today.replace(/-/g, '');\nconst jobsToCreate = newGroups.map((g, i) => {\n  const seq = String(i + 1).padStart(3, '0');\n  return {\n    job_no: 'CP-' + dated + '-' + seq,\n    machine_record_id: g.machine_record_id,   // ← stable T2 record_id for Link\n    customer_record_id: g.customer_record_id, // pass-through (T5.Customer is Lookup)\n    machine_code: g.machine_code,\n    customer_id: g.customer_id,\n    shop_name: g.shop_name,\n    stages: g.stages.sort((a,b) => a-b),\n    stage_names: g.stage_names,\n    stage_details: g.stage_details || [],\n    care_types: g.care_types || [],\n    t4_record_ids: g.t4_record_ids,\n    care_plan_ids: g.care_plan_ids,\n    assigned_technician_id: g.assigned_technician_id || '',\n    total_qty_per_visit: g.total_qty_per_visit || g.stages.length,\n    scheduled_date: g.max_due_date,\n    week_key: g.week_key\n  };\n});\n\nreturn [{ json: { has_new: true, new_count: jobsToCreate.length, skipped, jobs: jobsToCreate, lark_token } }];"
+      },
+      "id": "cp-010",
+      "name": "Idempotency Filter",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "cp-if-new",
+              "leftValue": "={{ $json.has_new }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "cp-011",
+      "name": "If New Jobs To Create",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2200,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// Split: แตก jobs array → 1 item per job\n// เพื่อให้ Loop node สร้าง T5 ทีละ record\n// ────────────────────────────────────────────\nconst data = $input.first().json;\nconst jobs = data.jobs || [];\nconst lark_token = data.lark_token;\n\nreturn jobs.map(job => ({ json: { ...job, lark_token } }));"
+      },
+      "id": "cp-012",
+      "name": "Split Jobs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2420,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// Build T5 record body for Lark Base create\n// ⚠️ Per 2026-04-20 audit (fixed):\n//   • T5.Customer is a LOOKUP field — resolved from Machine link, DO NOT write.\n//   • T5.Machine is DuplexLink → T2 (writable). Write [\"rec...\"] NOT [{record_id}]\n//   • T5.Related Care Plan is DuplexLink → T4 (writable; was 'T4 Refs' Text before).\n//   • T5.Assigned Technician is Link → T8 (optional pre-fill from T4). Write [\"rec...\"]\n//   • 'Status' SingleSelect option is 'รอยืนยัน'.\n//   • 'Job Type' MultiSelect → must wrap ['CarePlan'] even for single value.\n//   • 'Scheduled Date' = Date field → write เป็น ms timestamp ไม่ใช่ YYYY-MM-DD string\n// ⚠️ Bug #7 pattern: ใช้ $input.all().map() ไม่ใช่ first()\n//   Split Jobs ส่งมาหลาย items (1 item/job) — first() จะ drop job ที่ 2+ เงียบๆ\n// ────────────────────────────────────────────\n\nfunction toMs(dateStr) {\n  if (!dateStr) return null;\n  const d = new Date(dateStr + 'T00:00:00+07:00');\n  return d.getTime();\n}\n\nreturn $input.all().map(item => {\n  const job = item.json;\n\n  const stagesText = job.stages.map(s => 'Stage ' + s).join(', ');\n  // Checklist format for technician (human-readable, with checkboxes)\n  const checklistText = (job.stage_details && job.stage_details.length > 0)\n    ? job.stage_details.join('\\n')\n    : job.stage_names.join('\\n');\n  const idempotencyKey = 'CP_' + job.machine_record_id + '_' + job.week_key;\n\n  const fields = {\n    'Job No.': job.job_no,\n    'Status': 'รอยืนยัน',\n    'Job Type': ['CarePlan'],        // MultiSelect → array wrap (even single value)\n    'Stages Covered': stagesText,\n    'Stage Details': checklistText,\n    'Total Qty': job.total_qty_per_visit,  // sum of Qty per Visit — ช่างพกของรวม\n    'Scheduled Date': toMs(job.scheduled_date),\n    'Source Ref ID': 'AUTO-CAREPLAN',\n    'Idempotency Key': idempotencyKey,\n    'Auto Create Ticket': true\n  };\n\n  // Writable links — Lark Write format = [\"rec...\"] (array of ID strings)\n  // 1) Machine (DuplexLink → T2) — always set (grouping key)\n  // 2) Related Care Plan (DuplexLink → T4) — array of every T4 record in this visit\n  // 3) Assigned Technician (Link → T8) — optional pre-fill; admin can override\n  if (job.machine_record_id) {\n    fields['Machine'] = [job.machine_record_id];\n  }\n  if (job.t4_record_ids && job.t4_record_ids.length > 0) {\n    fields['Related Care Plan'] = job.t4_record_ids.slice();  // array of record_id strings\n  }\n  if (job.assigned_technician_id) {\n    fields['Assigned Technician'] = [job.assigned_technician_id];\n  }\n\n  const body = JSON.stringify({ fields });\n\n  return { json: { ...job, createBody: body } };\n});"
+      },
+      "id": "cp-013",
+      "name": "Build T5 Record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.larksuite.com/open-apis/bitable/v1/apps/UOZZb0ImVaRYy1sDjUNjm3jqpye/tables/tblXb6wG3DI7FmzJ/records",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.lark_token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.createBody }}",
+        "options": {}
+      },
+      "id": "cp-014",
+      "name": "Create T5 in Lark",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2860,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// Collect results: รวมผลลัพธ์จากทุก T5 ที่สร้าง\n// + สร้าง LINE notification message\n// ────────────────────────────────────────────\nconst allItems = $input.all();\nconst createdJobs = [];\nconst errors = [];\n\nfor (const item of allItems) {\n  const d = item.json;\n  // ตรวจว่า Lark ตอบ success\n  if (d.data && d.data.record) {\n    createdJobs.push({\n      job_no: d.data.record.fields?.['Job No.'] || 'unknown',\n      record_id: d.data.record.record_id,\n      shop_name: d.data.record.fields?.['Shop Name'] || ''\n    });\n  } else if (d.code && d.code !== 0) {\n    errors.push({ code: d.code, msg: d.msg || 'unknown error' });\n  }\n}\n\n// Reconstruct from Split Jobs data for notification\nconst splitItems = $('Split Jobs').all();\nconst jobDetails = splitItems.map(si => si.json);\n\n// Bangkok-aware today ในภาษาไทย + ค.ศ. (ไม่ใช้ toLocaleDateString('th-TH') เพราะ auto-แปลงเป็น พ.ศ.)\nconst TH_MONTHS_FULL = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];\nconst TH_WEEKDAYS = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];\nconst bkkNow = new Date(new Date().getTime() + 7 * 3600 * 1000);\nconst dateTH = 'วัน' + TH_WEEKDAYS[bkkNow.getUTCDay()] + 'ที่ ' + bkkNow.getUTCDate() + ' ' + TH_MONTHS_FULL[bkkNow.getUTCMonth()] + ' ' + bkkNow.getUTCFullYear();\n\nlet msg = '📋 SK-ICE CarePlan Alert\\n';\nmsg += '📅 ' + dateTH + '\\n\\n';\nmsg += '🔧 มี ' + jobDetails.length + ' เครื่อง ใกล้ถึงกำหนด PM:\\n\\n';\n\njobDetails.forEach((job, i) => {\n  const stageList = job.stages.sort((a,b) => a-b).join(', ');\n  msg += (i + 1) + '. 🏪 ' + job.shop_name + '\\n';\n  msg += '   Stage: ' + stageList + '\\n';\n  msg += '   📅 Due: ' + job.scheduled_date + '\\n';\n  msg += '   🏷️ ' + job.job_no + '\\n\\n';\n});\n\nif (errors.length > 0) {\n  msg += '\\n⚠️ Errors: ' + errors.length + ' records failed\\n';\n}\n\nmsg += '👉 เข้า Admin Dashboard เพื่อ confirm + assign ช่าง';\n\nconst skippedCount = $('Idempotency Filter').first().json.skipped || 0;\n\nreturn [{ json: {\n  notification: msg,\n  created_count: createdJobs.length,\n  error_count: errors.length,\n  skipped_count: skippedCount,\n  lark_token: $('Idempotency Filter').first().json.lark_token\n} }];"
+      },
+      "id": "cp-015",
+      "name": "Build Notification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3080,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "cp-if-created",
+              "leftValue": "={{ $json.created_count }}",
+              "rightValue": "0",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "cp-016",
+      "name": "If Created Any",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        3300,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// Prep LINE Push → Admin Group\n// ────────────────────────────────────────────\nconst data = $input.first().json;\n\n// ⚠️ ใส่ LINE User ID ของ Admin ที่ต้องการรับแจ้งเตือน\nconst ADMIN_LINE_IDS = [\n  'U0c15c7dd5257e6ea5ae251279eee92f4'  // Admin: สักกะพงศ์\n];\n\n// สร้าง push messages สำหรับแต่ละ admin\nconst messages = ADMIN_LINE_IDS.map(lineId => ({\n  lineBody: JSON.stringify({\n    to: lineId,\n    messages: [{ type: 'text', text: data.notification }]\n  })\n}));\n\nreturn messages.map(m => ({ json: m }));"
+      },
+      "id": "cp-017",
+      "name": "Prep LINE Admin Notify",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3520,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/push",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer Ng84+hoTD9tPknpLmBAt1cwStuEhjo79Snj7EtTZOK8GBzOZvwQj0LnpspyFLu7GjVc6Y/kvCPmo/lLsvgjAqv+RGKHLpKA6fq7/nkHCW9otlToTdeAwoi+/f6Pcy24QMkqdI8hn1ceyqQXlN6+pUQdB04t89/1O/w1cDnyilFU="
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.lineBody }}",
+        "options": {}
+      },
+      "id": "cp-018",
+      "name": "LINE Push Admin",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3740,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// Summary Log — สรุปผลรอบนี้\n// ────────────────────────────────────────────\nconst now = new Date().toISOString();\n\n// Try to get data from different paths\nlet created = 0, errors = 0, skipped = 0, notification = '';\ntry {\n  const d = $('Build Notification').first().json;\n  created = d.created_count || 0;\n  errors = d.error_count || 0;\n  skipped = d.skipped_count || 0;\n  notification = d.notification || '';\n} catch(e) {}\n\nreturn [{ json: {\n  run_at: now,\n  summary: 'CarePlan Cron: created=' + created + ', skipped=' + skipped + ', errors=' + errors,\n  created, skipped, errors, notification\n} }];"
+      },
+      "id": "cp-019",
+      "name": "Summary Log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3960,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// No-Op: ไม่มี T4 ที่ถึงกำหนด — จบ Cron รอบนี้\n// ────────────────────────────────────────────\nreturn [{ json: { summary: 'CarePlan Cron: No T4 records due within alert window. Nothing to do.', run_at: new Date().toISOString() } }];"
+      },
+      "id": "cp-020",
+      "name": "No Records Due",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// All Skipped: ทุก group มี T5 open อยู่แล้ว\n// ────────────────────────────────────────────\nconst skipped = $input.first().json.skipped || 0;\nreturn [{ json: { summary: 'CarePlan Cron: ' + skipped + ' groups skipped (T5 already exists). No new jobs created.', run_at: new Date().toISOString() } }];"
+      },
+      "id": "cp-021",
+      "name": "All Skipped",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2420,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// No new T5 created (errors or all failed)\n// ────────────────────────────────────────────\nconst data = $input.first().json;\nreturn [{ json: { summary: 'CarePlan Cron: 0 created, check errors.', run_at: new Date().toISOString() } }];"
+      },
+      "id": "cp-022",
+      "name": "None Created",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3520,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "init-careplan",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "cpi-001",
+      "name": "Webhook Init CarePlan",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "init-careplan-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// Auth check + Parse incoming body\n// Expected: { machine_record_id: 'recXXX', install_date_override?: 'YYYY-MM-DD' }\n// ────────────────────────────────────────────\nconst VALID_TOKEN = 'sk-ice-api-v3-2026';\n\nconst raw = $input.first().json;\nconst headers = raw.headers || {};\nconst query = raw.query || {};\nconst token = headers['x-api-key'] || headers['X-API-Key'] || headers['X-Api-Key'] || query.token || '';\n\nif (token !== VALID_TOKEN) {\n  return [{ json: { __error: true, __unauthorized: true, message: 'Unauthorized' } }];\n}\n\nconst body = raw.body || raw;\nconst machine_record_id = body.machine_record_id || body.machine_id || '';\nconst install_date_override = body.install_date_override || '';\n\nif (!machine_record_id) {\n  return [{ json: { __error: true, message: 'machine_record_id is required' } }];\n}\n\nreturn [{ json: { machine_record_id, install_date_override } }];"
+      },
+      "id": "cpi-002",
+      "name": "Parse Init Body",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "cpi-if-err",
+              "leftValue": "={{ $json.__error }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notTrue",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "cpi-003",
+      "name": "If Valid Input",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, error: $('Parse Init Body').first().json.message }) }}",
+        "options": {
+          "responseCode": "={{ $('Parse Init Body').first().json.__unauthorized ? 401 : 400 }}"
+        }
+      },
+      "id": "cpi-003b",
+      "name": "Respond 400",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        440,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.larksuite.com/open-apis/auth/v3/tenant_access_token/internal",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "app_id",
+              "value": "cli_a9500a1d84f89e18"
+            },
+            {
+              "name": "app_secret",
+              "value": "GfKOk3vVSU4WwtXJKZEmHb2Q51JDOLgp"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cpi-004",
+      "name": "Get Lark Token",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// Prep: Fetch T2 Machine record by record_id\n// ────────────────────────────────────────────\nconst token = $input.first().json.tenant_access_token;\nconst initData = $('Parse Init Body').first().json;\n\nreturn [{ json: {\n  lark_token: token,\n  machine_record_id: initData.machine_record_id,\n  install_date_override: initData.install_date_override\n} }];"
+      },
+      "id": "cpi-005",
+      "name": "Prep Fetch T2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://open.larksuite.com/open-apis/bitable/v1/apps/UOZZb0ImVaRYy1sDjUNjm3jqpye/tables/tblU7hDhX2UG4Tbi/records/{{ $json.machine_record_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.lark_token }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cpi-006",
+      "name": "Fetch T2 Machine",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// Parse T2 + Select Template\n// ────────────────────────────────────────────\nconst res = $input.first().json;\nconst prevData = $('Prep Fetch T2').first().json;\n\nif (!res.data || !res.data.record) {\n  return [{ json: { __error: true, message: 'T2 record not found: ' + prevData.machine_record_id } }];\n}\n\nconst f = res.data.record.fields || {};\nconst machine_record_id = prevData.machine_record_id;\nconst lark_token = prevData.lark_token;\nconst install_date_override = prevData.install_date_override;\n\nfunction txt(v) {\n  if (v === null || v === undefined) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'number') return String(v);\n  if (v.text) return v.text;\n  if (v.value && typeof v.value === 'string') return v.value;\n  if (Array.isArray(v) && v[0]) {\n    const x = v[0];\n    return typeof x === 'string' ? x : (x.text || x.name || x.value || '');\n  }\n  return '';\n}\n\n// Lark Date field = Unix ms number. Convert to YYYY-MM-DD in Bangkok TZ.\nfunction dateStr(v) {\n  if (v === null || v === undefined || v === '') return '';\n  if (typeof v === 'number') {\n    const bkk = new Date(v + 7 * 3600 * 1000);\n    const yyyy = bkk.getUTCFullYear();\n    const mm = String(bkk.getUTCMonth() + 1).padStart(2, '0');\n    const dd = String(bkk.getUTCDate()).padStart(2, '0');\n    return yyyy + '-' + mm + '-' + dd;\n  }\n  const s = typeof v === 'string' ? v : txt(v);\n  if (!s) return '';\n  return s.split('T')[0].replace(/\\//g, '-');\n}\n\n// Bangkok-aware today (for fallback when Install date empty)\nfunction bkkTodayStr() {\n  const bkk = new Date(new Date().getTime() + 7 * 3600 * 1000);\n  const yyyy = bkk.getUTCFullYear();\n  const mm = String(bkk.getUTCMonth() + 1).padStart(2, '0');\n  const dd = String(bkk.getUTCDate()).padStart(2, '0');\n  return yyyy + '-' + mm + '-' + dd;\n}\n\nconst shopName      = txt(f['Shop Name']);\nconst machineCode   = txt(f['Machine Code']);\nconst ownershipRaw  = txt(f['Ownership Type']);\nconst filterSystem1 = txt(f['Filter System 1']);\nconst customerRaw   = txt(f['Customer']);\n\n// ─── Determine rental vs sale ───\n// NOTE: Rental/Sale = billing model only (Included in Rental? flag),\n//       physical interval = material chemistry (independent of contract).\nconst isRental = ownershipRaw === 'เช่า' || ownershipRaw.toLowerCase().includes('rental');\n\n// ─── Determine stage count from Filter System ───\n// '3 ขั้นตอน' → 3, '5 ขั้นตอน' → 5, else → 6\nconst stageMatch = (filterSystem1 || '').match(/(\\d+)/);\nconst maxStage = stageMatch ? parseInt(stageMatch[1]) : 6;\n\n// ─── Install date ───\n// ⚠️ Install date อาจเป็น Date field (ms number) — ใช้ dateStr() แปลง ห้ามใช้ txt().split('T')[0]\n// (bug ที่เจอใน rental-cron: ms number → string = literal '1793898000000' แล้ว split('T') ก็ไม่ช่วย)\nconst installRaw = install_date_override || dateStr(f['Install date']) || dateStr(f['Install Date']);\nconst installDate = installRaw || bkkTodayStr();\n\n// ─── Fallback interval tables (used only if template row missing) ───\n// Physics-bound: Stage 4-6 interval doesn't change whether contract is Rental or Sale.\n// Only Stage 1-3 differs (Rental bills monthly → visit monthly; Sale pay-per-service).\nconst FALLBACK_SALE   = { 1: 1, 2: 3, 3: 3, 4: 10, 5: 12, 6: 12 };\nconst FALLBACK_RENTAL = { 1: 1, 2: 1, 3: 1, 4: 10, 5: 12, 6: 12 };\n\n// ─── RO Stage Templates ───\n// Care Type uses confirmed T4 SingleSelect options: Filter Change | Descaling | PM\n// All 6 RO stages = cartridge replacement → Filter Change\n// ⚠️ name MUST exactly match Lark T4.Filter Stage MultiSelect options\n//    (verified 2026-04-20). Spec detail like '10\"' / '300 GPD' belongs in T3 catalog,\n//    not here — this is a UI label only.\nconst RO_STAGE_CONFIG = [\n  { stage: 1, name: 'Stage 1 - PP Sediment',        t3_code: 'F00001', interval: 1,  alert: 7,  care_type: 'Filter Change' },\n  { stage: 2, name: 'Stage 2 - Carbon Block',       t3_code: 'F00002', interval: 3,  alert: 7,  care_type: 'Filter Change' },\n  { stage: 3, name: 'Stage 3 - Resin / Softener',   t3_code: 'F00003', interval: 3,  alert: 7,  care_type: 'Filter Change' },\n  { stage: 4, name: 'Stage 4 - RO Membrane',        t3_code: 'F00072', interval: 10, alert: 14, care_type: 'Filter Change' },\n  { stage: 5, name: 'Stage 5 - Post Carbon',        t3_code: 'F00004', interval: 12, alert: 14, care_type: 'Filter Change' },\n  { stage: 6, name: 'Stage 6 - Mineral / Alkaline', t3_code: 'F00005', interval: 12, alert: 14, care_type: 'Filter Change' }\n];\n\n// Filter stages based on machine's filter system count\nconst selectedStages = RO_STAGE_CONFIG.filter(s => s.stage <= maxStage);\n\n// Rental override: Stage 1-3 visits monthly (billing tie-in), Stage 4-6 physics-bound unchanged.\n// Care Type stays 'Filter Change' — the physical act doesn't change with contract type.\nconst stages = isRental\n  ? selectedStages.map(s => ({\n      ...s,\n      interval: FALLBACK_RENTAL[s.stage] || s.interval,\n      alert: s.stage <= 3 ? 7 : 14\n    }))\n  : selectedStages;\n\n// ─── Helper: Add months to date ───\nfunction addMonths(dateStr, months) {\n  const d = new Date(dateStr + 'T00:00:00');\n  d.setMonth(d.getMonth() + months);\n  return d.toISOString().split('T')[0];\n}\n\n// ─── Build stage records ───\nconst stageRecords = stages.map(s => {\n  const carePlanId = 'CP-' + (machineCode || machine_record_id.slice(-6)) + '-S' + s.stage;\n  const nextDueDate = addMonths(installDate, s.interval);\n\n  return {\n    care_plan_id: carePlanId,\n    machine_record_id,\n    shop_name: shopName,\n    machine_code: machineCode,\n    ownership_type: ownershipRaw,\n    stage: s.stage,\n    filter_name: s.name,\n    t3_code: s.t3_code,\n    interval: s.interval,\n    alert_days: s.alert,\n    care_type: s.care_type,\n    install_date: installDate,\n    next_due_date: nextDueDate,\n    lark_token\n  };\n});\n\nreturn [{ json: {\n  stage_records: stageRecords,\n  stage_count: stageRecords.length,\n  shop_name: shopName,\n  machine_code: machineCode,\n  is_rental: isRental,\n  install_date: installDate,\n  lark_token\n} }];"
+      },
+      "id": "cpi-007",
+      "name": "Parse T2 + Select Template",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "cpi-if-valid",
+              "leftValue": "={{ $json.stage_count }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "cpi-008",
+      "name": "If Has Stages",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// Idempotency: ตรวจ T4 ว่า machine นี้มี CarePlan stage นี้อยู่แล้วไหม\n// เพื่อป้องกัน init ซ้ำ\n// ────────────────────────────────────────────\nconst data = $input.first().json;\nconst lark_token = data.lark_token;\nconst machine_record_id = data.stage_records[0].machine_record_id;\n\n// Search T4 by Machine linked record\nconst searchBody = JSON.stringify({\n  filter: {\n    conjunction: 'and',\n    conditions: [\n      // Machine is a linked field — search by record_id of the linked T2\n      { field_name: 'Machine', operator: 'is', value: [machine_record_id] }\n    ]\n  },\n  page_size: 20\n  // ⚠️ ห้ามระบุ field_names\n});\n\nreturn [{ json: { ...data, t4CheckBody: searchBody } }];"
+      },
+      "id": "cpi-009",
+      "name": "Prep Check Existing T4",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.larksuite.com/open-apis/bitable/v1/apps/UOZZb0ImVaRYy1sDjUNjm3jqpye/tables/tblyA9sHFA9AJVEi/records/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.lark_token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.t4CheckBody }}",
+        "options": {}
+      },
+      "id": "cpi-010",
+      "name": "Check Existing T4",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1980,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// Filter: skip stages ที่มี T4 อยู่แล้ว (idempotency)\n// ────────────────────────────────────────────\nconst templateData = $('Prep Check Existing T4').first().json;\nconst stageRecords = templateData.stage_records;\nconst lark_token = templateData.lark_token;\n\nconst t4Res = $input.first().json;\nconst existingItems = (t4Res.data && t4Res.data.items) || [];\n\nfunction txt(v) {\n  if (!v) return '';\n  if (typeof v === 'string') return v;\n  if (v.text) return v.text;\n  if (Array.isArray(v) && v[0]) {\n    const x = v[0];\n    return typeof x === 'string' ? x : (x.text || x.name || '');\n  }\n  return '';\n}\n\n// Collect existing stage numbers\nconst existingStages = existingItems.map(it => {\n  const f = it.fields || {};\n  return parseInt(txt(f['Stage Number']) || '0');\n}).filter(n => !isNaN(n) && n > 0);\n\n// Only create stages that don't exist yet\nconst newStages = stageRecords.filter(s => !existingStages.includes(s.stage));\nconst skippedStages = stageRecords.filter(s => existingStages.includes(s.stage));\n\nif (newStages.length === 0) {\n  return [{ json: {\n    has_new: false,\n    skipped: skippedStages.length,\n    message: 'All ' + skippedStages.length + ' stages already exist in T4',\n    lark_token\n  } }];\n}\n\nreturn [{ json: {\n  has_new: true,\n  new_stages: newStages,\n  skipped_count: skippedStages.length,\n  new_count: newStages.length,\n  shop_name: templateData.shop_name,\n  machine_code: templateData.machine_code,\n  is_rental: templateData.is_rental,\n  lark_token\n} }];"
+      },
+      "id": "cpi-011",
+      "name": "Idempotency Filter",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2200,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "cpi-if-new",
+              "leftValue": "={{ $json.has_new }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "cpi-012",
+      "name": "If New Stages",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2420,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// Split: แตก new_stages array → 1 item per stage\n// ────────────────────────────────────────────\nconst data = $input.first().json;\nreturn data.new_stages.map(s => ({ json: { ...s, lark_token: data.lark_token } }));"
+      },
+      "id": "cpi-013",
+      "name": "Split New Stages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// Build T4 record body for Lark create\n// ⚠️ Fields NOT to write (per 2026-04-20 audit):\n//   • Next Due Date       — Formula (Last Done Date + Planned Interval) → auto-compute\n//   • Due Status          — Formula (derived from Next Due Date)\n//   • Service Item        — DuplexLink → T3 (needs record_id, not code string; filled separately)\n//   • Assigned Technician — Link → T8 (unassigned at init; admin sets later)\n//   • Lead Time Override  — Number (empty = fallback to Alert Before (Days))\n//   • Customer / Location — covered by Machine link + Lookup\n// Fields used (confirmed in T4 schema 2026-04-20):\n//   Planned Interval (Months) — Number (template baseline, source of truth)\n//   Care Type                 — MultiSelect [Filter Change | Descaling | PM]\n//   Filter Stage              — MultiSelect [Stage 1..6 - Material]  ← MUST match Lark options exactly\n//   Included in Rental        — Checkbox (true if rental contract)\n//   CP Status                 — SingleSelect [Pending | Active | Done]  ← no colon!\n//   Last Done Date            — Date (write as ms timestamp)\n//   Qty per Visit             — Number (default 1; admin tune per machine)\n//   Auto Create Ticket        — Checkbox (true = cron auto-schedules T5; false = admin schedules manually)\n//   Interval Override Reason  — Text (audit trail for fallback/override)\n//   Last 3 Actual Intervals   — Text (JSON array, filled by create-job workflow)\n// ⚠️ Bug #7 pattern: ใช้ $input.all().map() ไม่ใช่ first()\n//   Split New Stages ส่งมา 1 item/stage (3-6 stages) — first() จะ drop stage 2-6 เงียบๆ\n// ⚠️ Lark Date field write = ms number (bug #4 จาก rental-cron) ใช้ toMs()\n// ⚠️ Lark Link write = [\"rec...\"] NOT [{record_id}] (bug #5 จาก rental-cron)\n// ────────────────────────────────────────────\n\n// To seed Last Done Date so Formula (Last Done Date + Planned Interval = Next Due Date)\n// produces the correct first-cycle due, we back-date by -1 × interval from install date.\n// e.g. install 2026-01-01, interval 3 → Last Done Date = 2025-10-01\n//      Formula returns 2025-10-01 + 3mo = 2026-01-01 = first due = install date ✓\nfunction subMonths(dateStr, months) {\n  const d = new Date(dateStr + 'T00:00:00');\n  d.setMonth(d.getMonth() - months);\n  return d.toISOString().split('T')[0];\n}\n\n// Lark Date write = ms timestamp (Bangkok midnight)\nfunction toMs(dateStr) {\n  if (!dateStr) return null;\n  return new Date(dateStr + 'T00:00:00+07:00').getTime();\n}\n\nreturn $input.all().map(item => {\n  const s = item.json;\n  const seedLastDone = subMonths(s.install_date, s.interval);\n\n  const fields = {\n    // ── Identifiers ──\n    'Care Plan ID':  s.care_plan_id,\n    'Stage Number':  s.stage,\n    // MultiSelect fields → must be array even for single value\n    'Filter Stage':  [s.filter_name],\n    'Care Type':     [s.care_type],   // Filter Change | Descaling | PM\n\n    // ── Schedule ──\n    // Planned Interval = template baseline (source of truth for Formula).\n    // Next Due Date is a Formula — never write; Lark computes from Last Done Date + this.\n    'Planned Interval (Months)': s.interval,\n    'Alert Before (Days)':       s.alert_days,\n    'Last Done Date':            toMs(seedLastDone),\n\n    // ── Billing model flag (separate from physical interval) ──\n    // Rental = SK-ICE bears cost (monthly billing covers service)\n    // Sale   = customer pays per service call\n    'Included in Rental': s.ownership_type === 'เช่า' || /rental/i.test(s.ownership_type || ''),\n\n    // ── Status ──\n    // SingleSelect — no colon in field name (schema confirmed 2026-04-20)\n    'CP Status': 'Pending',\n\n    // ── Visit defaults (new fields 2026-04-20) ──\n    // Qty per Visit: ช่างต้องพกไส้กรองกี่ตัวต่อรอบ — default 1, admin override เฉพาะเครื่องพิเศษ\n    // Auto Create Ticket: true = cron auto-schedule T5 / false = admin นัดเองสำหรับ CarePlan พิเศษ\n    'Qty per Visit':       1,\n    'Auto Create Ticket':  true,\n\n    // ── Audit (empty at init; filled when fallback/override triggers) ──\n    'Interval Override Reason': '',\n    'Last 3 Actual Intervals':  '[]'\n  };\n\n  // Linked record: Machine → T2 (DuplexLink) — write format = [\"rec...\"]\n  if (s.machine_record_id) {\n    fields['Machine'] = [s.machine_record_id];\n  }\n\n  const body = JSON.stringify({ fields });\n  return { json: { ...s, createBody: body } };\n});"
+      },
+      "id": "cpi-014",
+      "name": "Build T4 Record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2860,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.larksuite.com/open-apis/bitable/v1/apps/UOZZb0ImVaRYy1sDjUNjm3jqpye/tables/tblyA9sHFA9AJVEi/records",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.lark_token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.createBody }}",
+        "options": {}
+      },
+      "id": "cpi-015",
+      "name": "Create T4 in Lark",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3080,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// Collect all created T4 records → build response\n// ────────────────────────────────────────────\nconst allItems = $input.all();\nconst created = [], errors = [];\n\nfor (const item of allItems) {\n  const d = item.json;\n  if (d.data && d.data.record) {\n    created.push({\n      record_id: d.data.record.record_id,\n      care_plan_id: d.data.record.fields?.['Care Plan ID'] || '',\n      stage: d.data.record.fields?.['Stage Number'] || ''\n    });\n  } else if (d.code && d.code !== 0) {\n    errors.push({ code: d.code, msg: d.msg || 'error' });\n  }\n}\n\n// Reconstruct source data from Split New Stages\nconst splitItems = $('Split New Stages').all();\nconst shopName = splitItems[0]?.json?.shop_name || '';\nconst machineCode = splitItems[0]?.json?.machine_code || '';\nconst isRental = splitItems[0]?.json?.is_rental || false;\nconst skippedCount = $('Idempotency Filter').first().json.skipped_count || 0;\n\nconst summary = {\n  success: errors.length === 0,\n  machine_code: machineCode,\n  shop_name: shopName,\n  ownership: isRental ? 'Rental' : 'Sale',\n  created_count: created.length,\n  skipped_count: skippedCount,\n  error_count: errors.length,\n  created_records: created,\n  errors: errors.length > 0 ? errors : undefined\n};\n\nreturn [{ json: summary }];"
+      },
+      "id": "cpi-016",
+      "name": "Collect Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3300,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "cpi-017",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        3520,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// All stages already exist\nconst data = $input.first().json;\nreturn [{ json: { success: true, message: data.message, skipped: data.skipped } }];"
+      },
+      "id": "cpi-018",
+      "name": "All Already Exist",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "cpi-019",
+      "name": "Respond Already Exists",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        2860,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, error: 'No valid stages found for machine. Check Filter System 1 field in T2.' }) }}",
+        "options": {
+          "responseCode": 422
+        }
+      },
+      "id": "cpi-020",
+      "name": "Respond No Stages",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1540,
+        160
+      ]
     }
   ],
   "connections": {
@@ -3310,6 +4141,411 @@
         [
           {
             "node": "✅ Mark Notified Customer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cron 07:00 Daily": {
+      "main": [
+        [
+          {
+            "node": "Get Lark Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Lark Token": {
+      "main": [
+        [
+          {
+            "node": "Prep Fetch T2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Search T4": {
+      "main": [
+        [
+          {
+            "node": "Fetch T4 CarePlan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch T4 CarePlan": {
+      "main": [
+        [
+          {
+            "node": "Parse T4 Records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse T4 Records": {
+      "main": [
+        [
+          {
+            "node": "If Has Due Records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Has Due Records": {
+      "main": [
+        [
+          {
+            "node": "Group by Machine+Week",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Records Due",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Group by Machine+Week": {
+      "main": [
+        [
+          {
+            "node": "Prep T5 Idempotency Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep T5 Idempotency Search": {
+      "main": [
+        [
+          {
+            "node": "Fetch Existing T5 (Open)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Existing T5 (Open)": {
+      "main": [
+        [
+          {
+            "node": "Idempotency Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Idempotency Filter": {
+      "main": [
+        [
+          {
+            "node": "If New Stages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If New Jobs To Create": {
+      "main": [
+        [
+          {
+            "node": "Split Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "All Skipped",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Jobs": {
+      "main": [
+        [
+          {
+            "node": "Build T5 Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build T5 Record": {
+      "main": [
+        [
+          {
+            "node": "Create T5 in Lark",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create T5 in Lark": {
+      "main": [
+        [
+          {
+            "node": "Build Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Notification": {
+      "main": [
+        [
+          {
+            "node": "If Created Any",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Created Any": {
+      "main": [
+        [
+          {
+            "node": "Prep LINE Admin Notify",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "None Created",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep LINE Admin Notify": {
+      "main": [
+        [
+          {
+            "node": "LINE Push Admin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LINE Push Admin": {
+      "main": [
+        [
+          {
+            "node": "Summary Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Init CarePlan": {
+      "main": [
+        [
+          {
+            "node": "Parse Init Body",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Init Body": {
+      "main": [
+        [
+          {
+            "node": "If Valid Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Valid Input": {
+      "main": [
+        [
+          {
+            "node": "Get Lark Token",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond 400",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Fetch T2": {
+      "main": [
+        [
+          {
+            "node": "Fetch T2 Machine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch T2 Machine": {
+      "main": [
+        [
+          {
+            "node": "Parse T2 + Select Template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse T2 + Select Template": {
+      "main": [
+        [
+          {
+            "node": "If Has Stages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Has Stages": {
+      "main": [
+        [
+          {
+            "node": "Prep Check Existing T4",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond No Stages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Check Existing T4": {
+      "main": [
+        [
+          {
+            "node": "Check Existing T4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Existing T4": {
+      "main": [
+        [
+          {
+            "node": "Idempotency Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If New Stages": {
+      "main": [
+        [
+          {
+            "node": "Split New Stages",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "All Already Exist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split New Stages": {
+      "main": [
+        [
+          {
+            "node": "Build T4 Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build T4 Record": {
+      "main": [
+        [
+          {
+            "node": "Create T4 in Lark",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create T4 in Lark": {
+      "main": [
+        [
+          {
+            "node": "Collect Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Results": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "All Already Exist": {
+      "main": [
+        [
+          {
+            "node": "Respond Already Exists",
             "type": "main",
             "index": 0
           }
