@@ -1,7 +1,6 @@
 {
   "name": "WF GPS — All in One",
   "nodes": [
-
     {
       "parameters": {
         "httpMethod": "POST",
@@ -13,7 +12,10 @@
       "name": "Webhook Init",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 60],
+      "position": [
+        240,
+        60
+      ],
       "webhookId": "gps-init-webhook"
     },
     {
@@ -24,7 +26,10 @@
       "name": "Set Init Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [460, 60]
+      "position": [
+        460,
+        60
+      ]
     },
     {
       "parameters": {
@@ -34,8 +39,14 @@
         "contentType": "json",
         "bodyParameters": {
           "parameters": [
-            { "name": "app_id",     "value": "cli_a9500a1d84f89e18" },
-            { "name": "app_secret", "value": "GfKOk3vVSU4WwtXJKZEmHb2Q51JDOLgp" }
+            {
+              "name": "app_id",
+              "value": "cli_a9500a1d84f89e18"
+            },
+            {
+              "name": "app_secret",
+              "value": "GfKOk3vVSU4WwtXJKZEmHb2Q51JDOLgp"
+            }
           ]
         },
         "options": {}
@@ -44,7 +55,10 @@
       "name": "Get Token [Init]",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [680, 60]
+      "position": [
+        680,
+        60
+      ]
     },
     {
       "parameters": {
@@ -54,7 +68,10 @@
       "name": "Prep [Init]",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [900, 60]
+      "position": [
+        900,
+        60
+      ]
     },
     {
       "parameters": {
@@ -63,7 +80,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "={{ 'Bearer ' + $json.lark_token }}" }
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.lark_token }}"
+            }
           ]
         },
         "sendBody": true,
@@ -76,7 +96,10 @@
       "name": "Search T5 [Init]",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1120, 60]
+      "position": [
+        1120,
+        60
+      ]
     },
     {
       "parameters": {
@@ -86,32 +109,60 @@
       "name": "Parse T5 [Init]",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1340, 60]
+      "position": [
+        1340,
+        60
+      ]
     },
     {
       "parameters": {
         "jsCode": "const src = $input.first().json;\nreturn [{ json: {\n  'Timestamp': new Date().toISOString(),\n  'Job No.': src.job_id || '',\n  'Status': 'init',\n  'Job Type': src.job_type || '',\n  'Priority': src.priority || '',\n  'Scheduled Date': src.appoint_date || '',\n  'Shop Name': src.customer_name || '',\n  'Customer ID': src.customer_id || '',\n  'C.LINE User ID': src.customer_line_id || '',\n  'Customer Type': '',\n  'Google Maps URL': src.job_maps_url || '',\n  'Location': '',\n  'Shop GPS Lat': 0,\n  'Shop GPS Lng': 0,\n  'Assigned Technician': '',\n  'Staff ID': src.staff_id || '',\n  'Tech Name': src.tech_name || '',\n  'Tech Line ID': src.tech_line_id || '',\n  'Tech Lark ID': '',\n  'Tech GPS Lat': 0,\n  'Tech GPS Lng': 0,\n  'Accuracy': 0,\n  'Is First': true,\n  'Battery Level (%)': '',\n  'Interval (min)': '',\n  'Notes': src.note || '',\n  'Parent items 1': '',\n  'Parent items 2': '',\n  'Parent items 3': '',\n  'Parent items 4': ''\n}}];"
       },
       "id": "prep-t6-init",
-      "name": "Prep T6 Init",
+      "name": "Prep T18 Init",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1560, 60]
+      "position": [
+        1560,
+        60
+      ]
     },
     {
       "parameters": {
         "operation": "append",
-        "documentId": { "__rl": true, "value": "15ZWCa3JCWm0GKODJG9lipzeho4gebu2hepO6drygOek", "mode": "id" },
-        "sheetName": { "__rl": true, "value": "GPS T6 LOG", "mode": "name" },
-        "columns": { "mappingMode": "autoMapInputData", "value": {}, "matchingColumns": [], "schema": [] },
+        "documentId": {
+          "__rl": true,
+          "value": "15ZWCa3JCWm0GKODJG9lipzeho4gebu2hepO6drygOek",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "T18_GPS_Tracking",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
         "options": {}
       },
       "id": "init-006",
-      "name": "Create T6 Init",
+      "name": "Create T18 Init",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
-      "credentials": { "googleSheetsOAuth2Api": { "id": "SHEETS_CRED_ID", "name": "Google Sheets" } },
-      "position": [1780, 60]
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "SHEETS_CRED_ID",
+          "name": "Google Sheets"
+        }
+      },
+      "position": [
+        1780,
+        60
+      ],
+      "continueOnFail": true
     },
     {
       "parameters": {
@@ -120,8 +171,14 @@
         "options": {
           "responseHeaders": {
             "entries": [
-              { "name": "Access-Control-Allow-Origin", "value": "*" },
-              { "name": "Content-Type", "value": "application/json" }
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
             ]
           }
         }
@@ -130,9 +187,62 @@
       "name": "Respond Init",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [2000, 60]
+      "position": [
+        2440,
+        60
+      ]
     },
-
+    {
+      "parameters": {
+        "jsCode": "const ADMIN_IDS = ['e5d154gc', 'eceffed6', 'a978af6f'];\nconst src = $('Parse T5 [Init]').first().json;\nconst token = $('Get Token [Init]').first().json.tenant_access_token;\nconst text = '🚗 ช่างออกจากฐาน!\\n\\n' +\n  '📋 รหัสงาน: ' + (src.job_id || '-') + '\\n' +\n  '👷 ช่าง: ' + (src.tech_name || '-') + '\\n' +\n  '🏪 ร้าน: ' + (src.shop_name || src.customer_name || '-') +\n  (src.maps_url ? '\\n📍 ' + src.maps_url : '');\nreturn ADMIN_IDS.map(id => ({\n  json: {\n    lark_token: token,\n    larkBody: JSON.stringify({\n      receive_id: id,\n      msg_type: 'text',\n      content: JSON.stringify({ text: text })\n    })\n  }\n}));"
+      },
+      "id": "lark-dm-init-01",
+      "name": "Prep Lark DM [Init]",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.larksuite.com/open-apis/im/v1/messages?receive_id_type=user_id",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.lark_token }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.larkBody }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "lark-dm-init-02",
+      "name": "Lark DM Admin [Init]",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2220,
+        60
+      ]
+    },
     {
       "parameters": {
         "httpMethod": "POST",
@@ -144,7 +254,10 @@
       "name": "Webhook Update",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 420],
+      "position": [
+        240,
+        420
+      ],
       "webhookId": "gps-update-webhook"
     },
     {
@@ -155,7 +268,10 @@
       "name": "Set GPS Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [460, 420]
+      "position": [
+        460,
+        420
+      ]
     },
     {
       "parameters": {
@@ -165,8 +281,14 @@
         "contentType": "json",
         "bodyParameters": {
           "parameters": [
-            { "name": "app_id",     "value": "cli_a9500a1d84f89e18" },
-            { "name": "app_secret", "value": "GfKOk3vVSU4WwtXJKZEmHb2Q51JDOLgp" }
+            {
+              "name": "app_id",
+              "value": "cli_a9500a1d84f89e18"
+            },
+            {
+              "name": "app_secret",
+              "value": "GfKOk3vVSU4WwtXJKZEmHb2Q51JDOLgp"
+            }
           ]
         },
         "options": {}
@@ -175,7 +297,10 @@
       "name": "Get Token [Update]",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [680, 420]
+      "position": [
+        680,
+        420
+      ]
     },
     {
       "parameters": {
@@ -185,7 +310,10 @@
       "name": "Prep [Update]",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [900, 420]
+      "position": [
+        900,
+        420
+      ]
     },
     {
       "parameters": {
@@ -194,7 +322,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "={{ 'Bearer ' + $json.lark_token }}" }
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.lark_token }}"
+            }
           ]
         },
         "sendBody": true,
@@ -207,53 +338,91 @@
       "name": "Search T5 [Update]",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1120, 420]
+      "position": [
+        1120,
+        420
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const prep = $('Prep [Update]').first().json;\nconst token = prep.lark_token;\nconst src = prep;\nconst data = $input.first().json;\nconst txt = (v) => { if (!v) return ''; if (typeof v === 'string') return v; if (typeof v === 'number') return String(v); if (v.value !== undefined && Array.isArray(v.value)) { if (v.value.length === 0) return ''; const first = v.value[0]; if (typeof first === 'string') return first; if (first?.text) return first.text; if (first?.name) return first.name; } if (Array.isArray(v)) { if (v.length === 0) return ''; const first = v[0]; if (typeof first === 'string') return first; if (first?.text) return first.text; if (first?.name) return first.name; } if (v.text) return v.text; if (v.name) return v.name; return ''; };\nconst items = data.data?.items || [];\nif (items.length === 0) {\n  return [{ json: { ...src, t5_record_id: '', shop_name: src.customer_name, maps_url: '', line_id: src.customer_line_id, customer_id: '', lark_token: token } }];\n}\nconst item = items[0];\nconst f = item.fields || {};\nreturn [{ json: {\n  ...src,\n  t5_record_id: item.record_id,\n  shop_name: txt(f['Shop Name']) || src.customer_name,\n  maps_url: txt(f['Google Maps URL']) || '',\n  line_id: src.customer_line_id || txt(f['C.LINE User ID']),\n  customer_id: txt(f['Customer ID']) || '',\n  lark_token: token\n} }];"
+        "jsCode": "const prep = $('Prep [Update]').first().json;\nconst token = prep.lark_token;\nconst src = prep;\nconst data = $input.first().json;\nconst txt = (v) => { if (!v) return ''; if (typeof v === 'string') return v; if (typeof v === 'number') return String(v); if (v.value !== undefined && Array.isArray(v.value)) { if (v.value.length === 0) return ''; const first = v.value[0]; if (typeof first === 'string') return first; if (first?.text) return first.text; if (first?.name) return first.name; } if (Array.isArray(v)) { if (v.length === 0) return ''; const first = v[0]; if (typeof first === 'string') return first; if (first?.text) return first.text; if (first?.name) return first.name; } if (v.text) return v.text; if (v.name) return v.name; return ''; };\nconst items = data.data?.items || [];\nif (items.length === 0) {\n  return [{ json: { ...src, t5_record_id: '', shop_name: src.customer_name, maps_url: '', line_id: src.customer_line_id, customer_id: '', customer_phone: '', lark_token: token } }];\n}\nconst item = items[0];\nconst f = item.fields || {};\nreturn [{ json: {\n  ...src,\n  t5_record_id: item.record_id,\n  shop_name: txt(f['Shop Name']) || src.customer_name,\n  maps_url: txt(f['Google Maps URL']) || '',\n  line_id: src.customer_line_id || txt(f['C.LINE User ID']),\n  customer_id: txt(f['Customer ID']) || '',\n  customer_phone: txt(f['Customer Phone 1']) || '',\n  lark_token: token\n} }];"
       },
       "id": "upd-005",
       "name": "Parse T5 [Update]",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1340, 420]
+      "position": [
+        1340,
+        420
+      ]
     },
     {
       "parameters": {
         "jsCode": "const src = $input.first().json;\nreturn [{ json: {\n  'Timestamp': new Date().toISOString(),\n  'Job No.': src.job_id || '',\n  'Status': src.status || 'traveling',\n  'Job Type': '',\n  'Priority': '',\n  'Scheduled Date': '',\n  'Shop Name': src.customer_name || '',\n  'Customer ID': '',\n  'C.LINE User ID': src.customer_line_id || '',\n  'Customer Type': '',\n  'Google Maps URL': '',\n  'Location': (src.lat || 0) + ',' + (src.lng || 0),\n  'Shop GPS Lat': src.shop_lat || 0,\n  'Shop GPS Lng': src.shop_lng || 0,\n  'Assigned Technician': '',\n  'Staff ID': '',\n  'Tech Name': src.tech_name || '',\n  'Tech Line ID': '',\n  'Tech Lark ID': '',\n  'Tech GPS Lat': src.lat || 0,\n  'Tech GPS Lng': src.lng || 0,\n  'Accuracy': src.accuracy || 0,\n  'Is First': src.is_first || false,\n  'Battery Level (%)': src.battery || '',\n  'Interval (min)': 5,\n  'Notes': '',\n  'Parent items 1': '',\n  'Parent items 2': '',\n  'Parent items 3': '',\n  'Parent items 4': ''\n}}];"
       },
       "id": "prep-t6-ping",
-      "name": "Prep T6 Ping",
+      "name": "Prep T18 Ping",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1560, 420]
+      "position": [
+        1560,
+        420
+      ]
     },
     {
       "parameters": {
         "operation": "append",
-        "documentId": { "__rl": true, "value": "15ZWCa3JCWm0GKODJG9lipzeho4gebu2hepO6drygOek", "mode": "id" },
-        "sheetName": { "__rl": true, "value": "GPS T6 LOG", "mode": "name" },
-        "columns": { "mappingMode": "autoMapInputData", "value": {}, "matchingColumns": [], "schema": [] },
+        "documentId": {
+          "__rl": true,
+          "value": "15ZWCa3JCWm0GKODJG9lipzeho4gebu2hepO6drygOek",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "T18_GPS_Tracking",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
         "options": {}
       },
       "id": "upd-006",
-      "name": "Create T6 Ping",
+      "name": "Create T18 Ping",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
-      "credentials": { "googleSheetsOAuth2Api": { "id": "SHEETS_CRED_ID", "name": "Google Sheets" } },
-      "position": [1780, 420]
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "SHEETS_CRED_ID",
+          "name": "Google Sheets"
+        }
+      },
+      "position": [
+        1780,
+        420
+      ],
+      "continueOnFail": true
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
           "conditions": [
             {
               "id": "is-first-check",
               "leftValue": "={{ $('Set GPS Data').first().json.is_first }}",
               "rightValue": true,
-              "operator": { "type": "boolean", "operation": "true" }
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
             }
           ],
           "combinator": "and"
@@ -263,7 +432,10 @@
       "name": "Is First Ping",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [2000, 420]
+      "position": [
+        2000,
+        420
+      ]
     },
     {
       "parameters": {
@@ -272,7 +444,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "={{ 'Bearer ' + $('Parse T5 [Update]').first().json.lark_token }}" }
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Parse T5 [Update]').first().json.lark_token }}"
+            }
           ]
         },
         "sendBody": true,
@@ -285,18 +460,29 @@
       "name": "Update T5 OnWay",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2000, 260]
+      "position": [
+        2000,
+        260
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
           "conditions": [
             {
               "id": "upd-line-check",
               "leftValue": "={{ $('Set GPS Data').first().json.customer_line_id }}",
               "rightValue": "",
-              "operator": { "type": "string", "operation": "notEmpty", "singleValue": true }
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
             }
           ],
           "combinator": "and"
@@ -306,7 +492,10 @@
       "name": "If LINE [Update]",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [2000, 580]
+      "position": [
+        2000,
+        580
+      ]
     },
     {
       "parameters": {
@@ -316,7 +505,10 @@
       "name": "Prep Traveling",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2000, 580]
+      "position": [
+        2000,
+        580
+      ]
     },
     {
       "parameters": {
@@ -326,20 +518,39 @@
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
         },
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
         "body": "={{ $json.travelingBody }}",
-        "options": {}
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
       },
       "id": "upd-009",
       "name": "Notify Customer Traveling",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2220, 580],
-      "credentials": { "httpHeaderAuth": { "id": "", "name": "Header Auth account" } }
+      "position": [
+        2220,
+        580
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Header Auth account"
+        }
+      }
     },
     {
       "parameters": {
@@ -351,9 +562,11 @@
       "name": "Respond Update",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [2440, 420]
+      "position": [
+        2440,
+        420
+      ]
     },
-
     {
       "parameters": {
         "httpMethod": "POST",
@@ -365,7 +578,10 @@
       "name": "Webhook Arrived",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 900],
+      "position": [
+        240,
+        900
+      ],
       "webhookId": "gps-arrived-webhook"
     },
     {
@@ -376,7 +592,10 @@
       "name": "Set Arrived Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [460, 900]
+      "position": [
+        460,
+        900
+      ]
     },
     {
       "parameters": {
@@ -386,8 +605,14 @@
         "contentType": "json",
         "bodyParameters": {
           "parameters": [
-            { "name": "app_id",     "value": "cli_a9500a1d84f89e18" },
-            { "name": "app_secret", "value": "GfKOk3vVSU4WwtXJKZEmHb2Q51JDOLgp" }
+            {
+              "name": "app_id",
+              "value": "cli_a9500a1d84f89e18"
+            },
+            {
+              "name": "app_secret",
+              "value": "GfKOk3vVSU4WwtXJKZEmHb2Q51JDOLgp"
+            }
           ]
         },
         "options": {}
@@ -396,7 +621,10 @@
       "name": "Get Token [Arrived]",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [680, 900]
+      "position": [
+        680,
+        900
+      ]
     },
     {
       "parameters": {
@@ -406,7 +634,10 @@
       "name": "Prep [Arrived]",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [900, 900]
+      "position": [
+        900,
+        900
+      ]
     },
     {
       "parameters": {
@@ -415,7 +646,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "={{ 'Bearer ' + $json.lark_token }}" }
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.lark_token }}"
+            }
           ]
         },
         "sendBody": true,
@@ -428,7 +662,10 @@
       "name": "Search T5 [Arrived]",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1120, 900]
+      "position": [
+        1120,
+        900
+      ]
     },
     {
       "parameters": {
@@ -438,7 +675,10 @@
       "name": "Parse T5 [Arrived]",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1340, 900]
+      "position": [
+        1340,
+        900
+      ]
     },
     {
       "parameters": {
@@ -447,7 +687,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "={{ 'Bearer ' + $json.lark_token }}" }
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.lark_token }}"
+            }
           ]
         },
         "sendBody": true,
@@ -460,18 +703,29 @@
       "name": "Update T5 Arrived",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1560, 760]
+      "position": [
+        1560,
+        760
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
           "conditions": [
             {
               "id": "arr-line-check",
               "leftValue": "={{ $json.customer_line_id }}",
               "rightValue": "",
-              "operator": { "type": "string", "operation": "notEmpty", "singleValue": true }
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
             }
           ],
           "combinator": "and"
@@ -481,7 +735,10 @@
       "name": "If LINE [Arrived]",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [1560, 1000]
+      "position": [
+        1560,
+        1000
+      ]
     },
     {
       "parameters": {
@@ -491,20 +748,39 @@
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
         },
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
         "body": "={{ $json.lineBody }}",
-        "options": {}
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
       },
       "id": "arr-008",
       "name": "LINE Customer Arrived",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1780, 880],
-      "credentials": { "httpHeaderAuth": { "id": "", "name": "Header Auth account" } }
+      "position": [
+        1780,
+        880
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Header Auth account"
+        }
+      }
     },
     {
       "parameters": {
@@ -513,19 +789,31 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6ImFjY2VzcyJ9.eyJfaWQiOiI2OWRlMzU1NTIwYmNmMDA4YzMzZGViMDciLCJncm91cF9pZCI6IjY0MTJiNWUzMTMxYmFkYTZjMThjMmI2ZSIsImJyYW5kX2lkIjoiNjQxM2YxOTE0ZTU1ZjUxYTgxMmM1ODBjIiwiZW1haWwiOiJzYWtrYXBob25nZXhAZ21haWwuY29tIiwiZmlyc3RfbmFtZSI6IuC4quC4seC4hOC4nuC4h-C4qOC5jCIsImxhc3RfbmFtZSI6IuC4p-C4o-C4suC4meC4uOC4nuC4oyIsImlhdCI6MTc3NjE3NTQ3MiwiZXhwIjo0OTMxOTM1NDcyLCJhdWQiOiJodHRwczovL3lvdXJkb21haW4uY29tIiwiaXNzIjoiZmVhdGhlcnMiLCJqdGkiOiI3ZjNlN2MyZC03MDQyLTQyY2EtOTQzNy0zNmI4YzFkMWQ4ZjUifQ.e-S9HHlsMC5TUAolEpciQ2eXIzj6U9O4VgTclz6X_NA" }
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6ImFjY2VzcyJ9.eyJfaWQiOiI2OWRlMzU1NTIwYmNmMDA4YzMzZGViMDciLCJncm91cF9pZCI6IjY0MTJiNWUzMTMxYmFkYTZjMThjMmI2ZSIsImJyYW5kX2lkIjoiNjQxM2YxOTE0ZTU1ZjUxYTgxMmM1ODBjIiwiZW1haWwiOiJzYWtrYXBob25nZXhAZ21haWwuY29tIiwiZmlyc3RfbmFtZSI6IuC4quC4seC4hOC4nuC4h-C4qOC5jCIsImxhc3RfbmFtZSI6IuC4p-C4o-C4suC4meC4uOC4nuC4oyIsImlhdCI6MTc3NjE3NTQ3MiwiZXhwIjo0OTMxOTM1NDcyLCJhdWQiOiJodHRwczovL3lvdXJkb21haW4uY29tIiwiaXNzIjoiZmVhdGhlcnMiLCJqdGkiOiI3ZjNlN2MyZC03MDQyLTQyY2EtOTQzNy0zNmI4YzFkMWQ4ZjUifQ.e-S9HHlsMC5TUAolEpciQ2eXIzj6U9O4VgTclz6X_NA"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ recipient: '66' + ($json.customer_phone || '').replace(/^0/, ''), sender_name: 'SK-ICE', message: 'SK ICE: ช่าง' + $json.tech_name + ' ถึงร้าน' + $json.customer_name + 'แล้วครับ' }) }}",
-        "options": { "response": { "response": { "neverError": true } } }
+        "jsonBody": "={{ JSON.stringify({ recipient: '66' + ($('Parse T5 [Arrived]').first().json.customer_phone || '').replace(/^0/, ''), sender_name: 'SK-ICE', message: 'SK ICE: ช่าง' + $('Parse T5 [Arrived]').first().json.tech_name + ' ถึงร้าน' + $('Parse T5 [Arrived]').first().json.customer_name + 'แล้วครับ' }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
       },
       "id": "arr-009",
       "name": "SMS Customer Arrived",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1780, 1120]
+      "position": [
+        1780,
+        1120
+      ]
     },
     {
       "parameters": {
@@ -535,7 +823,10 @@
       "name": "Prep Admin [Arrived]",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2000, 1000]
+      "position": [
+        2000,
+        1000
+      ]
     },
     {
       "parameters": {
@@ -545,7 +836,12 @@
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
         },
         "sendBody": true,
         "contentType": "raw",
@@ -557,8 +853,16 @@
       "name": "Admin Notify Arrived",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2220, 1000],
-      "credentials": { "httpHeaderAuth": { "id": "", "name": "Header Auth account" } }
+      "position": [
+        2220,
+        1000
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Header Auth account"
+        }
+      }
     },
     {
       "parameters": {
@@ -570,228 +874,62 @@
       "name": "Respond Arrived",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [2440, 1000]
-    },
-
-    {
-      "parameters": {
-        "httpMethod": "POST",
-        "path": "gps-done",
-        "responseMode": "responseNode",
-        "options": {}
-      },
-      "id": "done-001",
-      "name": "Webhook Done",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [240, 1480],
-      "webhookId": "gps-done-webhook"
+      "position": [
+        2880,
+        1000
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const d = $input.first().json;\nconst body = d.body || d;\nreturn [{ json: {\n  job_id:           body.job_id           || '',\n  tech_name:        body.tech_name        || '',\n  customer_name:    body.customer_name    || '',\n  customer_line_id: body.customer_line_id || '',\n  completed_at_ms:  Date.now()\n}}];"
+        "jsCode": "const ADMIN_IDS = ['e5d154gc', 'eceffed6', 'a978af6f'];\nconst src = $('Parse T5 [Arrived]').first().json;\nconst token = $('Get Token [Arrived]').first().json.tenant_access_token;\nconst text = '📍 ช่างถึงแล้ว!\\n\\n' +\n  '📋 รหัสงาน: ' + (src.job_id || '-') + '\\n' +\n  '👷 ช่าง: ' + (src.tech_name || '-') + '\\n' +\n  '🏪 ร้าน: ' + (src.shop_name || src.customer_name || '-');\nreturn ADMIN_IDS.map(id => ({\n  json: {\n    lark_token: token,\n    larkBody: JSON.stringify({\n      receive_id: id,\n      msg_type: 'text',\n      content: JSON.stringify({ text: text })\n    })\n  }\n}));"
       },
-      "id": "done-002",
-      "name": "Set Done Data",
+      "id": "lark-dm-arr-01",
+      "name": "Prep Lark DM [Arrived]",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [460, 1480]
+      "position": [
+        2440,
+        1000
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "https://open.larksuite.com/open-apis/auth/v3/tenant_access_token/internal",
-        "sendBody": true,
-        "contentType": "json",
-        "bodyParameters": {
-          "parameters": [
-            { "name": "app_id",     "value": "cli_a9500a1d84f89e18" },
-            { "name": "app_secret", "value": "GfKOk3vVSU4WwtXJKZEmHb2Q51JDOLgp" }
-          ]
-        },
-        "options": {}
-      },
-      "id": "done-003",
-      "name": "Get Token [Done]",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [680, 1480]
-    },
-    {
-      "parameters": {
-        "jsCode": "const token = $('Get Token [Done]').first().json.tenant_access_token;\nconst src = $('Set Done Data').first().json;\nreturn [{ json: {\n  ...src,\n  lark_token: token,\n  searchBody: JSON.stringify({\"filter\":{\"conjunction\":\"and\",\"conditions\":[{\"field_name\":\"Job No.\",\"operator\":\"is\",\"value\":[src.job_id]}]}})\n}}];"
-      },
-      "id": "prep-done",
-      "name": "Prep [Done]",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [900, 1480]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://open.larksuite.com/open-apis/bitable/v1/apps/UOZZb0ImVaRYy1sDjUNjm3jqpye/tables/tblXb6wG3DI7FmzJ/records/search",
+        "url": "https://open.larksuite.com/open-apis/im/v1/messages?receive_id_type=user_id",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "={{ 'Bearer ' + $json.lark_token }}" }
-          ]
-        },
-        "sendBody": true,
-        "contentType": "raw",
-        "rawContentType": "application/json",
-        "body": "={{ $json.searchBody }}",
-        "options": {}
-      },
-      "id": "done-004",
-      "name": "Search T5 [Done]",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [1120, 1480]
-    },
-    {
-      "parameters": {
-        "jsCode": "const prep = $('Prep [Done]').first().json;\nconst token = prep.lark_token;\nconst src = prep;\nconst data = $input.first().json;\nconst txt = (v) => { if (!v) return ''; if (typeof v === 'string') return v; if (typeof v === 'number') return String(v); if (v.value !== undefined && Array.isArray(v.value)) { if (v.value.length === 0) return ''; const first = v.value[0]; if (typeof first === 'string') return first; if (first?.text) return first.text; if (first?.name) return first.name; } if (Array.isArray(v)) { if (v.length === 0) return ''; const first = v[0]; if (typeof first === 'string') return first; if (first?.text) return first.text; if (first?.name) return first.name; } if (v.text) return v.text; if (v.name) return v.name; return ''; };\nconst items = data.data?.items || [];\nlet record_id = '', customer_phone = '', line_id = src.customer_line_id || '';\nif (items.length > 0) {\n  const item = items[0];\n  const f = item.fields || {};\n  record_id = item.record_id;\n  customer_phone = txt(f['Customer Phone 1']);\n  line_id = src.customer_line_id || txt(f['C.LINE User ID']);\n}\nconst updateBody = JSON.stringify({fields:{Status:'เสร็จแล้ว','Completed Time':src.completed_at_ms,'Customer Notified - Done':src.completed_at_ms}});\nconst lineText = '✅ งานเสร็จเรียบร้อยครับ!\\n\\n📋 รหัสงาน: ' + src.job_id + '\\n👷 ช่าง ' + src.tech_name + ' เสร็จงานแล้วครับ 🙏\\nขอบคุณที่ใช้บริการ SK ICE ครับ';\nconst lineBody = JSON.stringify({to: line_id, messages:[{type:'text',text:lineText}]});\nreturn [{ json: { ...src, record_id, customer_phone, customer_line_id: line_id, has_line: !!line_id, lark_token: token, updateBody, lineBody } }];"
-      },
-      "id": "done-005",
-      "name": "Parse T5 [Done]",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [1340, 1480]
-    },
-    {
-      "parameters": {
-        "method": "PUT",
-        "url": "={{ 'https://open.larksuite.com/open-apis/bitable/v1/apps/UOZZb0ImVaRYy1sDjUNjm3jqpye/tables/tblXb6wG3DI7FmzJ/records/' + $json.record_id }}",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "Authorization", "value": "={{ 'Bearer ' + $json.lark_token }}" }
-          ]
-        },
-        "sendBody": true,
-        "contentType": "raw",
-        "rawContentType": "application/json",
-        "body": "={{ $json.updateBody }}",
-        "options": {}
-      },
-      "id": "done-006",
-      "name": "Update T5 Done",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [1560, 1340]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
-          "conditions": [
             {
-              "id": "done-line-check",
-              "leftValue": "={{ $json.customer_line_id }}",
-              "rightValue": "",
-              "operator": { "type": "string", "operation": "notEmpty", "singleValue": true }
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.lark_token }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
             }
-          ],
-          "combinator": "and"
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.larkBody }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
         }
       },
-      "id": "done-007",
-      "name": "If LINE [Done]",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [1560, 1580]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.line.me/v2/bot/message/push",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
-        },
-        "sendBody": true,
-        "contentType": "raw",
-        "rawContentType": "application/json",
-        "body": "={{ $json.lineBody }}",
-        "options": {}
-      },
-      "id": "done-008",
-      "name": "LINE Customer Done",
+      "id": "lark-dm-arr-02",
+      "name": "Lark DM Admin [Arrived]",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1780, 1460],
-      "credentials": { "httpHeaderAuth": { "id": "", "name": "Header Auth account" } }
+      "position": [
+        2660,
+        1000
+      ]
     },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://portal.sms2pro.com/sms-api/message-sms/send",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6ImFjY2VzcyJ9.eyJfaWQiOiI2OWRlMzU1NTIwYmNmMDA4YzMzZGViMDciLCJncm91cF9pZCI6IjY0MTJiNWUzMTMxYmFkYTZjMThjMmI2ZSIsImJyYW5kX2lkIjoiNjQxM2YxOTE0ZTU1ZjUxYTgxMmM1ODBjIiwiZW1haWwiOiJzYWtrYXBob25nZXhAZ21haWwuY29tIiwiZmlyc3RfbmFtZSI6IuC4quC4seC4hOC4nuC4h-C4qOC5jCIsImxhc3RfbmFtZSI6IuC4p-C4o-C4suC4meC4uOC4nuC4oyIsImlhdCI6MTc3NjE3NTQ3MiwiZXhwIjo0OTMxOTM1NDcyLCJhdWQiOiJodHRwczovL3lvdXJkb21haW4uY29tIiwiaXNzIjoiZmVhdGhlcnMiLCJqdGkiOiI3ZjNlN2MyZC03MDQyLTQyY2EtOTQzNy0zNmI4YzFkMWQ4ZjUifQ.e-S9HHlsMC5TUAolEpciQ2eXIzj6U9O4VgTclz6X_NA" }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ recipient: '66' + ($json.customer_phone || '').replace(/^0/, ''), sender_name: 'SK-ICE', message: 'SK ICE: ช่าง' + $json.tech_name + ' เสร็จงานร้าน' + $json.customer_name + 'แล้วครับ ขอบคุณที่ใช้บริการ' }) }}",
-        "options": { "response": { "response": { "neverError": true } } }
-      },
-      "id": "done-009",
-      "name": "SMS Customer Done",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [1780, 1700]
-    },
-    {
-      "parameters": {
-        "jsCode": "const p = $('Parse T5 [Done]').first().json;\nconst text = '✅ งานเสร็จแล้ว!\\n\\n📋 รหัสงาน: ' + p.job_id + '\\n👷 ช่าง: ' + p.tech_name + '\\n🏪 ร้าน: ' + p.customer_name;\nreturn [{ json: {\n  adminBody: JSON.stringify({\"to\": \"C40b37d81f4e199a7b7357537166a1efd\", \"messages\": [{\"type\": \"text\", \"text\": text}]})\n}}];"
-      },
-      "id": "prep-adm-done",
-      "name": "Prep Admin [Done]",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [2000, 1580]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.line.me/v2/bot/message/push",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
-        },
-        "sendBody": true,
-        "contentType": "raw",
-        "rawContentType": "application/json",
-        "body": "={{ $json.adminBody }}",
-        "options": {}
-      },
-      "id": "done-010",
-      "name": "Admin Notify Done",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [2220, 1580],
-      "credentials": { "httpHeaderAuth": { "id": "", "name": "Header Auth account" } }
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "{\"status\":\"ok\"}",
-        "options": {}
-      },
-      "id": "done-011",
-      "name": "Respond Done",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [2440, 1580]
-    },
-
     {
       "parameters": {
         "httpMethod": "GET",
@@ -803,7 +941,10 @@
       "name": "Webhook Position",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 2020],
+      "position": [
+        240,
+        2020
+      ],
       "webhookId": "gps-position-webhook"
     },
     {
@@ -814,7 +955,10 @@
       "name": "Extract Job ID",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [460, 2020]
+      "position": [
+        460,
+        2020
+      ]
     },
     {
       "parameters": {
@@ -824,8 +968,14 @@
         "contentType": "json",
         "bodyParameters": {
           "parameters": [
-            { "name": "app_id",     "value": "cli_a9500a1d84f89e18" },
-            { "name": "app_secret", "value": "GfKOk3vVSU4WwtXJKZEmHb2Q51JDOLgp" }
+            {
+              "name": "app_id",
+              "value": "cli_a9500a1d84f89e18"
+            },
+            {
+              "name": "app_secret",
+              "value": "GfKOk3vVSU4WwtXJKZEmHb2Q51JDOLgp"
+            }
           ]
         },
         "options": {}
@@ -834,7 +984,10 @@
       "name": "Get Token [Pos]",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [680, 2020]
+      "position": [
+        680,
+        2020
+      ]
     },
     {
       "parameters": {
@@ -844,21 +997,40 @@
       "name": "Prep [Pos]",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [900, 2020]
+      "position": [
+        900,
+        2020
+      ]
     },
     {
       "parameters": {
         "operation": "read",
-        "documentId": { "__rl": true, "value": "15ZWCa3JCWm0GKODJG9lipzeho4gebu2hepO6drygOek", "mode": "id" },
-        "sheetName": { "__rl": true, "value": "GPS T6 LOG", "mode": "name" },
+        "documentId": {
+          "__rl": true,
+          "value": "15ZWCa3JCWm0GKODJG9lipzeho4gebu2hepO6drygOek",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "T18_GPS_Tracking",
+          "mode": "name"
+        },
         "options": {}
       },
       "id": "pos-004",
-      "name": "Search T6 [Pos]",
+      "name": "Search T18 [Pos]",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
-      "credentials": { "googleSheetsOAuth2Api": { "id": "SHEETS_CRED_ID", "name": "Google Sheets" } },
-      "position": [1120, 2020]
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "SHEETS_CRED_ID",
+          "name": "Google Sheets"
+        }
+      },
+      "position": [
+        1120,
+        2020
+      ]
     },
     {
       "parameters": {
@@ -869,7 +1041,10 @@
       "name": "Format Position",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1340, 2020]
+      "position": [
+        1340,
+        2020
+      ]
     },
     {
       "parameters": {
@@ -878,8 +1053,14 @@
         "options": {
           "responseHeaders": {
             "entries": [
-              { "name": "Access-Control-Allow-Origin", "value": "*" },
-              { "name": "Content-Type", "value": "application/json" }
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
             ]
           }
         }
@@ -888,9 +1069,11 @@
       "name": "Respond Position",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1560, 2020]
+      "position": [
+        1560,
+        2020
+      ]
     },
-
     {
       "parameters": {
         "httpMethod": "GET",
@@ -902,7 +1085,10 @@
       "name": "Webhook Customer Map",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 2280],
+      "position": [
+        240,
+        2280
+      ],
       "webhookId": "gps-customer-webhook"
     },
     {
@@ -913,7 +1099,10 @@
       "name": "Build Customer Map HTML",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [460, 2280]
+      "position": [
+        460,
+        2280
+      ]
     },
     {
       "parameters": {
@@ -922,7 +1111,10 @@
         "options": {
           "responseHeaders": {
             "entries": [
-              { "name": "Content-Type", "value": "text/html; charset=UTF-8" }
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=UTF-8"
+              }
             ]
           }
         }
@@ -931,103 +1123,539 @@
       "name": "Respond Customer Map",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [680, 2280]
+      "position": [
+        680,
+        2280
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://portal.sms2pro.com/sms-api/message-sms/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6ImFjY2VzcyJ9.eyJfaWQiOiI2OWRlMzU1NTIwYmNmMDA4YzMzZGViMDciLCJncm91cF9pZCI6IjY0MTJiNWUzMTMxYmFkYTZjMThjMmI2ZSIsImJyYW5kX2lkIjoiNjQxM2YxOTE0ZTU1ZjUxYTgxMmM1ODBjIiwiZW1haWwiOiJzYWtrYXBob25nZXhAZ21haWwuY29tIiwiZmlyc3RfbmFtZSI6IuC4quC4seC4hOC4nuC4h-C4qOC5jCIsImxhc3RfbmFtZSI6IuC4p-C4o-C4suC4meC4uOC4nuC4oyIsImlhdCI6MTc3NjE3NTQ3MiwiZXhwIjo0OTMxOTM1NDcyLCJhdWQiOiJodHRwczovL3lvdXJkb21haW4uY29tIiwiaXNzIjoiZmVhdGhlcnMiLCJqdGkiOiI3ZjNlN2MyZC03MDQyLTQyY2EtOTQzNy0zNmI4YzFkMWQ4ZjUifQ.e-S9HHlsMC5TUAolEpciQ2eXIzj6U9O4VgTclz6X_NA"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ JSON.stringify({ recipient: '66' + ($('Parse T5 [Update]').first().json.customer_phone || '').replace(/^0/, ''), sender_name: 'SK-ICE', message: 'SK ICE: ช่าง' + $('Parse T5 [Update]').first().json.tech_name + ' กำลังเดินทางมาหาคุณแล้วครับ' }) }",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "upd-sms-01",
+      "name": "SMS Customer Traveling",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2440,
+        580
+      ]
     }
-
   ],
   "connections": {
-
-    "Webhook Init":      { "main": [[{ "node": "Set Init Data",      "type": "main", "index": 0 }]] },
-    "Set Init Data":     { "main": [[{ "node": "Get Token [Init]",   "type": "main", "index": 0 }]] },
-    "Get Token [Init]":  { "main": [[{ "node": "Prep [Init]",        "type": "main", "index": 0 }]] },
-    "Prep [Init]":       { "main": [[{ "node": "Search T5 [Init]",  "type": "main", "index": 0 }]] },
-    "Search T5 [Init]":  { "main": [[{ "node": "Parse T5 [Init]",   "type": "main", "index": 0 }]] },
-    "Parse T5 [Init]":   { "main": [[{ "node": "Prep T6 Init",      "type": "main", "index": 0 }]] },
-    "Prep T6 Init":      { "main": [[{ "node": "Create T6 Init",    "type": "main", "index": 0 }]] },
-    "Create T6 Init":    { "main": [[{ "node": "Respond Init",      "type": "main", "index": 0 }]] },
-
-    "Webhook Update":       { "main": [[{ "node": "Set GPS Data",         "type": "main", "index": 0 }]] },
-    "Set GPS Data":         { "main": [[{ "node": "Get Token [Update]",   "type": "main", "index": 0 }]] },
-    "Get Token [Update]":   { "main": [[{ "node": "Prep [Update]",        "type": "main", "index": 0 }]] },
-    "Prep [Update]":        { "main": [[{ "node": "Search T5 [Update]",  "type": "main", "index": 0 }]] },
-    "Search T5 [Update]":   { "main": [[{ "node": "Parse T5 [Update]",   "type": "main", "index": 0 }]] },
-    "Parse T5 [Update]":    { "main": [[{ "node": "Prep T6 Ping",        "type": "main", "index": 0 }]] },
-    "Prep T6 Ping":         { "main": [[{ "node": "Create T6 Ping",      "type": "main", "index": 0 }]] },
-    "Create T6 Ping":       { "main": [[{ "node": "Is First Ping",       "type": "main", "index": 0 }]] },
+    "Webhook Init": {
+      "main": [
+        [
+          {
+            "node": "Set Init Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Init Data": {
+      "main": [
+        [
+          {
+            "node": "Get Token [Init]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Token [Init]": {
+      "main": [
+        [
+          {
+            "node": "Prep [Init]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep [Init]": {
+      "main": [
+        [
+          {
+            "node": "Search T5 [Init]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search T5 [Init]": {
+      "main": [
+        [
+          {
+            "node": "Parse T5 [Init]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse T5 [Init]": {
+      "main": [
+        [
+          {
+            "node": "Prep T18 Init",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep T18 Init": {
+      "main": [
+        [
+          {
+            "node": "Create T18 Init",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create T18 Init": {
+      "main": [
+        [
+          {
+            "node": "Prep Lark DM [Init]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Lark DM [Init]": {
+      "main": [
+        [
+          {
+            "node": "Lark DM Admin [Init]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lark DM Admin [Init]": {
+      "main": [
+        [
+          {
+            "node": "Respond Init",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Update": {
+      "main": [
+        [
+          {
+            "node": "Set GPS Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set GPS Data": {
+      "main": [
+        [
+          {
+            "node": "Get Token [Update]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Token [Update]": {
+      "main": [
+        [
+          {
+            "node": "Prep [Update]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep [Update]": {
+      "main": [
+        [
+          {
+            "node": "Search T5 [Update]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search T5 [Update]": {
+      "main": [
+        [
+          {
+            "node": "Parse T5 [Update]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse T5 [Update]": {
+      "main": [
+        [
+          {
+            "node": "Prep T18 Ping",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep T18 Ping": {
+      "main": [
+        [
+          {
+            "node": "Create T18 Ping",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create T18 Ping": {
+      "main": [
+        [
+          {
+            "node": "Is First Ping",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Is First Ping": {
       "main": [
         [
-          { "node": "Update T5 OnWay",   "type": "main", "index": 0 },
-          { "node": "If LINE [Update]",  "type": "main", "index": 0 }
+          {
+            "node": "Update T5 OnWay",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prep Traveling",
+            "type": "main",
+            "index": 0
+          }
         ],
-        [{ "node": "Respond Update", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Respond Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "Update T5 OnWay": { "main": [[{ "node": "Respond Update", "type": "main", "index": 0 }]] },
-    "If LINE [Update]": {
+    "Update T5 OnWay": {
       "main": [
-        [{ "node": "Prep Traveling", "type": "main", "index": 0 }],
-        [{ "node": "Respond Update", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Respond Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "Prep Traveling":            { "main": [[{ "node": "Notify Customer Traveling", "type": "main", "index": 0 }]] },
-    "Notify Customer Traveling": { "main": [[{ "node": "Respond Update", "type": "main", "index": 0 }]] },
-
-    "Webhook Arrived":     { "main": [[{ "node": "Set Arrived Data",    "type": "main", "index": 0 }]] },
-    "Set Arrived Data":    { "main": [[{ "node": "Get Token [Arrived]", "type": "main", "index": 0 }]] },
-    "Get Token [Arrived]": { "main": [[{ "node": "Prep [Arrived]",      "type": "main", "index": 0 }]] },
-    "Prep [Arrived]":      { "main": [[{ "node": "Search T5 [Arrived]","type": "main", "index": 0 }]] },
-    "Search T5 [Arrived]": { "main": [[{ "node": "Parse T5 [Arrived]", "type": "main", "index": 0 }]] },
+    "Prep Traveling": {
+      "main": [
+        [
+          {
+            "node": "Notify Customer Traveling",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SMS Customer Traveling": {
+      "main": [
+        [
+          {
+            "node": "Respond Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Customer Traveling": {
+      "main": [
+        [
+          {
+            "node": "SMS Customer Traveling",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Arrived": {
+      "main": [
+        [
+          {
+            "node": "Set Arrived Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Arrived Data": {
+      "main": [
+        [
+          {
+            "node": "Get Token [Arrived]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Token [Arrived]": {
+      "main": [
+        [
+          {
+            "node": "Prep [Arrived]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep [Arrived]": {
+      "main": [
+        [
+          {
+            "node": "Search T5 [Arrived]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search T5 [Arrived]": {
+      "main": [
+        [
+          {
+            "node": "Parse T5 [Arrived]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Parse T5 [Arrived]": {
-      "main": [[
-        { "node": "Update T5 Arrived", "type": "main", "index": 0 },
-        { "node": "If LINE [Arrived]", "type": "main", "index": 0 }
-      ]]
-    },
-    "If LINE [Arrived]": {
       "main": [
-        [{ "node": "LINE Customer Arrived", "type": "main", "index": 0 }],
-        [{ "node": "SMS Customer Arrived",  "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Update T5 Arrived",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "LINE Customer Arrived",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "LINE Customer Arrived": { "main": [[{ "node": "Prep Admin [Arrived]", "type": "main", "index": 0 }]] },
-    "SMS Customer Arrived":  { "main": [[{ "node": "Prep Admin [Arrived]", "type": "main", "index": 0 }]] },
-    "Prep Admin [Arrived]":  { "main": [[{ "node": "Admin Notify Arrived", "type": "main", "index": 0 }]] },
-    "Admin Notify Arrived":  { "main": [[{ "node": "Respond Arrived",      "type": "main", "index": 0 }]] },
-
-    "Webhook Done":    { "main": [[{ "node": "Set Done Data",    "type": "main", "index": 0 }]] },
-    "Set Done Data":   { "main": [[{ "node": "Get Token [Done]", "type": "main", "index": 0 }]] },
-    "Get Token [Done]":{ "main": [[{ "node": "Prep [Done]",      "type": "main", "index": 0 }]] },
-    "Prep [Done]":     { "main": [[{ "node": "Search T5 [Done]","type": "main", "index": 0 }]] },
-    "Search T5 [Done]":{ "main": [[{ "node": "Parse T5 [Done]", "type": "main", "index": 0 }]] },
-    "Parse T5 [Done]": {
-      "main": [[
-        { "node": "Update T5 Done", "type": "main", "index": 0 },
-        { "node": "If LINE [Done]", "type": "main", "index": 0 }
-      ]]
-    },
-    "If LINE [Done]": {
+    "LINE Customer Arrived": {
       "main": [
-        [{ "node": "LINE Customer Done", "type": "main", "index": 0 }],
-        [{ "node": "SMS Customer Done",  "type": "main", "index": 0 }]
+        [
+          {
+            "node": "SMS Customer Arrived",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "LINE Customer Done": { "main": [[{ "node": "Prep Admin [Done]", "type": "main", "index": 0 }]] },
-    "SMS Customer Done":  { "main": [[{ "node": "Prep Admin [Done]", "type": "main", "index": 0 }]] },
-    "Prep Admin [Done]":  { "main": [[{ "node": "Admin Notify Done", "type": "main", "index": 0 }]] },
-    "Admin Notify Done":  { "main": [[{ "node": "Respond Done",      "type": "main", "index": 0 }]] },
-
-    "Webhook Position": { "main": [[{ "node": "Extract Job ID",  "type": "main", "index": 0 }]] },
-    "Extract Job ID":   { "main": [[{ "node": "Get Token [Pos]", "type": "main", "index": 0 }]] },
-    "Get Token [Pos]":  { "main": [[{ "node": "Prep [Pos]",      "type": "main", "index": 0 }]] },
-    "Prep [Pos]":       { "main": [[{ "node": "Search T6 [Pos]", "type": "main", "index": 0 }]] },
-    "Search T6 [Pos]":  { "main": [[{ "node": "Format Position", "type": "main", "index": 0 }]] },
-    "Format Position":  { "main": [[{ "node": "Respond Position","type": "main", "index": 0 }]] },
-
-    "Webhook Customer Map":    { "main": [[{ "node": "Build Customer Map HTML","type": "main", "index": 0 }]] },
-    "Build Customer Map HTML": { "main": [[{ "node": "Respond Customer Map",  "type": "main", "index": 0 }]] }
+    "SMS Customer Arrived": {
+      "main": [
+        [
+          {
+            "node": "Prep Admin [Arrived]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Admin [Arrived]": {
+      "main": [
+        [
+          {
+            "node": "Admin Notify Arrived",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Admin Notify Arrived": {
+      "main": [
+        [
+          {
+            "node": "Prep Lark DM [Arrived]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Lark DM [Arrived]": {
+      "main": [
+        [
+          {
+            "node": "Lark DM Admin [Arrived]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lark DM Admin [Arrived]": {
+      "main": [
+        [
+          {
+            "node": "Respond Arrived",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Position": {
+      "main": [
+        [
+          {
+            "node": "Extract Job ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Job ID": {
+      "main": [
+        [
+          {
+            "node": "Get Token [Pos]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Token [Pos]": {
+      "main": [
+        [
+          {
+            "node": "Prep [Pos]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep [Pos]": {
+      "main": [
+        [
+          {
+            "node": "Search T18 [Pos]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search T18 [Pos]": {
+      "main": [
+        [
+          {
+            "node": "Format Position",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Position": {
+      "main": [
+        [
+          {
+            "node": "Respond Position",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Customer Map": {
+      "main": [
+        [
+          {
+            "node": "Build Customer Map HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Customer Map HTML": {
+      "main": [
+        [
+          {
+            "node": "Respond Customer Map",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-
-  "settings": { "executionOrder": "v1" },
+  "settings": {
+    "executionOrder": "v1"
+  },
   "staticData": null
 }

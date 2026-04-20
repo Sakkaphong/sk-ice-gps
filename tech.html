@@ -166,9 +166,14 @@ html,body{font-family:var(--font);background:var(--bg);min-height:100vh;overflow
       <label class="form-label">🔧 อะไหล่ / วัสดุที่ใช้</label>
       <div class="parts-list" id="parts-list"></div>
       <div class="add-part-row">
-        <input class="inp" type="text" id="part-name" placeholder="ชื่ออะไหล่ เช่น ไส้กรอง">
+        <select class="inp" id="part-name" style="flex:1;">
+          <option value="">⏳ กำลังโหลด...</option>
+        </select>
         <input class="inp qty-inp" type="number" id="part-qty" value="1" min="1">
         <button class="add-btn" onclick="addPart()">+</button>
+      </div>
+      <div style="margin-top:8px;">
+        <input class="inp" type="text" id="part-custom" placeholder="หรือพิมพ์ชื่ออะไหล่เอง (กรณีไม่มีในรายการ)" style="width:100%;">
       </div>
     </div>
 
@@ -208,6 +213,9 @@ const MAPS = p.get('maps') ? decodeURIComponent(p.get('maps')) : '';
 const DLAT = p.get('dlat') || '';
 const DLNG = p.get('dlng') || '';
 const BASE = 'https://n8n-production-b8f6.up.railway.app/webhook';
+const API_KEY = 'sk-ice-api-v3-2026';
+function authH(extra){return Object.assign({'X-API-Key':API_KEY},extra||{});}
+function authJH(){return authH({'Content-Type':'application/json'});}
 
 // ── Fill info ──
 document.getElementById('hdr-sub').textContent = T;
@@ -290,6 +298,7 @@ function setState(state){
     s1.className='step done'; s2.className='step active'; s3.className='step';
     btnGo.disabled=true; btnHere.disabled=true; btnCard.style.display='flex';
     reportCard.classList.add('show'); completedCard.classList.remove('show');
+    loadProducts();
     setTimeout(function(){ reportCard.scrollIntoView({behavior:'smooth',block:'start'}); }, 300);
   } else if(state==='completed'){
     s1.className='step done'; s2.className='step done'; s3.className='step done';
@@ -336,7 +345,7 @@ function startGPS(isResume){
   document.getElementById('dot').className='dot on';
   document.getElementById('gps-label').textContent='กำลังขอ GPS...';
   sendOnce();
-  watchId=setInterval(sendOnce, 60000);
+  watchId=setInterval(sendOnce, 300000); // 2026-04-20: เปลี่ยนจาก 60s → 300s (5 นาที) ลด battery + sync กับ schema
 }
 function sendOnce(){ navigator.geolocation.getCurrentPosition(sendGPS, gpsErr, {enableHighAccuracy:true,timeout:20000,maximumAge:10000}); }
 function sendGPS(pos){
@@ -353,7 +362,7 @@ function sendGPS(pos){
     if(custMarker){ var b=new google.maps.LatLngBounds(); b.extend(ll); b.extend(custMarker.getPosition()); map.fitBounds(b); }
     else { map.setCenter(ll); map.setZoom(15); }
   } else { techMarker.setPosition(ll); }
-  fetch(BASE+'/gps-update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).catch(function(){});
+  fetch(BASE+'/gps-update',{method:'POST',headers:authJH(),body:JSON.stringify(data)}).catch(function(){});
 }
 function gpsErr(e){
   document.getElementById('dot').className='dot';
@@ -379,19 +388,54 @@ function arrived(){
   document.getElementById('dot').className='dot';
   document.getElementById('gps-label').textContent='หยุด tracking';
   if(techMarker){ techMarker.setIcon(arrivedIcon); }
-  fetch(BASE+'/gps-arrived',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({job_id:W,tech_name:T,customer_line_id:CL,customer_name:CN})}).catch(function(){});
+  fetch(BASE+'/gps-arrived',{method:'POST',headers:authJH(),body:JSON.stringify({job_id:W,tech_name:T,customer_line_id:CL,customer_name:CN})}).catch(function(){});
+}
+
+// ── Load Products from T3 ──
+var productsLoaded = false;
+function loadProducts(){
+  if(productsLoaded) return;
+  fetch(BASE+'/get-products',{headers:authH()})
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      productsLoaded = true;
+      var sel = document.getElementById('part-name');
+      while(sel.firstChild) sel.removeChild(sel.firstChild);
+      var placeholder = document.createElement('option');
+      placeholder.value = ''; placeholder.textContent = '— เลือกอะไหล่ / วัสดุ —';
+      sel.appendChild(placeholder);
+      var products = data.products || [];
+      products.forEach(function(p){
+        var opt = document.createElement('option');
+        opt.value = p.name;
+        opt.textContent = p.name + (p.category ? ' ('+p.category+')' : '');
+        sel.appendChild(opt);
+      });
+      if(products.length === 0){
+        var none = document.createElement('option');
+        none.value = ''; none.textContent = 'ไม่พบสินค้า — พิมพ์เองด้านล่าง';
+        sel.appendChild(none);
+      }
+    })
+    .catch(function(){
+      var sel = document.getElementById('part-name');
+      while(sel.firstChild) sel.removeChild(sel.firstChild);
+      var err = document.createElement('option');
+      err.value = ''; err.textContent = 'โหลดไม่ได้ — พิมพ์เองด้านล่าง';
+      sel.appendChild(err);
+    });
 }
 
 // ── Parts ──
 function addPart(){
-  var nameEl=document.getElementById('part-name'), qtyEl=document.getElementById('part-qty');
-  var name=nameEl.value.trim(), qty=parseInt(qtyEl.value)||1;
-  if(!name) return;
-  parts.push({name:name,qty:qty});
-  nameEl.value=''; qtyEl.value=1; nameEl.focus();
+  var selEl=document.getElementById('part-name'), qtyEl=document.getElementById('part-qty'), customEl=document.getElementById('part-custom');
+  var name = customEl.value.trim() || selEl.value.trim();
+  var qty = parseInt(qtyEl.value)||1;
+  if(!name){ alert('กรุณาเลือกหรือพิมพ์ชื่ออะไหล่'); return; }
+  parts.push({name:name, qty:qty});
+  selEl.selectedIndex=0; qtyEl.value=1; customEl.value='';
   renderParts();
 }
-document.addEventListener('keydown', function(e){ if(e.key==='Enter'&&document.activeElement.id==='part-name') addPart(); });
 
 function removePart(i){
   parts.splice(i,1);
@@ -457,10 +501,11 @@ function submitReport(){
       photos:photoData,
       completed_at:new Date().toISOString()
     };
-    fetch(BASE+'/complete-job',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+    // 2026-04-20: /complete-job รวม Admin Notify + LINE/SMS + T4 Care Plan แล้ว
+    // ไม่ต้องยิง /gps-done ต่อ (ลบ endpoint นี้ออกแล้ว)
+    fetch(BASE+'/complete-job',{method:'POST',headers:authJH(),body:JSON.stringify(payload)})
       .catch(function(){})
       .finally(function(){
-        fetch(BASE+'/gps-done',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({job_id:W,tech_name:T,customer_line_id:CL,customer_name:CN})}).catch(function(){});
         saveSession('completed');
         if(techMarker) techMarker.setIcon(doneIcon);
         document.getElementById('s-icon').textContent='✅';

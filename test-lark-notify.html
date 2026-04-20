@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🧪 Test Lark DM Notify — SK ICE</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, 'Segoe UI', sans-serif;
+      background: #0f172a; color: #e2e8f0;
+      padding: 16px; min-height: 100vh;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; margin-bottom: 4px; }
+    .sub { color: #94a3b8; font-size: 0.85rem; margin-bottom: 20px; }
+    .card {
+      background: #1e293b; border: 1px solid #334155;
+      border-radius: 12px; padding: 16px; margin-bottom: 16px;
+    }
+    .card h2 { font-size: 1rem; margin-bottom: 12px; color: #60a5fa; }
+    label { display: block; font-size: 0.8rem; color: #94a3b8; margin: 8px 0 4px; }
+    input, textarea {
+      width: 100%; background: #0f172a; color: #e2e8f0;
+      border: 1px solid #475569; border-radius: 8px;
+      padding: 10px; font-size: 0.9rem; font-family: inherit;
+    }
+    input:focus, textarea:focus { outline: none; border-color: #60a5fa; }
+    button {
+      padding: 14px 8px; border: none; border-radius: 10px;
+      color: white; font-size: 0.95rem; font-weight: 600;
+      cursor: pointer; transition: transform 0.1s;
+      width: 100%; margin-top: 10px;
+    }
+    button:active { transform: scale(0.97); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-init { background: #10b981; }
+    .btn-arr  { background: #f59e0b; }
+    .btn-done { background: #3b82f6; }
+    .btn-all  { background: linear-gradient(90deg, #10b981, #f59e0b, #3b82f6); }
+    .btn-clear { background: #475569; }
+    .preview {
+      background: #0f172a; border: 1px dashed #475569;
+      border-radius: 8px; padding: 12px; margin-top: 10px;
+      font-family: 'SF Mono', monospace; font-size: 0.8rem;
+      white-space: pre-wrap; color: #cbd5e1; min-height: 80px;
+    }
+    .log {
+      background: #020617; border: 1px solid #334155;
+      border-radius: 8px; padding: 12px; margin-top: 10px;
+      font-family: 'SF Mono', monospace; font-size: 0.75rem;
+      max-height: 260px; overflow-y: auto;
+      white-space: pre-wrap; word-break: break-all;
+    }
+    .log .line-ok   { color: #4ade80; }
+    .log .line-err  { color: #f87171; }
+    .log .line-info { color: #60a5fa; }
+    .log .ts   { color: #64748b; }
+    .pills { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+    .pill {
+      background: #334155; color: #cbd5e1;
+      padding: 4px 10px; border-radius: 12px; font-size: 0.75rem;
+    }
+    .pill.active { background: #3b82f6; color: white; }
+    .warn {
+      background: #7c2d12; color: #fed7aa;
+      padding: 10px; border-radius: 8px; font-size: 0.8rem;
+      margin-bottom: 12px; border-left: 3px solid #f97316;
+    }
+    code { background: #334155; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>🧪 Test Lark DM Notify</h1>
+    <div class="sub">ยิง webhook แต่ละ event → ดู DM ใน Lark ของ 3 admins</div>
+
+    <div class="warn">
+      ⚠️ Job ID ต้องมีจริงใน T5 (ถ้าไม่เจอ Parse จะได้ค่าว่าง แต่ DM ยังส่งได้)<br>
+      🎯 <b>คุณ (e5d154gc) จะได้รับ DM ด้วย</b> — เช็ค Lark ของตัวเอง
+    </div>
+
+    <!-- CONFIG -->
+    <div class="card">
+      <h2>⚙️ Config</h2>
+      <label>N8N Base URL</label>
+      <input id="baseUrl" value="https://n8n-production-b8f6.up.railway.app/webhook">
+      <label>Job ID (ต้องมีใน T5)</label>
+      <input id="jobId" value="JOB-TEST-001">
+      <label>Tech Name</label>
+      <input id="techName" value="KAEN">
+      <label>Customer Name</label>
+      <input id="customerName" value="บัณฑิต เวลด์">
+      <label>Customer LINE ID (optional)</label>
+      <input id="customerLineId" value="">
+      <label>Google Maps URL (optional)</label>
+      <input id="mapsUrl" value="https://maps.google.com/?q=13.7563,100.5018">
+      <div class="pills">
+        <span class="pill">📨 Lark DM → 3 admins</span>
+        <span class="pill active">e5d154gc (คุณ)</span>
+        <span class="pill">eceffed6 (Nacha Kh)</span>
+        <span class="pill">a978af6f</span>
+      </div>
+    </div>
+
+    <!-- EVENT 1: INIT -->
+    <div class="card">
+      <h2>🟢 Event 1 — Init (เริ่มเดินทาง)</h2>
+      <div>Endpoint: <code>POST /gps-init</code></div>
+      <div class="preview" id="prev-init"></div>
+      <button class="btn-init" onclick="fireInit()" id="btn-init">🚗 ยิง Init</button>
+    </div>
+
+    <!-- EVENT 2: ARRIVED -->
+    <div class="card">
+      <h2>🟡 Event 2 — Arrived (ถึงร้าน)</h2>
+      <div>Endpoint: <code>POST /gps-arrived</code></div>
+      <div class="preview" id="prev-arr"></div>
+      <button class="btn-arr" onclick="fireArrived()" id="btn-arr">📍 ยิง Arrived</button>
+    </div>
+
+    <!-- EVENT 3: COMPLETE -->
+    <div class="card">
+      <h2>✅ Event 3 — Complete (งานเสร็จ)</h2>
+      <div>Endpoint: <code>POST /complete-job</code></div>
+      <label>Parts used (optional)</label>
+      <input id="partsText" value="ไส้กรอง Stage 1 x2">
+      <label>Notes (optional)</label>
+      <input id="notes" value="ไส้กรองตันมาก ลูกค้าพอใจ">
+      <div class="preview" id="prev-done"></div>
+      <button class="btn-done" onclick="fireComplete()" id="btn-done">✅ ยิง Complete</button>
+    </div>
+
+    <!-- ONE-CLICK FULL FLOW -->
+    <div class="card">
+      <h2>🎯 One-Click Full Flow</h2>
+      <div style="font-size: 0.85rem; color: #94a3b8;">
+        ยิง 3 events เรียงกัน → ดู DM 3 ข้อความใน Lark (delay 3 วินาที/event)
+      </div>
+      <button class="btn-all" onclick="fireAll()" id="btn-all">
+        🔥 ยิงทั้งหมด (Init → Arrived → Complete)
+      </button>
+    </div>
+
+    <!-- LOG -->
+    <div class="card">
+      <h2>📜 Log</h2>
+      <div class="log" id="log"></div>
+      <button class="btn-clear" onclick="clearLog()">🗑️ Clear Log</button>
+    </div>
+  </div>
+
+  <script>
+    // ── Preview builder (safe: textContent only) ───────────
+    function buildPreviews() {
+      var jobId   = document.getElementById('jobId').value;
+      var tech    = document.getElementById('techName').value;
+      var cust    = document.getElementById('customerName').value;
+      var maps    = document.getElementById('mapsUrl').value;
+      var parts   = document.getElementById('partsText').value;
+      var notes   = document.getElementById('notes').value;
+
+      document.getElementById('prev-init').textContent =
+        '🚗 ช่างออกจากฐาน!\n\n' +
+        '📋 รหัสงาน: ' + jobId + '\n' +
+        '👷 ช่าง: ' + tech + '\n' +
+        '🏪 ร้าน: ' + cust +
+        (maps ? '\n📍 ' + maps : '');
+
+      document.getElementById('prev-arr').textContent =
+        '📍 ช่างถึงแล้ว!\n\n' +
+        '📋 รหัสงาน: ' + jobId + '\n' +
+        '👷 ช่าง: ' + tech + '\n' +
+        '🏪 ร้าน: ' + cust;
+
+      document.getElementById('prev-done').textContent =
+        '✅ งานเสร็จแล้ว!\n\n' +
+        '📋 รหัสงาน: ' + jobId + '\n' +
+        '👷 ช่าง: ' + tech + '\n' +
+        '🏪 ร้าน: ' + cust +
+        (parts ? '\n🔧 อะไหล่: ' + parts : '') +
+        (notes ? '\n📝 หมายเหตุ: ' + notes : '');
+    }
+    document.addEventListener('input', buildPreviews);
+    buildPreviews();
+
+    // ── Log helpers (safe: createElement + textContent) ────
+    function log(msg, cls) {
+      var el = document.getElementById('log');
+      var line = document.createElement('div');
+      var ts = document.createElement('span');
+      ts.className = 'ts';
+      ts.textContent = '[' + new Date().toLocaleTimeString('th-TH') + '] ';
+      var body = document.createElement('span');
+      body.className = 'line-' + (cls || 'info');
+      body.textContent = msg;
+      line.appendChild(ts);
+      line.appendChild(body);
+      el.appendChild(line);
+      el.scrollTop = el.scrollHeight;
+    }
+    function clearLog() {
+      var el = document.getElementById('log');
+      while (el.firstChild) el.removeChild(el.firstChild);
+    }
+
+    // ── Common POST ────────────────────────────────────────
+    async function postJson(path, body, btnId) {
+      var base = document.getElementById('baseUrl').value.replace(/\/$/, '');
+      var url  = base + path;
+      var btn  = btnId && document.getElementById(btnId);
+      var orig = '';
+      if (btn) { btn.disabled = true; orig = btn.textContent; btn.textContent = '⏳ ยิงอยู่...'; }
+      log('→ POST ' + url, 'info');
+      log('  body: ' + JSON.stringify(body), 'info');
+      try {
+        var res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        var text = await res.text();
+        if (res.ok) log('✅ ' + res.status + ' ← ' + text, 'ok');
+        else        log('❌ ' + res.status + ' ← ' + text, 'err');
+      } catch (e) {
+        log('❌ ERROR: ' + e.message, 'err');
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = orig; }
+      }
+    }
+
+    // ── Event firers ───────────────────────────────────────
+    function commonData() {
+      return {
+        job_id:           document.getElementById('jobId').value,
+        tech_name:        document.getElementById('techName').value,
+        customer_name:    document.getElementById('customerName').value,
+        customer_line_id: document.getElementById('customerLineId').value,
+        job_maps_url:     document.getElementById('mapsUrl').value,
+        staff_id:         'TEST-STAFF',
+        tech_line_id:     '',
+        job_address:      'ที่อยู่ทดสอบ',
+        job_type:         'PM',
+        priority:         'normal',
+        note:             'test from test-lark-notify.html',
+        appoint_date:     new Date().toISOString().slice(0,10)
+      };
+    }
+    function fireInit()     { postJson('/gps-init',     commonData(), 'btn-init'); }
+    function fireArrived()  { postJson('/gps-arrived',  commonData(), 'btn-arr');  }
+    function fireComplete() {
+      var body = commonData();
+      body.parts_text  = document.getElementById('partsText').value;
+      body.notes       = document.getElementById('notes').value;
+      body.photo_count = 3;
+      postJson('/complete-job', body, 'btn-done');
+    }
+    async function fireAll() {
+      var btn = document.getElementById('btn-all');
+      btn.disabled = true;
+      var orig = btn.textContent;
+      btn.textContent = '⏳ รัน flow...';
+      await postJson('/gps-init',    commonData());
+      await new Promise(r => setTimeout(r, 3000));
+      await postJson('/gps-arrived', commonData());
+      await new Promise(r => setTimeout(r, 3000));
+      var body = commonData();
+      body.parts_text  = document.getElementById('partsText').value;
+      body.notes       = document.getElementById('notes').value;
+      body.photo_count = 3;
+      await postJson('/complete-job', body);
+      log('🎯 Full flow done — check Lark DM ของ 3 admins', 'ok');
+      btn.disabled = false;
+      btn.textContent = orig;
+    }
+  </script>
+</body>
+</html>
