@@ -2303,9 +2303,9 @@
     },
     {
       "parameters": {
-        "content": "⚠️ ต้องสร้าง field ใน T5 ก่อน:\nField: Tech Notified At\nType: Date",
-        "height": 96,
-        "width": 240,
+        "content": "## ⚠️ สร้าง field ใน T5 ก่อน\n**Tech Notified At** — Date\n**Customer Notified - OnWay** — Date",
+        "height": 150,
+        "width": 320,
         "color": 3
       },
       "type": "n8n-nodes-base.stickyNote",
