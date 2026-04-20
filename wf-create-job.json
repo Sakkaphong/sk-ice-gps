@@ -1768,6 +1768,554 @@
         880,
         2300
       ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes"
+            }
+          ]
+        }
+      },
+      "id": "f2206942-3f25-42d5-82a5-1c03bde39afd",
+      "name": "⏰ Poll Every 5 Min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [
+        -1488,
+        48
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.larksuite.com/open-apis/auth/v3/tenant_access_token/internal",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"app_id\":\"cli_a9500a1d84f89e18\",\"app_secret\":\"GfKOk3vVSU4WwtXJKZEmHb2Q51JDOLgp\"}",
+        "options": {}
+      },
+      "id": "09e4bee5-2729-4839-8b8a-e57c50ca6cf7",
+      "name": "🔑 Get Lark Token",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        -1248,
+        48
+      ],
+      "typeVersion": 4.1
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.larksuite.com/open-apis/bitable/v1/apps/UOZZb0ImVaRYy1sDjUNjm3jqpye/tables/tblXb6wG3DI7FmzJ/records/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('🔑 Get Lark Token').item.json.tenant_access_token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"filter\": {\n    \"conjunction\": \"and\",\n    \"conditions\": [\n      {\n        \"field_name\": \"Status\",\n        \"operator\": \"is\",\n        \"value\": [\"นัดแล้ว\"]\n      },\n      {\n        \"field_name\": \"Tech Notified At\",\n        \"operator\": \"isEmpty\",\n        \"value\": []\n      }\n    ]\n  },\n  \"page_size\": 20\n}",
+        "options": {}
+      },
+      "id": "c283a660-04d2-49a5-84cc-07af1db6c413",
+      "name": "📋 Read T5 Scheduled Jobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        -976,
+        48
+      ],
+      "typeVersion": 4.1
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst items = input.data?.items || [];\n\nif (items.length === 0) {\n  return [{ json: { _no_jobs: true } }];\n}\n\nconst txt = (v) => {\n  if (!v) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'number') return String(v);\n  if (v.value !== undefined && Array.isArray(v.value)) {\n    if (v.value.length === 0) return '';\n    const first = v.value[0];\n    if (typeof first === 'string') return first;\n    if (first?.text) return first.text;\n    if (first?.name) return first.name;\n  }\n  if (Array.isArray(v)) {\n    if (v.length === 0) return '';\n    const first = v[0];\n    if (typeof first === 'string') return first;\n    if (first?.text) return first.text;\n    if (first?.name) return first.name;\n  }\n  if (v.text) return v.text;\n  if (v.name) return v.name;\n  return '';\n};\n\nreturn items.map(item => {\n  const f = item.fields || {};\n  return {\n    json: {\n      record_id: item.record_id,\n      job_no: txt(f['Job No.']),\n      shop_name: txt(f['Shop Name']),\n      job_type: txt(f['Job Type']),\n      priority: txt(f['Priority']),\n      problem: txt(f['Problem Summary']),\n      scheduled_date: txt(f['Scheduled Date']),\n      tech_name: txt(f['Tech Name']),\n      tech_phone: txt(f['Staff Phone']),\n      tech_line_id: txt(f['Tech Line ID']),\n      tech_lark_id: txt(f['Tech Lark ID']),\n      assigned_tech: txt(f['Assigned Technician']),\n      google_maps: txt(f['Google Maps URL']),\n      machine_type: txt(f['Machine 1 Type']),\n      filter_system: txt(f['Filter System 1'])\n    }\n  };\n});\n"
+      },
+      "id": "a6efa50e-d27a-4ccc-a0c4-3c313d6a57f9",
+      "name": "⚙️ Extract Job Data",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -736,
+        48
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "8cd436d0-da7a-4ff3-b20d-458d778030c0",
+              "leftValue": "={{ $json._no_jobs }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -496,
+        48
+      ],
+      "id": "92296009-8cd8-4a98-852c-b34e19b32fe9",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "const j = $json;\nconst token = $('🔑 Get Lark Token').first().json.tenant_access_token;\n\nconst msg = `🔧 งานใหม่!\\n` +\n  `📋 ${j.job_no}\\n` +\n  `🏪 ${j.shop_name}\\n` +\n  `⚠️ ${j.problem || j.job_type}\\n` +\n  `📅 ${j.scheduled_date}\\n` +\n  `🎯 Priority: ${j.priority}\\n` +\n  (j.machine_type ? `🧊 ${j.machine_type}\\n` : '') +\n  (j.filter_system ? `💧 กรอง: ${j.filter_system}\\n` : '') +\n  (j.google_maps ? `📍 ${j.google_maps}` : '');\n\nconst techLineBody = JSON.stringify({\n  to: j.tech_line_id,\n  messages: [{ type: 'text', text: msg }]\n});\n\nconst techLarkBody = JSON.stringify({\n  receive_id: j.tech_lark_id,\n  msg_type: 'text',\n  content: JSON.stringify({ text: msg })\n});\n\nconst phone = (j.tech_phone || '').replace(/[-\\s]/g, '').replace(/^0/, '');\nconst techSmsBody = JSON.stringify({\n  recipient: '66' + phone,\n  sender_name: 'SK-ICE',\n  message: `SK ICE: งานใหม่ ${j.job_no} ร้าน${j.shop_name} ${j.scheduled_date}`\n});\n\nreturn [{ json: { \n  ...j, \n  tech_msg: msg, \n  tech_has_line: !!j.tech_line_id,\n  tech_has_lark: !!j.tech_lark_id,\n  lark_token: token,\n  techLineBody,\n  techLarkBody,\n  techSmsBody\n} }];\n"
+      },
+      "id": "ab53ec2e-637e-4e4a-99dd-54d9675cc08d",
+      "name": "💬 Build Tech Message",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -224,
+        32
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.larksuite.com/open-apis/im/v1/messages?receive_id_type=user_id",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.lark_token }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.techLarkBody }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        464,
+        -176
+      ],
+      "id": "6ff04904-b8b6-4a74-a4a1-698498d6d867",
+      "name": "📲 Lark → Tech"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/push",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer Ng84+hoTD9tPknpLmBAt1cwStuEhjo79Snj7EtTZOK8GBzOZvwQj0LnpspyFLu7GjVc6Y/kvCPmo/lLsvgjAqv+RGKHLpKA6fq7/nkHCW9otlToTdeAwoi+/f6Pcy24QMkqdI8hn1ceyqQXlN6+pUQdB04t89/1O/w1cDnyilFU="
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.techLineBody }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "b9f3f3d1-4cb0-42a3-b905-ca3c0d3021a1",
+      "name": "📱 LINE → Tech",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        464,
+        48
+      ],
+      "typeVersion": 4.1
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://portal.sms2pro.com/sms-api/message-sms/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6ImFjY2VzcyJ9.eyJfaWQiOiI2OWRlMzU1NTIwYmNmMDA4YzMzZGViMDciLCJncm91cF9pZCI6IjY0MTJiNWUzMTMxYmFkYTZjMThjMmI2ZSIsImJyYW5kX2lkIjoiNjQxM2YxOTE0ZTU1ZjUxYTgxMmM1ODBjIiwiZW1haWwiOiJzYWtrYXBob25nZXhAZ21haWwuY29tIiwiZmlyc3RfbmFtZSI6IuC4quC4seC4hOC4nuC4h-C4qOC5jCIsImxhc3RfbmFtZSI6IuC4p-C4o-C4suC4meC4uOC4nuC4oyIsImlhdCI6MTc3NjE3NTQ3MiwiZXhwIjo0OTMxOTM1NDcyLCJhdWQiOiJodHRwczovL3lvdXJkb21haW4uY29tIiwiaXNzIjoiZmVhdGhlcnMiLCJqdGkiOiI3ZjNlN2MyZC03MDQyLTQyY2EtOTQzNy0zNmI4YzFkMWQ4ZjUifQ.e-S9HHlsMC5TUAolEpciQ2eXIzj6U9O4VgTclz6X_NA"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.techSmsBody }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "0e20c1fb-07e7-4e63-83b6-0cdb247c5a02",
+      "name": "📨 SMS → Tech",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        464,
+        256
+      ],
+      "typeVersion": 4.1
+    },
+    {
+      "parameters": {
+        "jsCode": "const job = $('⚙️ Extract Job Data').first().json;\nconst markBody = JSON.stringify({\n  fields: { 'Tech Notified At': Date.now() }\n});\nreturn [{ json: { record_id: job.record_id, markBody } }];\n"
+      },
+      "id": "aa11bb22-cc33-dd44-ee55-ff6677889900",
+      "name": "🔄 Prep Mark Tech",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        736,
+        48
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://open.larksuite.com/open-apis/bitable/v1/apps/UOZZb0ImVaRYy1sDjUNjm3jqpye/tables/tblXb6wG3DI7FmzJ/records/{{ $json.record_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('🔑 Get Lark Token').item.json.tenant_access_token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.markBody }}",
+        "options": {}
+      },
+      "id": "8e1142f7-5e05-4091-a664-ddf477e0a458",
+      "name": "✅ Mark Notified Tech",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        992,
+        48
+      ],
+      "typeVersion": 4.1
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes"
+            }
+          ]
+        }
+      },
+      "id": "caad47a6-9dfe-4a84-afb1-719f95b197f6",
+      "name": "⏰ Poll Every 5 Min1",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [
+        -1504,
+        928
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.larksuite.com/open-apis/auth/v3/tenant_access_token/internal",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"app_id\":\"cli_a9500a1d84f89e18\",\"app_secret\":\"GfKOk3vVSU4WwtXJKZEmHb2Q51JDOLgp\"}",
+        "options": {}
+      },
+      "id": "6ccbb230-9def-4d8f-837d-733b1d1977fd",
+      "name": "🔑 Get Lark Token1",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        -1264,
+        928
+      ],
+      "typeVersion": 4.1
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.larksuite.com/open-apis/bitable/v1/apps/UOZZb0ImVaRYy1sDjUNjm3jqpye/tables/tblXb6wG3DI7FmzJ/records/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('🔑 Get Lark Token1').item.json.tenant_access_token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"filter\": {\n    \"conjunction\": \"and\",\n    \"conditions\": [\n      {\n        \"field_name\": \"Status\",\n        \"operator\": \"is\",\n        \"value\": [\"กำลังไป\"]\n      },\n      {\n        \"field_name\": \"Customer Notified - OnWay\",\n        \"operator\": \"isEmpty\",\n        \"value\": []\n      }\n    ]\n  },\n  \"page_size\": 20\n}\n",
+        "options": {}
+      },
+      "id": "c76eb061-e788-41b3-9525-00180e7c5107",
+      "name": "📋 Read T5 OnWay Jobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        -992,
+        928
+      ],
+      "typeVersion": 4.1
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst items = input.data?.items || [];\n\nif (items.length === 0) {\n  return [{ json: { _no_jobs: true } }];\n}\n\nconst txt = (v) => {\n  if (!v) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'number') return String(v);\n  if (v.value !== undefined && Array.isArray(v.value)) {\n    if (v.value.length === 0) return '';\n    const first = v.value[0];\n    if (typeof first === 'string') return first;\n    if (first?.text) return first.text;\n    if (first?.name) return first.name;\n  }\n  if (Array.isArray(v)) {\n    if (v.length === 0) return '';\n    const first = v[0];\n    if (typeof first === 'string') return first;\n    if (first?.text) return first.text;\n    if (first?.name) return first.name;\n  }\n  if (v.text) return v.text;\n  if (v.name) return v.name;\n  return '';\n};\n\nreturn items.map(item => {\n  const f = item.fields || {};\n  return {\n    json: {\n      record_id: item.record_id,\n      job_no: txt(f['Job No.']),\n      shop_name: txt(f['Shop Name']),\n      job_type: txt(f['Job Type']),\n      priority: txt(f['Priority']),\n      scheduled_date: txt(f['Scheduled Date']),\n      tech_name: txt(f['Tech Name']),\n      tech_phone: txt(f['Staff Phone']),\n      google_maps: txt(f['Google Maps URL']),\n      machine_type: txt(f['Machine 1 Type']),\n      customer_line_id: txt(f['C.LINE User ID']),\n      customer_phone: txt(f['Customer Phone 1']),\n      has_line: !!txt(f['C.LINE User ID'])\n    }\n  };\n});\n"
+      },
+      "id": "403c3e6a-cb6b-4df8-b26a-7eff760fbdf7",
+      "name": "⚙️ Extract Job Data1",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -752,
+        928
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "51514bf2-ed3a-4951-be62-bcf1750f08ef",
+              "leftValue": "={{ $json._no_jobs }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -496,
+        928
+      ],
+      "id": "85aa4665-2880-4bb9-807c-617a85b22d34",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://open.larksuite.com/open-apis/bitable/v1/apps/UOZZb0ImVaRYy1sDjUNjm3jqpye/tables/tblU7hDhX2UG4Tbi/records/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('🔑 Get Lark Token1').item.json.tenant_access_token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"filter\": {\n    \"conjunction\": \"and\",\n    \"conditions\": [\n      {\n        \"field_name\": \"Shop Name\",\n        \"operator\": \"is\",\n        \"value\": [\"{{ $json.shop_name }}\"]\n      }\n    ]\n  },\n  \"page_size\": 1\n}",
+        "options": {}
+      },
+      "id": "ae2c4ba5-bd86-476c-88b2-349ca44496f9",
+      "name": "👤 Read T1 Customer",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        -240,
+        912
+      ],
+      "typeVersion": 4.1
+    },
+    {
+      "parameters": {
+        "jsCode": "const job = $('⚙️ Extract Job Data1').item.json;\nconst t1 = $input.first().json;\nconst cust = t1.data?.items?.[0]?.fields || {};\n\nconst txt = (v) => {\n  if (!v) return '';\n  if (typeof v === 'string') return v;\n  if (Array.isArray(v) && v[0]?.text) return v[0].text;\n  if (v.text) return v.text;\n  return String(v);\n};\n\nconst line_uid = txt(cust['LINE User ID']);\nconst phone = txt(cust['Phone 1']);\nconst contact = txt(cust['Contact 1']);\n\nconst msg = `สวัสดีค่ะ คุณ${contact} 🙏\\n` +\n  `แจ้งจาก SK ICE:\\n` +\n  `ช่าง${job.tech_name} กำลังเดินทางไปบริการ\\n` +\n  `📋 ${job.job_type}\\n` +\n  `📅 ${job.scheduled_date}\\n` +\n  `☎️ โทรช่างได้ที่ ${job.tech_phone}\\n` +\n  `หากต้องการเลื่อนนัด กรุณาแจ้งล่วงหน้าค่ะ`;\n\nconst custLineBody = JSON.stringify({\n  to: line_uid,\n  messages: [{ type: 'text', text: msg }]\n});\n\nconst phoneClean = phone ? '66' + phone.replace(/[-\\s]/g, '').replace(/^0/, '') : '';\nconst custSmsBody = JSON.stringify({\n  recipient: phoneClean,\n  sender_name: 'SK-ICE',\n  message: `SK ICE: ช่าง${job.tech_name} กำลังเดินทางไปบริการร้าน${job.shop_name} โทร ${job.tech_phone}`\n});\n\nreturn [{\n  json: {\n    ...job,\n    cust_line_uid: line_uid,\n    cust_phone: phone,\n    cust_contact: contact,\n    cust_msg: msg,\n    cust_has_line: !!line_uid,\n    custLineBody,\n    custSmsBody\n  }\n}];"
+      },
+      "id": "45a0e0fe-286c-4420-81db-b0cacff4fac0",
+      "name": "💬 Build Customer Message",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -16,
+        912
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/push",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer Ng84+hoTD9tPknpLmBAt1cwStuEhjo79Snj7EtTZOK8GBzOZvwQj0LnpspyFLu7GjVc6Y/kvCPmo/lLsvgjAqv+RGKHLpKA6fq7/nkHCW9otlToTdeAwoi+/f6Pcy24QMkqdI8hn1ceyqQXlN6+pUQdB04t89/1O/w1cDnyilFU="
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.custLineBody }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "bda27b7e-fb27-4493-89ef-f0a034e227f3",
+      "name": "📱 LINE → Customer",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        624,
+        896
+      ],
+      "typeVersion": 4.1
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://portal.sms2pro.com/sms-api/message-sms/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6ImFjY2VzcyJ9.eyJfaWQiOiI2OWRlMzU1NTIwYmNmMDA4YzMzZGViMDciLCJncm91cF9pZCI6IjY0MTJiNWUzMTMxYmFkYTZjMThjMmI2ZSIsImJyYW5kX2lkIjoiNjQxM2YxOTE0ZTU1ZjUxYTgxMmM1ODBjIiwiZW1haWwiOiJzYWtrYXBob25nZXhAZ21haWwuY29tIiwiZmlyc3RfbmFtZSI6IuC4quC4seC4hOC4nuC4h-C4qOC5jCIsImxhc3RfbmFtZSI6IuC4p-C4o-C4suC4meC4uOC4nuC4oyIsImlhdCI6MTc3NjE3NTQ3MiwiZXhwIjo0OTMxOTM1NDcyLCJhdWQiOiJodHRwczovL3lvdXJkb21haW4uY29tIiwiaXNzIjoiZmVhdGhlcnMiLCJqdGkiOiI3ZjNlN2MyZC03MDQyLTQyY2EtOTQzNy0zNmI4YzFkMWQ4ZjUifQ.e-S9HHlsMC5TUAolEpciQ2eXIzj6U9O4VgTclz6X_NA"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.custSmsBody }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "1537f85a-e081-4ca8-b18f-08955ca9aaf9",
+      "name": "📨 SMS → Customer",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        624,
+        1136
+      ],
+      "typeVersion": 4.1
+    },
+    {
+      "parameters": {
+        "jsCode": "const job = $('💬 Build Customer Message').first().json;\nconst markBody = JSON.stringify({\n  fields: { 'Customer Notified - OnWay': Date.now() }\n});\nreturn [{ json: { record_id: job.record_id, markBody } }];\n"
+      },
+      "id": "bb22cc33-dd44-ee55-ff66-778899001122",
+      "name": "🔄 Prep Mark Customer",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        864,
+        1008
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://open.larksuite.com/open-apis/bitable/v1/apps/UOZZb0ImVaRYy1sDjUNjm3jqpye/tables/tblXb6wG3DI7FmzJ/records/{{ $json.record_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('🔑 Get Lark Token1').item.json.tenant_access_token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.markBody }}",
+        "options": {}
+      },
+      "id": "7ee05e92-af05-4a20-a61c-0db618321faa",
+      "name": "✅ Mark Notified Customer",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        1072,
+        1008
+      ],
+      "typeVersion": 4.1
+    },
+    {
+      "parameters": {
+        "content": "⚠️ ต้องสร้าง field ใน T5 ก่อน:\nField: Tech Notified At\nType: Date",
+        "height": 96,
+        "width": 240,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -976,
+        -160
+      ],
+      "id": "note001",
+      "name": "Note T5 Field"
     }
   ],
   "connections": {
@@ -2542,6 +3090,226 @@
         [
           {
             "node": "Respond Cancel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⏰ Poll Every 5 Min": {
+      "main": [
+        [
+          {
+            "node": "🔑 Get Lark Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔑 Get Lark Token": {
+      "main": [
+        [
+          {
+            "node": "📋 Read T5 Scheduled Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📋 Read T5 Scheduled Jobs": {
+      "main": [
+        [
+          {
+            "node": "⚙️ Extract Job Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⚙️ Extract Job Data": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "💬 Build Tech Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "💬 Build Tech Message": {
+      "main": [
+        [
+          {
+            "node": "📲 Lark → Tech",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📲 Lark → Tech": {
+      "main": [
+        [
+          {
+            "node": "📱 LINE → Tech",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📱 LINE → Tech": {
+      "main": [
+        [
+          {
+            "node": "📨 SMS → Tech",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📨 SMS → Tech": {
+      "main": [
+        [
+          {
+            "node": "🔄 Prep Mark Tech",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔄 Prep Mark Tech": {
+      "main": [
+        [
+          {
+            "node": "✅ Mark Notified Tech",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⏰ Poll Every 5 Min1": {
+      "main": [
+        [
+          {
+            "node": "🔑 Get Lark Token1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔑 Get Lark Token1": {
+      "main": [
+        [
+          {
+            "node": "📋 Read T5 OnWay Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📋 Read T5 OnWay Jobs": {
+      "main": [
+        [
+          {
+            "node": "⚙️ Extract Job Data1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⚙️ Extract Job Data1": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "👤 Read T1 Customer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "👤 Read T1 Customer": {
+      "main": [
+        [
+          {
+            "node": "💬 Build Customer Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "💬 Build Customer Message": {
+      "main": [
+        [
+          {
+            "node": "📱 LINE → Customer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📱 LINE → Customer": {
+      "main": [
+        [
+          {
+            "node": "📨 SMS → Customer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📨 SMS → Customer": {
+      "main": [
+        [
+          {
+            "node": "🔄 Prep Mark Customer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔄 Prep Mark Customer": {
+      "main": [
+        [
+          {
+            "node": "✅ Mark Notified Customer",
             "type": "main",
             "index": 0
           }
