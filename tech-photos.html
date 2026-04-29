@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>รูปช่าง — SK ICE Admin</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f4f8; min-height: 100vh; padding: 24px 16px; }
+  .header { text-align: center; margin-bottom: 24px; }
+  .header h1 { font-size: 1.3rem; color: #1a73e8; font-weight: 700; }
+  .header p  { font-size: 0.85rem; color: #666; margin-top: 4px; }
+  .add-row { display: flex; gap: 8px; max-width: 700px; margin: 0 auto 16px; }
+  .add-row input { flex: 1; border: 1.5px solid #e0e0e0; border-radius: 10px; padding: 10px 14px; font-size: 0.9rem; font-family: inherit; outline: none; }
+  .add-row input:focus { border-color: #1a73e8; }
+  .btn-add { background: #1a73e8; color: white; border: none; border-radius: 10px; padding: 10px 18px; font-size: 0.9rem; font-weight: 700; cursor: pointer; white-space: nowrap; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; max-width: 700px; margin: 0 auto 32px; }
+  .tech-card { background: white; border-radius: 14px; padding: 16px 12px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.07); cursor: pointer; border: 2px solid transparent; transition: border-color .15s; }
+  .tech-card:hover { border-color: #1a73e8; }
+  .tech-card.done  { border-color: #34a853; }
+  .avatar { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; display: block; margin: 0 auto 10px; }
+  .avatar-ph { width: 72px; height: 72px; border-radius: 50%; background: #e8f0fe; display: flex; align-items: center; justify-content: center; font-size: 28px; color: #1a73e8; margin: 0 auto 10px; }
+  .tech-name { font-size: 0.95rem; font-weight: 700; color: #222; }
+  .tech-st { font-size: 0.75rem; color: #888; margin-top: 4px; }
+  .tech-st.ok { color: #34a853; }
+  .panel { background: white; border-radius: 16px; padding: 24px; max-width: 420px; margin: 0 auto; box-shadow: 0 4px 20px rgba(0,0,0,0.08); display: none; }
+  .panel.show { display: block; }
+  .panel-title { font-size: 1rem; font-weight: 700; color: #222; margin-bottom: 16px; text-align: center; }
+  .drop-zone { border: 2px dashed #ccc; border-radius: 12px; padding: 28px 16px; text-align: center; cursor: pointer; transition: border-color .2s, background .2s; margin-bottom: 16px; }
+  .drop-zone:hover, .drop-zone.drag { border-color: #1a73e8; background: #f0f7ff; }
+  .drop-icon { font-size: 2.5rem; margin-bottom: 8px; }
+  .drop-txt { font-size: 0.9rem; color: #666; }
+  .drop-hint { font-size: 0.78rem; color: #aaa; margin-top: 4px; }
+  .prev-wrap { display: none; text-align: center; margin-bottom: 16px; }
+  .prev-wrap img { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #1a73e8; margin-bottom: 8px; display: block; margin-left: auto; margin-right: auto; }
+  .prev-name { font-size: 0.8rem; color: #666; }
+  .prog-bar { height: 6px; background: #e0e0e0; border-radius: 4px; margin-bottom: 12px; overflow: hidden; display: none; }
+  .prog-fill { height: 100%; background: #1a73e8; border-radius: 4px; width: 0; transition: width .3s; }
+  .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 0.95rem; font-weight: 700; cursor: pointer; font-family: inherit; margin-bottom: 8px; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-up { background: #1a73e8; color: white; }
+  .btn-cancel { background: #f1f3f4; color: #555; }
+  .result { display: none; background: #e8f5e9; border: 1.5px solid #34a853; border-radius: 10px; padding: 12px; margin-top: 12px; }
+  .result-label { font-size: 0.8rem; color: #1b5e20; font-weight: 700; margin-bottom: 6px; }
+  .url-box { font-size: 0.72rem; color: #333; word-break: break-all; background: white; padding: 8px; border-radius: 6px; margin-bottom: 8px; }
+  .btn-copy { background: #34a853; color: white; border: none; border-radius: 6px; padding: 6px 14px; font-size: 0.8rem; font-weight: 700; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🧊 รูปช่าง SK ICE</h1>
+  <p>กดที่การ์ดเพื่ออัพโหลดหรือเปลี่ยนรูป</p>
+</div>
+
+<div class="add-row">
+  <input type="text" id="new-name" placeholder="ชื่อช่างใหม่ เช่น NUT">
+  <button class="btn-add" onclick="addTech()">+ เพิ่ม</button>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<div class="panel" id="panel">
+  <div class="panel-title" id="panel-title">อัพโหลดรูป</div>
+  <input type="file" id="file-input" accept="image/*" style="display:none" onchange="onFileSelect(this)">
+  <div class="drop-zone" id="drop-zone"
+    onclick="document.getElementById('file-input').click()"
+    ondragover="event.preventDefault();this.classList.add('drag')"
+    ondragleave="this.classList.remove('drag')"
+    ondrop="onDrop(event)">
+    <div class="drop-icon">📷</div>
+    <div class="drop-txt">แตะเพื่อถ่ายรูป / เลือกจากคลัง</div>
+    <div class="drop-hint">หรือลากรูปมาวางตรงนี้</div>
+  </div>
+  <div class="prev-wrap" id="prev-wrap">
+    <img id="prev-img" src="" alt="">
+    <div class="prev-name" id="prev-name"></div>
+  </div>
+  <div class="prog-bar" id="prog-bar"><div class="prog-fill" id="prog-fill"></div></div>
+  <button class="btn btn-up" id="btn-up" onclick="doUpload()" disabled>☁️ อัพโหลดขึ้น Cloudinary</button>
+  <button class="btn btn-cancel" onclick="closePanel()">ยกเลิก</button>
+  <div class="result" id="result">
+    <div class="result-label">✅ อัพโหลดสำเร็จ! คัดลอก URL ไปใส่ใน T8 Lark ครับ</div>
+    <div class="url-box" id="result-url"></div>
+    <button class="btn-copy" onclick="copyUrl()">📋 คัดลอก URL</button>
+  </div>
+</div>
+
+<script>
+var CLD_CLOUD  = 'dt5kax2hl';
+var CLD_PRESET = 'sk_ice_jobs';
+var PHOTO_KEY  = 'sk_ice_tech_photos'; // {NAME: url}
+var LIST_KEY   = 'sk_ice_tech_list';
+
+var techPhotos = JSON.parse(localStorage.getItem(PHOTO_KEY) || '{}');
+var techList   = JSON.parse(localStorage.getItem(LIST_KEY)  || '["KAEN","CHAI"]');
+var selTech    = null;
+var selFile    = null;
+
+function save() {
+  localStorage.setItem(PHOTO_KEY, JSON.stringify(techPhotos));
+  localStorage.setItem(LIST_KEY,  JSON.stringify(techList));
+}
+
+function renderGrid() {
+  var grid = document.getElementById('grid');
+  while (grid.firstChild) grid.removeChild(grid.firstChild);
+
+  techList.forEach(function(name) {
+    var url  = techPhotos[name] || '';
+    var card = document.createElement('div');
+    card.className = 'tech-card' + (url ? ' done' : '');
+    card.onclick   = function() { openPanel(name); };
+
+    // avatar หรือ placeholder
+    if (url) {
+      var img = document.createElement('img');
+      img.src = url; img.className = 'avatar'; img.alt = name;
+      img.onerror = function() { this.replaceWith(makePh(name)); };
+      card.appendChild(img);
+    } else {
+      card.appendChild(makePh(name));
+    }
+
+    var nm = document.createElement('div');
+    nm.className = 'tech-name'; nm.textContent = name;
+    card.appendChild(nm);
+
+    var st = document.createElement('div');
+    st.className   = 'tech-st' + (url ? ' ok' : '');
+    st.textContent = url ? '✅ มีรูปแล้ว' : 'ยังไม่มีรูป';
+    card.appendChild(st);
+
+    grid.appendChild(card);
+  });
+}
+
+function makePh(name) {
+  var ph = document.createElement('div');
+  ph.className   = 'avatar-ph';
+  ph.textContent = name.charAt(0);
+  return ph;
+}
+
+function addTech() {
+  var input = document.getElementById('new-name');
+  var name  = input.value.trim().toUpperCase();
+  if (!name) return;
+  if (techList.indexOf(name) >= 0) { alert(name + ' มีอยู่แล้วครับ'); return; }
+  techList.push(name);
+  save();
+  input.value = '';
+  renderGrid();
+}
+
+function openPanel(name) {
+  selTech = name; selFile = null;
+  document.getElementById('panel-title').textContent     = 'อัพโหลดรูป — ' + name;
+  document.getElementById('drop-zone').style.display     = 'block';
+  document.getElementById('prev-wrap').style.display     = 'none';
+  document.getElementById('prog-bar').style.display      = 'none';
+  document.getElementById('result').style.display        = 'none';
+  document.getElementById('btn-up').disabled             = true;
+  document.getElementById('btn-up').textContent          = '☁️ อัพโหลดขึ้น Cloudinary';
+  document.getElementById('panel').classList.add('show');
+  document.getElementById('panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function closePanel() {
+  document.getElementById('panel').classList.remove('show');
+  selTech = null; selFile = null;
+}
+
+function onDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('drag');
+  var f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith('image/')) previewFile(f);
+}
+
+function onFileSelect(input) {
+  if (input.files[0]) previewFile(input.files[0]);
+}
+
+function previewFile(file) {
+  selFile = file;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    document.getElementById('prev-img').src         = e.target.result;
+    document.getElementById('prev-name').textContent = file.name + ' (' + Math.round(file.size/1024) + ' KB)';
+    document.getElementById('drop-zone').style.display = 'none';
+    document.getElementById('prev-wrap').style.display = 'block';
+    document.getElementById('result').style.display    = 'none';
+    document.getElementById('btn-up').disabled         = false;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function doUpload() {
+  if (!selFile || !selTech) return;
+  var btn = document.getElementById('btn-up');
+  btn.disabled = true; btn.textContent = '⏳ กำลังอัพโหลด...';
+  document.getElementById('prog-bar').style.display = 'block';
+  document.getElementById('prog-fill').style.width  = '30%';
+
+  try {
+    var blob = await compressImage(selFile);
+    document.getElementById('prog-fill').style.width = '60%';
+
+    var fd = new FormData();
+    fd.append('file', blob, selTech.toLowerCase() + '.jpg');
+    fd.append('upload_preset', CLD_PRESET);
+    fd.append('folder', 'sk-ice/techs');
+    fd.append('public_id', 'tech_' + selTech.toLowerCase());
+
+    var r = await fetch('https://api.cloudinary.com/v1_1/' + CLD_CLOUD + '/image/upload', { method: 'POST', body: fd });
+    var d = await r.json();
+    document.getElementById('prog-fill').style.width = '100%';
+
+    if (!d.secure_url) throw new Error(d.error ? d.error.message : 'Upload failed');
+
+    techPhotos[selTech] = d.secure_url;
+    save(); renderGrid();
+
+    document.getElementById('result-url').textContent = d.secure_url;
+    document.getElementById('result').style.display   = 'block';
+    btn.textContent = '✅ สำเร็จ!';
+  } catch(e) {
+    btn.disabled = false; btn.textContent = '☁️ อัพโหลดขึ้น Cloudinary';
+    document.getElementById('prog-bar').style.display = 'none';
+    alert('อัพโหลดไม่สำเร็จ: ' + e.message);
+  }
+}
+
+function copyUrl() {
+  var url = document.getElementById('result-url').textContent;
+  var copyBtn = document.querySelector('.btn-copy');
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(function() {
+      copyBtn.textContent = '✅ คัดลอกแล้ว!';
+      setTimeout(function() { copyBtn.textContent = '📋 คัดลอก URL'; }, 2000);
+    });
+  } else {
+    prompt('คัดลอก URL:', url);
+  }
+}
+
+function compressImage(file) {
+  return new Promise(function(resolve) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var img = new Image();
+      img.onload = function() {
+        var MAX = 400, w = img.width, h = img.height;
+        if (w > h && w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+        else if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
+        var c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        c.toBlob(function(b) { resolve(b); }, 'image/jpeg', 0.85);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+renderGrid();
+</script>
+</body>
+</html>
