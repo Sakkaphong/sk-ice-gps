@@ -122,6 +122,7 @@
     <div class="subtitle">ขอบคุณที่ใช้บริการครับ</div>
 
     <div class="job-info">
+      <p>🏪 ร้าน: <span id="shopDisplay">—</span></p>
       <p>📋 รหัสงาน: <span id="jobIdDisplay">—</span></p>
       <p>👷 ช่าง: <span id="techDisplay">—</span></p>
     </div>
@@ -150,13 +151,15 @@ const selectedRatings = {}; // index → star value (1-5)
 // ── URL params ──
 const params    = new URLSearchParams(location.search);
 const jobId     = params.get('job') || '';
+const shopName  = params.get('shop') ? decodeURIComponent(params.get('shop')) : '';
 const techName  = params.get('tech') || '';
 const techsRaw  = params.get('techs') || techName;
 const techsList = techsRaw
   ? techsRaw.split(',').map(function(s){ return decodeURIComponent(s.trim()); }).filter(Boolean)
   : ['ไม่ระบุ'];
 
-document.getElementById('jobIdDisplay').textContent = jobId || 'ไม่ระบุ';
+document.getElementById('shopDisplay').textContent  = shopName || 'ไม่ระบุ';
+document.getElementById('jobIdDisplay').textContent = jobId    || 'ไม่ระบุ';
 document.getElementById('techDisplay').textContent  = techsList.join(', ');
 
 // ── ป้องกันรีวิวซ้ำ ──
@@ -252,12 +255,12 @@ async function submitRating() {
 
   var payload = isSingle
     ? { job_id: jobId, rating: selectedRatings[0], comment: comment,
-        tech_name: techsList[0], tech_names: techsList[0] }
+        tech_name: techsList[0], tech_names: techsList[0], customer_name: shopName }
     : { job_id: jobId,
         ratings: techsList.map(function(tech, idx) {
           return { tech_name: tech, rating: selectedRatings[idx] };
         }),
-        comment: comment, tech_names: techsList.join(', ') };
+        comment: comment, tech_names: techsList.join(', '), customer_name: shopName };
 
   try {
     await fetch(BASE + '/rate-job', {

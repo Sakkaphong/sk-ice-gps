@@ -1257,7 +1257,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const b = $input.first().json.body || $input.first().json;\nconst parts = (b.parts || []).map(function(p){ return p.name + ' x' + p.qty; }).join(', ');\nreturn [{ json: {\n  job_id:           b.job_id           || '',\n  tech_name:        b.tech_name        || '',\n  customer_line_id: b.customer_line_id || '',\n  customer_name:    b.customer_name    || '',\n  parts_text:       parts,\n  notes:            b.notes            || '',\n  photo_count:      b.photo_count      || 0,\n  completed_at:     b.completed_at     || new Date().toISOString()\n}}];"
+        "jsCode": "const b = $input.first().json.body || $input.first().json;\nconst parts = (b.parts || []).map(function(p){ return p.name + ' x' + p.qty; }).join(', ');\n// tech_names: รองรับทั้ง array และ string\nconst techNamesRaw = b.tech_names || [];\nconst techNames = Array.isArray(techNamesRaw)\n  ? techNamesRaw.join(',')\n  : String(techNamesRaw);\nreturn [{ json: {\n  job_id:           b.job_id           || '',\n  tech_name:        b.tech_name        || '',\n  tech_names:       techNames,\n  customer_line_id: b.customer_line_id || '',\n  customer_name:    b.customer_name    || '',\n  parts_text:       parts,\n  notes:            b.notes            || '',\n  photo_count:      b.photo_count      || 0,\n  photo_urls:       b.photo_urls       || [],\n  completed_at:     b.completed_at     || new Date().toISOString()\n}}];"
       },
       "id": "49969134-3032-4a42-b17b-3106c69e3ce0",
       "name": "Parse Complete Body",
@@ -3317,7 +3317,7 @@
     },
     {
       "parameters": {
-        "url": "=https://tinyurl.com/api-create.php?url={{ encodeURIComponent('https://sakkaphong.github.io/sk-ice-gps/rating.html?job=' + $('Parse Complete Body').first().json.job_id + '&tech=' + encodeURIComponent($('Parse Complete Body').first().json.tech_name || '')) }}",
+        "url": "=https://tinyurl.com/api-create.php?url={{ encodeURIComponent('https://sakkaphong.github.io/sk-ice-gps/rating.html'+ '?job=' + $('Parse Complete Body').first().json.job_id+ '&techs=' + encodeURIComponent($('Parse Complete Body').first().json.tech_names || $('Parse Complete Body').first().json.tech_name || '')+ '&shop=' + encodeURIComponent($('Parse Complete Body').first().json.customer_name || '')) }}",
         "options": {}
       },
       "id": "3ef35a50-86b4-4e05-80a1-df8eb194ae24",
