@@ -8,13 +8,13 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "init-001",
+      "id": "9a394f9d-9a1f-4deb-9d70-360e7b1f60d6",
       "name": "Webhook Init",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        240,
-        60
+        10608,
+        9360
       ],
       "webhookId": "gps-init-webhook"
     },
@@ -22,13 +22,13 @@
       "parameters": {
         "jsCode": "const d = $input.first().json;\nconst body = d.body || d;\nconst ts = new Date().toISOString();\nreturn [{ json: {\n  job_id:           body.job_id           || '',\n  staff_id:         body.staff_id         || '',\n  tech_name:        body.tech_name        || '',\n  tech_line_id:     body.tech_line_id     || '',\n  customer_name:    body.customer_name    || '',\n  customer_line_id: body.customer_line_id || '',\n  job_address:      body.job_address      || '',\n  job_maps_url:     body.job_maps_url     || '',\n  job_type:         body.job_type         || '',\n  priority:         body.priority         || 'normal',\n  note:             body.note             || '',\n  appoint_date:     body.appoint_date     || '',\n  status:           'new',\n  timestamp:        ts\n}}];"
       },
-      "id": "init-002",
+      "id": "9d6fd9f1-dc70-454f-a488-286cc1ca7477",
       "name": "Set Init Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        460,
-        60
+        10832,
+        9360
       ]
     },
     {
@@ -36,7 +36,6 @@
         "method": "POST",
         "url": "https://open.larksuite.com/open-apis/auth/v3/tenant_access_token/internal",
         "sendBody": true,
-        "contentType": "json",
         "bodyParameters": {
           "parameters": [
             {
@@ -51,26 +50,26 @@
         },
         "options": {}
       },
-      "id": "init-003",
+      "id": "c36cd23e-0edb-4abe-8789-0c5d2e14d72f",
       "name": "Get Token [Init]",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        680,
-        60
+        11056,
+        9360
       ]
     },
     {
       "parameters": {
         "jsCode": "const token = $('Get Token [Init]').first().json.tenant_access_token;\nconst src = $('Set Init Data').first().json;\nreturn [{ json: {\n  ...src,\n  lark_token: token,\n  searchBody: JSON.stringify({\"filter\":{\"conjunction\":\"and\",\"conditions\":[{\"field_name\":\"Job No.\",\"operator\":\"is\",\"value\":[src.job_id]}]}})\n}}];"
       },
-      "id": "prep-init",
+      "id": "6a77a58e-ea9c-4547-af6c-bc62f7d6a811",
       "name": "Prep [Init]",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        900,
-        60
+        11280,
+        9360
       ]
     },
     {
@@ -92,39 +91,39 @@
         "body": "={{ $json.searchBody }}",
         "options": {}
       },
-      "id": "init-004",
+      "id": "5d59be71-52e6-499e-a63b-3f4f88025db1",
       "name": "Search T5 [Init]",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1120,
-        60
+        11520,
+        9360
       ]
     },
     {
       "parameters": {
         "jsCode": "const prep = $('Prep [Init]').first().json;\nconst token = prep.lark_token;\nconst src = prep;\nconst data = $input.first().json;\nconst txt = (v) => { if (!v) return ''; if (typeof v === 'string') return v; if (typeof v === 'number') return String(v); if (v.value !== undefined && Array.isArray(v.value)) { if (v.value.length === 0) return ''; const first = v.value[0]; if (typeof first === 'string') return first; if (first?.text) return first.text; if (first?.name) return first.name; } if (Array.isArray(v)) { if (v.length === 0) return ''; const first = v[0]; if (typeof first === 'string') return first; if (first?.text) return first.text; if (first?.name) return first.name; } if (v.text) return v.text; if (v.name) return v.name; return ''; };\nconst items = data.data?.items || [];\nif (items.length === 0) {\n  return [{ json: { ...src, t5_record_id: '', shop_name: src.customer_name, maps_url: src.job_maps_url, line_id: src.customer_line_id, customer_id: '', lark_token: token } }];\n}\nconst item = items[0];\nconst f = item.fields || {};\nreturn [{ json: {\n  ...src,\n  t5_record_id: item.record_id,\n  shop_name: txt(f['Shop Name']) || src.customer_name,\n  maps_url: txt(f['Google Maps URL']) || src.job_maps_url,\n  line_id: src.customer_line_id || txt(f['C.LINE User ID']),\n  customer_id: txt(f['Customer ID']) || '',\n  lark_token: token\n} }];"
       },
-      "id": "init-005",
+      "id": "a25cb205-f6e7-47ac-885f-fa17b6de36a3",
       "name": "Parse T5 [Init]",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1340,
-        60
+        11744,
+        9360
       ]
     },
     {
       "parameters": {
         "jsCode": "const src = $input.first().json;\nreturn [{ json: {\n  'Timestamp': new Date().toISOString(),\n  'Job No.': src.job_id || '',\n  'Status': 'init',\n  'Job Type': src.job_type || '',\n  'Priority': src.priority || '',\n  'Scheduled Date': src.appoint_date || '',\n  'Shop Name': src.customer_name || '',\n  'Customer ID': src.customer_id || '',\n  'C.LINE User ID': src.customer_line_id || '',\n  'Customer Type': '',\n  'Google Maps URL': src.job_maps_url || '',\n  'Location': '',\n  'Shop GPS Lat': 0,\n  'Shop GPS Lng': 0,\n  'Assigned Technician': '',\n  'Staff ID': src.staff_id || '',\n  'Tech Name': src.tech_name || '',\n  'Tech Line ID': src.tech_line_id || '',\n  'Tech Lark ID': '',\n  'Tech GPS Lat': 0,\n  'Tech GPS Lng': 0,\n  'Accuracy': 0,\n  'Is First': true,\n  'Battery Level (%)': '',\n  'Interval (min)': '',\n  'Notes': src.note || '',\n  'Parent items 1': '',\n  'Parent items 2': '',\n  'Parent items 3': '',\n  'Parent items 4': ''\n}}];"
       },
-      "id": "prep-t6-init",
+      "id": "f736cbba-79ca-4f5e-bf8c-39ef771ad4df",
       "name": "Prep T18 Init",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1560,
-        60
+        11968,
+        9360
       ]
     },
     {
@@ -148,20 +147,20 @@
         },
         "options": {}
       },
-      "id": "init-006",
+      "id": "28138c50-84a5-4172-a2ce-57944a4af925",
       "name": "Create T18 Init",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
+      "position": [
+        12192,
+        9360
+      ],
       "credentials": {
         "googleSheetsOAuth2Api": {
-          "id": "SHEETS_CRED_ID",
-          "name": "Google Sheets"
+          "id": "luJx0ybaOG8fy4L9",
+          "name": "Google Sheets account 2"
         }
       },
-      "position": [
-        1780,
-        60
-      ],
       "continueOnFail": true
     },
     {
@@ -183,26 +182,26 @@
           }
         }
       },
-      "id": "init-007",
+      "id": "3119d583-b9a7-44d1-a147-78ea8bebdb79",
       "name": "Respond Init",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        2440,
-        60
+        12864,
+        9360
       ]
     },
     {
       "parameters": {
         "jsCode": "const ADMIN_IDS = ['e5d154gc', 'eceffed6', 'a978af6f'];\nconst src = $('Parse T5 [Init]').first().json;\nconst token = $('Get Token [Init]').first().json.tenant_access_token;\nconst text = '🚗 ช่างออกจากฐาน!\\n\\n' +\n  '📋 รหัสงาน: ' + (src.job_id || '-') + '\\n' +\n  '👷 ช่าง: ' + (src.tech_name || '-') + '\\n' +\n  '🏪 ร้าน: ' + (src.shop_name || src.customer_name || '-') +\n  (src.maps_url ? '\\n📍 ' + src.maps_url : '');\nreturn ADMIN_IDS.map(id => ({\n  json: {\n    lark_token: token,\n    larkBody: JSON.stringify({\n      receive_id: id,\n      msg_type: 'text',\n      content: JSON.stringify({ text: text })\n    })\n  }\n}));"
       },
-      "id": "lark-dm-init-01",
+      "id": "5c82b173-b04b-4227-99a3-25efa3c9d8ea",
       "name": "Prep Lark DM [Init]",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2000,
-        60
+        12416,
+        9360
       ]
     },
     {
@@ -234,13 +233,13 @@
           }
         }
       },
-      "id": "lark-dm-init-02",
+      "id": "97380f7a-cb97-4b68-a393-7ad1363bb28f",
       "name": "Lark DM Admin [Init]",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2220,
-        60
+        12640,
+        9360
       ]
     },
     {
@@ -250,13 +249,13 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "upd-001",
+      "id": "8f257a6c-6dd8-4dc9-a243-69cff99f2e7b",
       "name": "Webhook Update",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        240,
-        420
+        10608,
+        9728
       ],
       "webhookId": "gps-update-webhook"
     },
@@ -264,13 +263,13 @@
       "parameters": {
         "jsCode": "const d = $input.first().json.body || $input.first().json;\nconst ts = new Date().toISOString();\nconst isFirst = (d.is_first === true || d.is_first === 'true');\nreturn [{ json: {\n  job_id:           d.job_id           || '',\n  tech_name:        d.tech_name        || '',\n  customer_name:    d.customer_name    || '',\n  customer_line_id: d.customer_line_id || '',\n  lat:              parseFloat(d.lat)  || 0,\n  lng:              parseFloat(d.lng)  || 0,\n  shop_lat:         parseFloat(d.dlat) || 0,\n  shop_lng:         parseFloat(d.dlng) || 0,\n  accuracy:         parseFloat(d.accuracy) || 0,\n  job_address:      d.job_address      || '',\n  timestamp:        ts,\n  status:           'traveling',\n  is_first:         isFirst\n}}];"
       },
-      "id": "upd-002",
+      "id": "914df3af-3f97-4897-98dc-ca85aa433f08",
       "name": "Set GPS Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        460,
-        420
+        10832,
+        9728
       ]
     },
     {
@@ -278,7 +277,6 @@
         "method": "POST",
         "url": "https://open.larksuite.com/open-apis/auth/v3/tenant_access_token/internal",
         "sendBody": true,
-        "contentType": "json",
         "bodyParameters": {
           "parameters": [
             {
@@ -293,26 +291,26 @@
         },
         "options": {}
       },
-      "id": "upd-003",
+      "id": "eb504a72-ce81-4059-a6b6-1c1018757382",
       "name": "Get Token [Update]",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        680,
-        420
+        11056,
+        9728
       ]
     },
     {
       "parameters": {
         "jsCode": "const token = $('Get Token [Update]').first().json.tenant_access_token;\nconst src = $('Set GPS Data').first().json;\nreturn [{ json: {\n  ...src,\n  lark_token: token,\n  searchBody: JSON.stringify({\"filter\":{\"conjunction\":\"and\",\"conditions\":[{\"field_name\":\"Job No.\",\"operator\":\"is\",\"value\":[src.job_id]}]}})\n}}];"
       },
-      "id": "prep-upd",
+      "id": "072693e9-1a6f-47dc-817d-866a44064664",
       "name": "Prep [Update]",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        900,
-        420
+        11280,
+        9728
       ]
     },
     {
@@ -334,39 +332,39 @@
         "body": "={{ $json.searchBody }}",
         "options": {}
       },
-      "id": "upd-004",
+      "id": "6d9a60e7-7bb0-4e56-9bee-4c42dc0bc124",
       "name": "Search T5 [Update]",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1120,
-        420
+        11520,
+        9728
       ]
     },
     {
       "parameters": {
-        "jsCode": "const prep = $('Prep [Update]').first().json;\nconst token = prep.lark_token;\nconst src = prep;\nconst data = $input.first().json;\nconst txt = (v) => { if (!v) return ''; if (typeof v === 'string') return v; if (typeof v === 'number') return String(v); if (v.value !== undefined && Array.isArray(v.value)) { if (v.value.length === 0) return ''; const first = v.value[0]; if (typeof first === 'string') return first; if (first?.text) return first.text; if (first?.name) return first.name; } if (Array.isArray(v)) { if (v.length === 0) return ''; const first = v[0]; if (typeof first === 'string') return first; if (first?.text) return first.text; if (first?.name) return first.name; } if (v.text) return v.text; if (v.name) return v.name; return ''; };\nconst items = data.data?.items || [];\nif (items.length === 0) {\n  return [{ json: { ...src, t5_record_id: '', shop_name: src.customer_name, maps_url: '', line_id: src.customer_line_id, customer_id: '', customer_phone: '', lark_token: token } }];\n}\nconst item = items[0];\nconst f = item.fields || {};\nreturn [{ json: {\n  ...src,\n  t5_record_id: item.record_id,\n  shop_name: txt(f['Shop Name']) || src.customer_name,\n  maps_url: txt(f['Google Maps URL']) || '',\n  line_id: src.customer_line_id || txt(f['C.LINE User ID']),\n  customer_id: txt(f['Customer ID']) || '',\n  customer_phone: txt(f['Customer Phone 1']) || '',\n  lark_token: token\n} }];"
+        "jsCode": "const prep = $('Prep [Update]').first().json;\nconst token = prep.lark_token;\nconst src = prep;\nconst data = $input.first().json;\nconst txt = (v) => { if (!v) return ''; if (typeof v === 'string') return v; if (typeof v === 'number') return String(v); if (v.value !== undefined && Array.isArray(v.value)) { if (v.value.length === 0) return ''; const first = v.value[0]; if (typeof first === 'string') return first; if (first?.text) return first.text; if (first?.name) return first.name; } if (Array.isArray(v)) { if (v.length === 0) return ''; const first = v[0]; if (typeof first === 'string') return first; if (first?.text) return first.text; if (first?.name) return first.name; } if (v.text) return v.text; if (v.name) return v.name; return ''; };\nconst items = data.data?.items || [];\nif (items.length === 0) {\n  return [{ json: { ...src, t5_record_id: '', shop_name: src.customer_name, maps_url: '', line_id: src.customer_line_id, customer_id: '', customer_phone: '', lark_token: token } }];\n}\nconst item = items[0];\nconst f = item.fields || {};\nreturn [{ json: {\n  ...src,\n  t5_record_id: item.record_id,\n  shop_name: txt(f['Shop Name']) || src.customer_name,\n  maps_url: txt(f['Google Maps URL']) || '',\n  line_id: src.customer_line_id || txt(f['C.LINE User ID']),\n  customer_id: txt(f['Customer ID']) || '',\n  customer_phone: txt(f['Customer Phone 1']) || '',\n  customer_phone2: txt(f['Customer Phone 2']) || '',\n  customer_phone3: txt(f['Customer Phone 3']) || '',\n  lark_token: token\n} }];"
       },
-      "id": "upd-005",
+      "id": "7147932b-9baa-46e5-bf90-c980258b5099",
       "name": "Parse T5 [Update]",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1340,
-        420
+        11744,
+        9728
       ]
     },
     {
       "parameters": {
         "jsCode": "const src = $input.first().json;\nreturn [{ json: {\n  'Timestamp': new Date().toISOString(),\n  'Job No.': src.job_id || '',\n  'Status': src.status || 'traveling',\n  'Job Type': '',\n  'Priority': '',\n  'Scheduled Date': '',\n  'Shop Name': src.customer_name || '',\n  'Customer ID': '',\n  'C.LINE User ID': src.customer_line_id || '',\n  'Customer Type': '',\n  'Google Maps URL': '',\n  'Location': (src.lat || 0) + ',' + (src.lng || 0),\n  'Shop GPS Lat': src.shop_lat || 0,\n  'Shop GPS Lng': src.shop_lng || 0,\n  'Assigned Technician': '',\n  'Staff ID': '',\n  'Tech Name': src.tech_name || '',\n  'Tech Line ID': '',\n  'Tech Lark ID': '',\n  'Tech GPS Lat': src.lat || 0,\n  'Tech GPS Lng': src.lng || 0,\n  'Accuracy': src.accuracy || 0,\n  'Is First': src.is_first || false,\n  'Battery Level (%)': src.battery || '',\n  'Interval (min)': 5,\n  'Notes': '',\n  'Parent items 1': '',\n  'Parent items 2': '',\n  'Parent items 3': '',\n  'Parent items 4': ''\n}}];"
       },
-      "id": "prep-t6-ping",
+      "id": "7bdc340d-7672-4580-bf76-c4e575e24cb4",
       "name": "Prep T18 Ping",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1560,
-        420
+        11968,
+        9728
       ]
     },
     {
@@ -390,20 +388,20 @@
         },
         "options": {}
       },
-      "id": "upd-006",
+      "id": "4af644d2-6841-484f-89d7-643a17695a55",
       "name": "Create T18 Ping",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
+      "position": [
+        12192,
+        9728
+      ],
       "credentials": {
         "googleSheetsOAuth2Api": {
-          "id": "SHEETS_CRED_ID",
-          "name": "Google Sheets"
+          "id": "luJx0ybaOG8fy4L9",
+          "name": "Google Sheets account 2"
         }
       },
-      "position": [
-        1780,
-        420
-      ],
       "continueOnFail": true
     },
     {
@@ -426,15 +424,16 @@
             }
           ],
           "combinator": "and"
-        }
+        },
+        "options": {}
       },
-      "id": "upd-007",
+      "id": "afc535e9-125b-4792-8a04-5b756d33c593",
       "name": "Is First Ping",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        2000,
-        420
+        12416,
+        9728
       ]
     },
     {
@@ -456,58 +455,27 @@
         "body": "{\"fields\":{\"Status\":\"กำลังไป\"}}",
         "options": {}
       },
-      "id": "upd-008",
+      "id": "31cb5bb2-8e53-4605-addf-6ce302f271b0",
       "name": "Update T5 OnWay",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2000,
-        260
-      ]
+        12416,
+        9568
+      ],
+      "continueOnFail": true
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "loose"
-          },
-          "conditions": [
-            {
-              "id": "upd-line-check",
-              "leftValue": "={{ $('Set GPS Data').first().json.customer_line_id }}",
-              "rightValue": "",
-              "operator": {
-                "type": "string",
-                "operation": "notEmpty",
-                "singleValue": true
-              }
-            }
-          ],
-          "combinator": "and"
-        }
+        "jsCode": "const src = $('Set GPS Data').first().json;\nlet shortUrl = '';\ntry { shortUrl = ($('Shorten URL').first().json.data || '').trim(); } catch(e) {}\nconst trackUrl = shortUrl || 'https://n8n-production-b8f6.up.railway.app/webhook/gps-customer?job_id=' + src.job_id;\nconst text = '🚗 ช่างกำลังเดินทางมาหาคุณแล้วครับ!\\n\\n📋 รหัสงาน: ' + src.job_id + '\\n👷 ช่าง: ' + src.tech_name + '\\n\\n📍 ดูตำแหน่งช่าง:\\n' + trackUrl;\nreturn [{ json: {\n  travelingBody: JSON.stringify({\"to\": src.customer_line_id, \"messages\": [{\"type\": \"text\", \"text\": text}]})\n}}];"
       },
-      "id": "upd-if-line",
-      "name": "If LINE [Update]",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [
-        2000,
-        580
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const src = $('Set GPS Data').first().json;\nconst text = '🚗 ช่างกำลังเดินทางมาหาคุณแล้วครับ!\\n\\n📋 รหัสงาน: ' + src.job_id + '\\n👷 ช่าง: ' + src.tech_name + '\\n\\n📍 ดูตำแหน่งช่าง:\\nhttps://n8n-production-b8f6.up.railway.app/webhook/gps-customer?job_id=' + src.job_id;\nreturn [{ json: {\n  travelingBody: JSON.stringify({\"to\": src.customer_line_id, \"messages\": [{\"type\": \"text\", \"text\": text}]})\n}}];"
-      },
-      "id": "prep-trav",
+      "id": "d322a82c-dc19-4f1a-b05b-ba11267b6003",
       "name": "Prep Traveling",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2000,
-        580
+        12864,
+        9712
       ]
     },
     {
@@ -537,18 +505,18 @@
           }
         }
       },
-      "id": "upd-009",
+      "id": "16dd3d98-0533-4e84-bd6c-a6987b12db60",
       "name": "Notify Customer Traveling",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2220,
-        580
+        13088,
+        9712
       ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "",
-          "name": "Header Auth account"
+          "id": "hB8vrjHbG2zAP9mg",
+          "name": "LINE Auth"
         }
       }
     },
@@ -558,13 +526,13 @@
         "responseBody": "{\"status\":\"ok\"}",
         "options": {}
       },
-      "id": "upd-010",
+      "id": "2e85d758-7157-44f0-a5b6-62e0c09d5b73",
       "name": "Respond Update",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        2440,
-        420
+        13760,
+        9552
       ]
     },
     {
@@ -574,13 +542,13 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "arr-001",
+      "id": "bb8edb16-af19-48ec-ae97-6371d5385f61",
       "name": "Webhook Arrived",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        240,
-        900
+        10608,
+        10208
       ],
       "webhookId": "gps-arrived-webhook"
     },
@@ -588,13 +556,13 @@
       "parameters": {
         "jsCode": "const d = $input.first().json;\nconst body = d.body || d;\nreturn [{ json: {\n  job_id:           body.job_id           || '',\n  tech_name:        body.tech_name        || '',\n  customer_name:    body.customer_name    || '',\n  customer_line_id: body.customer_line_id || '',\n  arrived_at_ms:    Date.now()\n}}];"
       },
-      "id": "arr-002",
+      "id": "2fc52e0f-0a8b-47f9-bc88-90cc276ae6a8",
       "name": "Set Arrived Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        460,
-        900
+        10832,
+        10208
       ]
     },
     {
@@ -602,7 +570,6 @@
         "method": "POST",
         "url": "https://open.larksuite.com/open-apis/auth/v3/tenant_access_token/internal",
         "sendBody": true,
-        "contentType": "json",
         "bodyParameters": {
           "parameters": [
             {
@@ -617,26 +584,26 @@
         },
         "options": {}
       },
-      "id": "arr-003",
+      "id": "0f205ceb-e4bc-47ca-add0-2f8903e925cc",
       "name": "Get Token [Arrived]",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        680,
-        900
+        11056,
+        10208
       ]
     },
     {
       "parameters": {
         "jsCode": "const token = $('Get Token [Arrived]').first().json.tenant_access_token;\nconst src = $('Set Arrived Data').first().json;\nreturn [{ json: {\n  ...src,\n  lark_token: token,\n  searchBody: JSON.stringify({\"filter\":{\"conjunction\":\"and\",\"conditions\":[{\"field_name\":\"Job No.\",\"operator\":\"is\",\"value\":[src.job_id]}]}})\n}}];"
       },
-      "id": "prep-arr",
+      "id": "b3d8b093-bfee-42fb-97ed-fd8f3feee082",
       "name": "Prep [Arrived]",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        900,
-        900
+        11280,
+        10208
       ]
     },
     {
@@ -658,26 +625,26 @@
         "body": "={{ $json.searchBody }}",
         "options": {}
       },
-      "id": "arr-004",
+      "id": "b98d2886-63ee-4cb0-a42b-a58ea48affbb",
       "name": "Search T5 [Arrived]",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1120,
-        900
+        11520,
+        10208
       ]
     },
     {
       "parameters": {
-        "jsCode": "const prep = $('Prep [Arrived]').first().json;\nconst token = prep.lark_token;\nconst src = prep;\nconst data = $input.first().json;\nconst txt = (v) => { if (!v) return ''; if (typeof v === 'string') return v; if (typeof v === 'number') return String(v); if (v.value !== undefined && Array.isArray(v.value)) { if (v.value.length === 0) return ''; const first = v.value[0]; if (typeof first === 'string') return first; if (first?.text) return first.text; if (first?.name) return first.name; } if (Array.isArray(v)) { if (v.length === 0) return ''; const first = v[0]; if (typeof first === 'string') return first; if (first?.text) return first.text; if (first?.name) return first.name; } if (v.text) return v.text; if (v.name) return v.name; return ''; };\nconst items = data.data?.items || [];\nlet record_id = '', customer_phone = '', line_id = src.customer_line_id || '';\nif (items.length > 0) {\n  const item = items[0];\n  const f = item.fields || {};\n  record_id = item.record_id;\n  customer_phone = txt(f['Customer Phone 1']);\n  line_id = src.customer_line_id || txt(f['C.LINE User ID']);\n}\nconst updateBody = JSON.stringify({fields:{Status:'ถึงแล้ว','Arrived Time':src.arrived_at_ms,'Customer Notified - Arrived':src.arrived_at_ms}});\nconst lineText = '🔧 ช่างถึงร้านแล้วครับ!\\n\\n📋 รหัสงาน: ' + src.job_id + '\\n👷 ช่าง ' + src.tech_name + ' ถึงร้านแล้วครับ 🙏';\nconst lineBody = JSON.stringify({to: line_id, messages:[{type:'text',text:lineText}]});\nreturn [{ json: { ...src, record_id, customer_phone, customer_line_id: line_id, has_line: !!line_id, lark_token: token, updateBody, lineBody } }];"
+        "jsCode": "const prep = $('Prep [Arrived]').first().json;\nconst token = prep.lark_token;\nconst src = prep;\nconst data = $input.first().json;\nconst txt = (v) => { if (!v) return ''; if (typeof v === 'string') return v; if (typeof v === 'number') return String(v); if (v.value !== undefined && Array.isArray(v.value)) { if (v.value.length === 0) return ''; const first = v.value[0]; if (typeof first === 'string') return first; if (first?.text) return first.text; if (first?.name) return first.name; } if (Array.isArray(v)) { if (v.length === 0) return ''; const first = v[0]; if (typeof first === 'string') return first; if (first?.text) return first.text; if (first?.name) return first.name; } if (v.text) return v.text; if (v.name) return v.name; return ''; };\nconst items = data.data?.items || [];\nlet record_id = '', customer_phone = '', customer_phone2 = '', customer_phone3 = '', line_id = src.customer_line_id || '';\nif (items.length > 0) {\n  const item = items[0];\n  const f = item.fields || {};\n  record_id = item.record_id;\n  customer_phone = txt(f['Customer Phone 1']);\n  customer_phone2 = txt(f['Customer Phone 2']);\n  customer_phone3 = txt(f['Customer Phone 3']);\n  line_id = src.customer_line_id || txt(f['C.LINE User ID']);\n}\nconst updateBody = JSON.stringify({fields:{Status:'ถึงแล้ว','Arrived Time':src.arrived_at_ms,'Customer Notified - Arrived':src.arrived_at_ms}});\nconst lineText = '🔧 ช่างถึงร้านแล้วครับ!\\n\\n📋 รหัสงาน: ' + src.job_id + '\\n👷 ช่าง ' + src.tech_name + ' ถึงร้านแล้วครับ 🙏';\nconst lineBody = JSON.stringify({to: line_id, messages:[{type:'text',text:lineText}]});\nreturn [{ json: { ...src, record_id, customer_phone, customer_phone2, customer_phone3, customer_line_id: line_id, has_line: !!line_id, lark_token: token, updateBody, lineBody } }];"
       },
-      "id": "arr-005",
+      "id": "64b4429c-67ee-4c33-b572-a198bb18a8ac",
       "name": "Parse T5 [Arrived]",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1340,
-        900
+        11744,
+        10208
       ]
     },
     {
@@ -699,45 +666,13 @@
         "body": "={{ $json.updateBody }}",
         "options": {}
       },
-      "id": "arr-006",
+      "id": "6b7808c5-22e8-4510-8a74-76eb4e8872f2",
       "name": "Update T5 Arrived",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1560,
-        760
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "loose"
-          },
-          "conditions": [
-            {
-              "id": "arr-line-check",
-              "leftValue": "={{ $json.customer_line_id }}",
-              "rightValue": "",
-              "operator": {
-                "type": "string",
-                "operation": "notEmpty",
-                "singleValue": true
-              }
-            }
-          ],
-          "combinator": "and"
-        }
-      },
-      "id": "arr-007",
-      "name": "If LINE [Arrived]",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [
-        1560,
-        1000
+        11968,
+        10208
       ]
     },
     {
@@ -767,18 +702,18 @@
           }
         }
       },
-      "id": "arr-008",
+      "id": "384a0a56-9cb5-4e70-92b7-57ff396773a8",
       "name": "LINE Customer Arrived",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1780,
-        880
+        12192,
+        10208
       ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "",
-          "name": "Header Auth account"
+          "id": "hB8vrjHbG2zAP9mg",
+          "name": "LINE Auth"
         }
       }
     },
@@ -796,8 +731,9 @@
           ]
         },
         "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ recipient: '66' + ($('Parse T5 [Arrived]').first().json.customer_phone || '').replace(/^0/, ''), sender_name: 'SK-ICE', message: 'SK ICE: ช่าง' + $('Parse T5 [Arrived]').first().json.tech_name + ' ถึงร้าน' + $('Parse T5 [Arrived]').first().json.customer_name + 'แล้วครับ' }) }}",
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ (() => { const p = $('Parse T5 [Arrived]').first().json; const isMobile = ph => ph && /^0[6-9]/.test(ph.trim()); const phones = [p.customer_phone, p.customer_phone2, p.customer_phone3].filter(isMobile); const phone = phones[0] || ''; const recipient = phone ? '66' + phone.replace(/^0/, '') : ''; const msg = 'SK ICE: ' + p.tech_name + ' ถึงร้านแล้วครับ กรุณาเตรียมรับบริการ'; return JSON.stringify({ recipient, sender_name: 'SK-ICE', message: msg }); })() }}",
         "options": {
           "response": {
             "response": {
@@ -806,26 +742,26 @@
           }
         }
       },
-      "id": "arr-009",
+      "id": "bb071c6f-0470-40dd-8353-089064673ba3",
       "name": "SMS Customer Arrived",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1780,
-        1120
+        12416,
+        10208
       ]
     },
     {
       "parameters": {
         "jsCode": "const p = $('Parse T5 [Arrived]').first().json;\nconst text = '📍 ช่างถึงแล้ว!\\n\\n📋 รหัสงาน: ' + p.job_id + '\\n👷 ช่าง: ' + p.tech_name + '\\n🏪 ร้าน: ' + p.customer_name;\nreturn [{ json: {\n  adminBody: JSON.stringify({\"to\": \"C40b37d81f4e199a7b7357537166a1efd\", \"messages\": [{\"type\": \"text\", \"text\": text}]})\n}}];"
       },
-      "id": "prep-adm-arr",
+      "id": "c68910b5-f244-4382-bdba-f7ad9eef5e8a",
       "name": "Prep Admin [Arrived]",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2000,
-        1000
+        12640,
+        10208
       ]
     },
     {
@@ -849,18 +785,18 @@
         "body": "={{ $json.adminBody }}",
         "options": {}
       },
-      "id": "arr-010",
+      "id": "54ecb62e-fc28-43af-b27c-b9cf782818cf",
       "name": "Admin Notify Arrived",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2220,
-        1000
+        12864,
+        10208
       ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "",
-          "name": "Header Auth account"
+          "id": "hB8vrjHbG2zAP9mg",
+          "name": "LINE Auth"
         }
       }
     },
@@ -870,26 +806,26 @@
         "responseBody": "{\"status\":\"ok\"}",
         "options": {}
       },
-      "id": "arr-011",
+      "id": "82acd0ac-ab77-4a7c-b7b8-a81b0a843b94",
       "name": "Respond Arrived",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        2880,
-        1000
+        13536,
+        10208
       ]
     },
     {
       "parameters": {
         "jsCode": "const ADMIN_IDS = ['e5d154gc', 'eceffed6', 'a978af6f'];\nconst src = $('Parse T5 [Arrived]').first().json;\nconst token = $('Get Token [Arrived]').first().json.tenant_access_token;\nconst text = '📍 ช่างถึงแล้ว!\\n\\n' +\n  '📋 รหัสงาน: ' + (src.job_id || '-') + '\\n' +\n  '👷 ช่าง: ' + (src.tech_name || '-') + '\\n' +\n  '🏪 ร้าน: ' + (src.shop_name || src.customer_name || '-');\nreturn ADMIN_IDS.map(id => ({\n  json: {\n    lark_token: token,\n    larkBody: JSON.stringify({\n      receive_id: id,\n      msg_type: 'text',\n      content: JSON.stringify({ text: text })\n    })\n  }\n}));"
       },
-      "id": "lark-dm-arr-01",
+      "id": "e265fe2b-3681-4b52-addb-f1de19e56905",
       "name": "Prep Lark DM [Arrived]",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2440,
-        1000
+        13088,
+        10208
       ]
     },
     {
@@ -921,29 +857,28 @@
           }
         }
       },
-      "id": "lark-dm-arr-02",
+      "id": "421534eb-2160-4ce8-8d7c-e017f4c934ee",
       "name": "Lark DM Admin [Arrived]",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2660,
-        1000
+        13312,
+        10208
       ]
     },
     {
       "parameters": {
-        "httpMethod": "GET",
         "path": "gps-position",
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "pos-001",
+      "id": "aa2b8664-36bc-4b19-9457-c1dfba2fb977",
       "name": "Webhook Position",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        240,
-        2020
+        10608,
+        10656
       ],
       "webhookId": "gps-position-webhook"
     },
@@ -951,13 +886,13 @@
       "parameters": {
         "jsCode": "const q = $input.first().json.query || {};\nconst jobId = (q.job_id || '').toString().trim();\nif (!jobId) return [{ json: { found: false, error: 'no job_id' } }];\nreturn [{ json: { job_id: jobId } }];"
       },
-      "id": "pos-002",
+      "id": "402433c2-6dac-4951-9404-e6e8c1aaa07a",
       "name": "Extract Job ID",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        460,
-        2020
+        10832,
+        10656
       ]
     },
     {
@@ -965,7 +900,6 @@
         "method": "POST",
         "url": "https://open.larksuite.com/open-apis/auth/v3/tenant_access_token/internal",
         "sendBody": true,
-        "contentType": "json",
         "bodyParameters": {
           "parameters": [
             {
@@ -980,31 +914,30 @@
         },
         "options": {}
       },
-      "id": "pos-003",
+      "id": "edb66223-5511-4ce2-ac20-978a9be839f2",
       "name": "Get Token [Pos]",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        680,
-        2020
+        11056,
+        10656
       ]
     },
     {
       "parameters": {
         "jsCode": "const jobId = $('Extract Job ID').first().json.job_id;\nreturn [{ json: { job_id: jobId } }];"
       },
-      "id": "prep-pos",
+      "id": "f2986822-8a3f-494c-9b3d-455835fdbf41",
       "name": "Prep [Pos]",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        900,
-        2020
+        11280,
+        10656
       ]
     },
     {
       "parameters": {
-        "operation": "read",
         "documentId": {
           "__rl": true,
           "value": "15ZWCa3JCWm0GKODJG9lipzeho4gebu2hepO6drygOek",
@@ -1017,33 +950,32 @@
         },
         "options": {}
       },
-      "id": "pos-004",
+      "id": "e1494b7c-c403-45b2-a306-129a81fadc52",
       "name": "Search T18 [Pos]",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
+      "position": [
+        11520,
+        10656
+      ],
       "credentials": {
         "googleSheetsOAuth2Api": {
-          "id": "SHEETS_CRED_ID",
-          "name": "Google Sheets"
+          "id": "luJx0ybaOG8fy4L9",
+          "name": "Google Sheets account 2"
         }
-      },
-      "position": [
-        1120,
-        2020
-      ]
+      }
     },
     {
       "parameters": {
-        "mode": "runOnceForAllItems",
         "jsCode": "const jobId = $('Extract Job ID').first().json.job_id;\nconst allRows = $input.all();\nconst jobRows = allRows.filter(r => r.json['Job No.'] === jobId);\nconst withPos = jobRows.filter(r => (parseFloat(r.json['Tech GPS Lat']) || 0) !== 0);\nif (withPos.length === 0) {\n  return [{ json: { found: false, lat: 0, lng: 0, status: 'traveling', timestamp: '' } }];\n}\nconst latest = withPos[withPos.length - 1];\nconst lat = parseFloat(latest.json['Tech GPS Lat']) || 0;\nconst lng = parseFloat(latest.json['Tech GPS Lng']) || 0;\nreturn [{ json: {\n  found: lat !== 0 || lng !== 0,\n  job_id: jobId,\n  lat,\n  lng,\n  status: latest.json['Status'] || 'traveling',\n  timestamp: latest.json['Timestamp'] || '',\n  tech_name: latest.json['Tech Name'] || '',\n  customer_name: latest.json['Shop Name'] || ''\n}}];"
       },
-      "id": "pos-005",
+      "id": "c3a031f4-de3a-49f5-8ce0-01ad7f4e0a6e",
       "name": "Format Position",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1340,
-        2020
+        11744,
+        10656
       ]
     },
     {
@@ -1065,29 +997,28 @@
           }
         }
       },
-      "id": "pos-006",
+      "id": "b195e80f-d4a2-48a3-a996-aa8e01d8f0a4",
       "name": "Respond Position",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        1560,
-        2020
+        11968,
+        10656
       ]
     },
     {
       "parameters": {
-        "httpMethod": "GET",
         "path": "gps-customer",
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "cmap-001",
+      "id": "163d9267-fba0-4ba4-aa2b-3873738b4667",
       "name": "Webhook Customer Map",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        240,
-        2280
+        10608,
+        10960
       ],
       "webhookId": "gps-customer-webhook"
     },
@@ -1095,13 +1026,13 @@
       "parameters": {
         "jsCode": "return [{ json: { html: `<!DOCTYPE html>\n<html lang=\"th\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1,user-scalable=no\">\n<title>ติดตามช่าง — SK ICE</title>\n<link rel=\"stylesheet\" href=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.css\"/>\n<script src=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.js\"></script>\n<style>\n*{margin:0;padding:0;box-sizing:border-box}\nhtml,body{height:100%;overflow:hidden;font-family:'Helvetica Neue',Arial,sans-serif;background:#F0F4F8}\nbody{display:flex;flex-direction:column}\n.hdr{background:linear-gradient(135deg,#1E3A5F,#2E6DA4);padding:13px 16px;color:#fff;text-align:center;flex-shrink:0}\n.hdr h1{font-size:17px;font-weight:700}.hdr p{font-size:12px;color:#A8D5F0;margin-top:2px}\n.sbar{background:#fff;padding:11px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 6px rgba(0,0,0,.12);flex-shrink:0}\n.si{font-size:26px}.sinfo{flex:1}\n.st{font-size:15px;font-weight:700;color:#2C3E50}\n.ss{font-size:12px;color:#888;margin-top:2px;display:flex;align-items:center;gap:5px}\n.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#27AE60;flex-shrink:0}\n.dot.off{background:#ccc}\n@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}\n.dot.on{animation:pulse 1.5s infinite}\n.tag{font-size:11px;background:#EEF4FF;color:#2E6DA4;padding:3px 8px;border-radius:10px;font-weight:700;flex-shrink:0}\n.wrap{flex:1;position:relative;min-height:0}\n#map{width:100%;height:100%}\n.fabs{position:absolute;bottom:20px;right:14px;z-index:1000;display:flex;flex-direction:column;gap:10px;align-items:flex-end}\n.fab{border:none;border-radius:50px;padding:11px 16px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 3px 12px rgba(0,0,0,.25);display:flex;align-items:center;gap:6px;white-space:nowrap}\n.fab-tech{background:#1E3A5F;color:#fff}\n.fab-me{background:#2E6DA4;color:#fff}\n</style>\n</head>\n<body>\n<div class=\"hdr\"><h1>🧊 SK ICE — ติดตามช่าง</h1><p id=\"hdr-sub\">กำลังโหลด...</p></div>\n<div class=\"sbar\">\n  <div class=\"si\" id=\"s-icon\">🚗</div>\n  <div class=\"sinfo\">\n    <div class=\"st\" id=\"s-text\">กำลังเดินทาง</div>\n    <div class=\"ss\"><span class=\"dot on\" id=\"dot\"></span><span id=\"s-sub\">กำลังโหลดตำแหน่ง...</span></div>\n  </div>\n  <span class=\"tag\" id=\"job-tag\">-</span>\n</div>\n<div class=\"wrap\">\n  <div id=\"map\"></div>\n  <div class=\"fabs\">\n    <button class=\"fab fab-tech\" id=\"btn-tech\" onclick=\"focusTech()\" style=\"display:none\">🚗 ตำแหน่งช่าง</button>\n    <button class=\"fab fab-me\" onclick=\"centerMe()\">📍 ตำแหน่งฉัน</button>\n  </div>\n</div>\n<script>\nconst GPS_POS_URL = 'https://n8n-production-b8f6.up.railway.app/webhook/gps-position';\nconst POLL_MS = 60000;\nconst p = new URLSearchParams(location.search);\nconst JOB = (p.get('job_id') || p.get('work') || '').trim();\ndocument.getElementById('hdr-sub').textContent = JOB ? 'งาน: ' + JOB : '-';\ndocument.getElementById('job-tag').textContent = JOB || '-';\nconst map = L.map('map',{zoomControl:true,attributionControl:false});\nL.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd'}).addTo(map);\nmap.setView([13.75,100.5],13);\nconst techIcon=L.divIcon({html:'<div style=\"font-size:30px;line-height:1\">🚗</div>',className:'',iconSize:[34,34],iconAnchor:[17,17]});\nconst doneIcon=L.divIcon({html:'<div style=\"font-size:30px;line-height:1\">✅</div>',className:'',iconSize:[34,34],iconAnchor:[17,17]});\nlet techMarker=null,myMarker=null,techLat=null,techLng=null,myLat=null,myLng=null,firstLoad=true,done=false,pollTimer=null;\nfunction fetchPosition(){\n  if(!JOB)return;\n  fetch(GPS_POS_URL+'?job_id='+encodeURIComponent(JOB),{redirect:'follow'})\n    .then(r=>r.json()).then(d=>{updateMap(d);updateStatus(d);}).catch(()=>{});\n}\nfunction updateMap(d){\n  if(!d.found||!d.lat||d.lat===0)return;\n  techLat=d.lat;techLng=d.lng;\n  const ll=[d.lat,d.lng];\n  const icon=d.status==='completed'?doneIcon:techIcon;\n  if(!techMarker){techMarker=L.marker(ll,{icon}).addTo(map);document.getElementById('btn-tech').style.display='flex';}\n  else{techMarker.setLatLng(ll);techMarker.setIcon(icon);}\n  if(firstLoad){map.setView(ll,15);firstLoad=false;}\n}\nfunction updateStatus(d){\n  const st=d.status||'traveling';\n  if(st==='completed'){document.getElementById('s-icon').textContent='✅';document.getElementById('s-text').textContent='งานเสร็จแล้ว!';document.getElementById('s-sub').textContent='ขอบคุณที่ใช้บริการ SK ICE';document.getElementById('dot').className='dot off';if(!done){done=true;clearInterval(pollTimer);}}\n  else if(st==='arrived'){document.getElementById('s-icon').textContent='🔧';document.getElementById('s-text').textContent='ช่างถึงที่แล้ว!';document.getElementById('s-sub').textContent='กำลังดำเนินการ';document.getElementById('dot').className='dot off';}\n  else{document.getElementById('s-icon').textContent='🚗';document.getElementById('s-text').textContent='กำลังเดินทางมาหาคุณ';document.getElementById('s-sub').textContent='อัปเดตล่าสุด: '+(d.timestamp?new Date(d.timestamp).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}):'-');document.getElementById('dot').className='dot on';}\n}\nfunction focusTech(){if(techLat!==null)map.setView([techLat,techLng],16);}\nfunction centerMe(){\n  if(myLat!==null){map.setView([myLat,myLng],17);return;}\n  if(!navigator.geolocation){alert('เบราว์เซอร์ไม่รองรับ GPS');return;}\n  navigator.geolocation.getCurrentPosition(pos=>{myLat=pos.coords.latitude;myLng=pos.coords.longitude;if(!myMarker){myMarker=L.marker([myLat,myLng]).addTo(map);}else{myMarker.setLatLng([myLat,myLng]);}map.setView([myLat,myLng],17);},()=>{alert('ไม่สามารถหาตำแหน่งของคุณได้');},{enableHighAccuracy:true,timeout:12000});\n}\nfetchPosition();\npollTimer=setInterval(fetchPosition,POLL_MS);\n</script>\n</body></html>` } }];"
       },
-      "id": "cmap-002",
+      "id": "eb450150-d473-4165-86a1-6ecdbd38efbb",
       "name": "Build Customer Map HTML",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        460,
-        2280
+        10832,
+        10960
       ]
     },
     {
@@ -1119,13 +1050,13 @@
           }
         }
       },
-      "id": "cmap-003",
+      "id": "55fb2c9f-8890-4b47-968f-83aa231fbafc",
       "name": "Respond Customer Map",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        680,
-        2280
+        11056,
+        10960
       ]
     },
     {
@@ -1142,8 +1073,9 @@
           ]
         },
         "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={ JSON.stringify({ recipient: '66' + ($('Parse T5 [Update]').first().json.customer_phone || '').replace(/^0/, ''), sender_name: 'SK-ICE', message: 'SK ICE: ช่าง' + $('Parse T5 [Update]').first().json.tech_name + ' กำลังเดินทางมาหาคุณแล้วครับ' }) }",
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ recipient: $json.sms_recipient, sender_name: 'SK-ICE', message: $json.sms_msg }) }}",
         "options": {
           "response": {
             "response": {
@@ -1152,16 +1084,147 @@
           }
         }
       },
-      "id": "upd-sms-01",
+      "id": "f4f43e87-2147-4744-9e6c-d90c5d755653",
       "name": "SMS Customer Traveling",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2440,
-        580
+        13536,
+        9712
       ]
+    },
+    {
+      "parameters": {
+        "url": "=https://tinyurl.com/api-create.php?url={{ encodeURIComponent('https://n8n-production-b8f6.up.railway.app/webhook/gps-customer?job_id=' + $('Set GPS Data').first().json.job_id) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "99280453-cb3f-4f47-b2d8-7e967922d308",
+      "name": "Shorten URL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        12640,
+        9712
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const p = $('Parse T5 [Update]').first().json;\nlet shortUrl = '';\ntry { shortUrl = ($('Shorten URL').first().json.data || '').trim(); } catch(e) {}\nconst isMobile = ph => ph && /^0[6-9]/.test(ph.trim());\nconst phones = [p.customer_phone, p.customer_phone2, p.customer_phone3].filter(isMobile);\nconst trackLine = shortUrl ? ' ดูตำแหน่ง: ' + shortUrl : '';\nconst msg = 'SK ICE: ' + p.tech_name + ' กำลังเดินทางมาหาคุณแล้วครับ' + trackLine;\nif (phones.length === 0) {\n  return [{ json: { sms_recipient: '', sms_msg: msg } }];\n}\nreturn phones.map(ph => ({\n  json: { sms_recipient: '66' + ph.replace(/^0/, ''), sms_msg: msg }\n}));"
+      },
+      "id": "f1864426-d7cc-420b-a0df-7e46eda33e42",
+      "name": "Split Phones [Traveling]",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        13312,
+        9712
+      ]
+    },
+    {
+      "parameters": {
+        "height": 1968,
+        "width": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        14368,
+        9280
+      ],
+      "id": "21621fd6-2397-4c8c-91d4-341e8c135623",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "is-first-early-check",
+              "leftValue": "={{ $('Set GPS Data').first().json.is_first }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "early-first-check-001",
+      "name": "Is First (Early)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        11056,
+        9856
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const src = $('Set GPS Data').first().json;\nreturn [{ json: {\n  'Timestamp': new Date().toISOString(),\n  'Job No.': src.job_id || '',\n  'Status': src.status || 'traveling',\n  'Job Type': '',\n  'Priority': '',\n  'Scheduled Date': '',\n  'Shop Name': src.customer_name || '',\n  'Customer ID': '',\n  'C.LINE User ID': src.customer_line_id || '',\n  'Customer Type': '',\n  'Google Maps URL': '',\n  'Location': (src.lat || 0) + ',' + (src.lng || 0),\n  'Shop GPS Lat': src.shop_lat || 0,\n  'Shop GPS Lng': src.shop_lng || 0,\n  'Assigned Technician': '',\n  'Staff ID': '',\n  'Tech Name': src.tech_name || '',\n  'Tech Line ID': '',\n  'Tech Lark ID': '',\n  'Tech GPS Lat': src.lat || 0,\n  'Tech GPS Lng': src.lng || 0,\n  'Accuracy': src.accuracy || 0,\n  'Is First': false,\n  'Battery Level (%)': src.battery || '',\n  'Interval (min)': 5,\n  'Notes': '',\n  'Parent items 1': '',\n  'Parent items 2': '',\n  'Parent items 3': '',\n  'Parent items 4': ''\n}}];"
+      },
+      "id": "prep-t18-lite-001",
+      "name": "Prep T18 Ping (Lite)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        11280,
+        10080
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "15ZWCa3JCWm0GKODJG9lipzeho4gebu2hepO6drygOek",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "T18_GPS_Tracking",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "create-t18-lite-001",
+      "name": "Create T18 Ping (Lite)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        11504,
+        10080
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "luJx0ybaOG8fy4L9",
+          "name": "Google Sheets account 2"
+        }
+      },
+      "continueOnFail": true
     }
   ],
+  "pinData": {},
   "connections": {
     "Webhook Init": {
       "main": [
@@ -1288,7 +1351,47 @@
       "main": [
         [
           {
+            "node": "Is First (Early)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is First (Early)": {
+      "main": [
+        [
+          {
             "node": "Get Token [Update]",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prep T18 Ping (Lite)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep T18 Ping (Lite)": {
+      "main": [
+        [
+          {
+            "node": "Create T18 Ping (Lite)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create T18 Ping (Lite)": {
+      "main": [
+        [
+          {
+            "node": "Respond Update",
             "type": "main",
             "index": 0
           }
@@ -1370,7 +1473,7 @@
             "index": 0
           },
           {
-            "node": "Prep Traveling",
+            "node": "Shorten URL",
             "type": "main",
             "index": 0
           }
@@ -1417,7 +1520,29 @@
         ]
       ]
     },
+    "Shorten URL": {
+      "main": [
+        [
+          {
+            "node": "Prep Traveling",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Notify Customer Traveling": {
+      "main": [
+        [
+          {
+            "node": "Split Phones [Traveling]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Phones [Traveling]": {
       "main": [
         [
           {
@@ -1580,7 +1705,7 @@
       "main": [
         [
           {
-            "node": "Get Token [Pos]",
+            "node": "Search T18 [Pos]",
             "type": "main",
             "index": 0
           }
@@ -1654,8 +1779,30 @@
       ]
     }
   },
+  "active": true,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
   },
-  "staticData": null
+  "versionId": "f4ddf15f-890f-4b2e-9e3d-e4045235ff6c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "999f38d9444535a4c9da35e8c7be72e1c3b6cca77c4ee547703ada54237ec1b4"
+  },
+  "id": "esremznNrsa8r9pi",
+  "tags": [
+    {
+      "updatedAt": "2026-04-16T21:55:56.870Z",
+      "createdAt": "2026-04-16T21:55:56.870Z",
+      "id": "gsvHXs0DbgFkaY7i",
+      "name": "USED"
+    }
+  ]
 }

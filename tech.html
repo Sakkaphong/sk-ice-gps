@@ -345,7 +345,7 @@ function startGPS(isResume){
   document.getElementById('dot').className='dot on';
   document.getElementById('gps-label').textContent='กำลังขอ GPS...';
   sendOnce();
-  watchId=setInterval(sendOnce, 300000); // 2026-04-20: เปลี่ยนจาก 60s → 300s (5 นาที) ลด battery + sync กับ schema
+  watchId=setInterval(sendOnce, 300000); // 2026-04-30: กลับ 5 นาที — refactor /gps-update ให้ non-first ping ไม่เรียก Lark แล้ว
 }
 function sendOnce(){ navigator.geolocation.getCurrentPosition(sendGPS, gpsErr, {enableHighAccuracy:true,timeout:20000,maximumAge:10000}); }
 function sendGPS(pos){
