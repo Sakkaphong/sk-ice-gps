@@ -216,6 +216,10 @@ const DLAT = p.get('dlat') || '';
 const DLNG = p.get('dlng') || '';
 const BASE = 'https://n8n-production-b8f6.up.railway.app/webhook';
 const API_KEY = 'sk-ice-api-v3-2026';
+
+// ── Cloudinary (อัพโหลดรูปตรงจาก browser ไม่ผ่าน n8n) ──
+const CLD_CLOUD  = 'dt5kax2hl';    // Cloud name
+const CLD_PRESET = 'sk_ice_jobs';  // Upload preset (Unsigned) ← สร้างใน Cloudinary Dashboard
 function authH(extra){return Object.assign({'X-API-Key':API_KEY},extra||{});}
 function authJH(){return authH({'Content-Type':'application/json'});}
 
@@ -489,34 +493,62 @@ function renderPhotos(){
   });
 }
 
+// ── Upload 1 รูปขึ้น Cloudinary ──
+async function uploadToCloudinary(base64DataUrl) {
+  var fd = new FormData();
+  fd.append('file', base64DataUrl);
+  fd.append('upload_preset', CLD_PRESET);
+  fd.append('folder', 'sk-ice/' + W); // แยก folder ตาม job_id
+  var r = await fetch('https://api.cloudinary.com/v1_1/' + CLD_CLOUD + '/image/upload', {
+    method: 'POST', body: fd
+  });
+  var d = await r.json();
+  return d.secure_url || null;
+}
+
 // ── Submit Report ──
-function submitReport(){
+async function submitReport(){
   if(currentState!=='arrived') return;
   var btn=document.getElementById('btn-done');
-  btn.disabled=true; btn.textContent='⏳ กำลังส่ง...';
-  compressAllPhotos(photoFiles, function(photoData){
-    var payload={
-      job_id:W, tech_name:T, tech_names:TECHS, customer_line_id:CL, customer_name:CN,
-      parts:parts,
-      notes:document.getElementById('notes').value.trim(),
-      photo_count:photoData.length,
-      photos:photoData,
-      completed_at:new Date().toISOString()
-    };
-    // 2026-04-20: /complete-job รวม Admin Notify + LINE/SMS + T4 Care Plan แล้ว
-    // ไม่ต้องยิง /gps-done ต่อ (ลบ endpoint นี้ออกแล้ว)
-    fetch(BASE+'/complete-job',{method:'POST',headers:authJH(),body:JSON.stringify(payload)})
-      .catch(function(){})
-      .finally(function(){
-        saveSession('completed');
-        if(techMarker) techMarker.setIcon(doneIcon);
-        document.getElementById('s-icon').textContent='✅';
-        document.getElementById('s-text').textContent='งานเสร็จเรียบร้อย!';
-        document.getElementById('s-sub').textContent='แจ้งลูกค้าแล้ว';
-        document.getElementById('completed-sub').textContent='ส่งรายงานแล้ว\nอะไหล่: '+parts.length+' รายการ | รูป: '+photoData.length+' รูป\n'+new Date().toLocaleString('th-TH');
-        setState('completed');
-      });
+  btn.disabled=true;
+
+  // Step 1: compress ทุกรูป
+  btn.textContent='⏳ กำลังบีบอัดรูป...';
+  var compressed = await new Promise(function(resolve){
+    compressAllPhotos(photoFiles, resolve);
   });
+
+  // Step 2: upload ทีละรูปขึ้น Cloudinary
+  var photoUrls = [];
+  for(var i=0; i<compressed.length; i++){
+    btn.textContent='☁️ อัพโหลดรูป '+(i+1)+'/'+compressed.length+'...';
+    try {
+      var url = await uploadToCloudinary(compressed[i]);
+      if(url) photoUrls.push(url);
+    } catch(e) { /* skip รูปที่ upload ไม่ได้ */ }
+  }
+
+  // Step 3: ส่ง complete-job พร้อม Cloudinary URLs
+  btn.textContent='⏳ กำลังส่งรายงาน...';
+  var payload={
+    job_id:W, tech_name:T, tech_names:TECHS, customer_line_id:CL, customer_name:CN,
+    parts:parts,
+    notes:document.getElementById('notes').value.trim(),
+    photo_count:photoUrls.length,
+    photo_urls:photoUrls,   // Cloudinary URLs แทน base64
+    completed_at:new Date().toISOString()
+  };
+  // 2026-04-20: /complete-job รวม Admin Notify + LINE/SMS + T4 Care Plan แล้ว
+  await fetch(BASE+'/complete-job',{method:'POST',headers:authJH(),body:JSON.stringify(payload)})
+    .catch(function(){});
+
+  saveSession('completed');
+  if(techMarker) techMarker.setIcon(doneIcon);
+  document.getElementById('s-icon').textContent='✅';
+  document.getElementById('s-text').textContent='งานเสร็จเรียบร้อย!';
+  document.getElementById('s-sub').textContent='แจ้งลูกค้าแล้ว';
+  document.getElementById('completed-sub').textContent='ส่งรายงานแล้ว\nอะไหล่: '+parts.length+' รายการ | รูป: '+photoUrls.length+' รูป\n'+new Date().toLocaleString('th-TH');
+  setState('completed');
 }
 
 function compressAllPhotos(files, callback){

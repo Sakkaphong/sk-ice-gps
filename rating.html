@@ -38,12 +38,27 @@
   .job-info span { font-weight: 600; color: #222; }
   h2 { font-size: 1rem; color: #333; margin-bottom: 16px; }
 
-  /* Stars */
+  .tech-block { margin-bottom: 16px; }
+  .tech-label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #1a73e8;
+    background: #e8f0fe;
+    border-radius: 20px;
+    padding: 4px 14px;
+    display: inline-block;
+    margin-bottom: 10px;
+  }
+  .tech-divider {
+    border: none;
+    border-top: 1px dashed #e0e0e0;
+    margin: 18px 0;
+  }
   .stars {
     display: flex;
     justify-content: center;
     gap: 8px;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
   }
   .star {
     font-size: 2.8rem;
@@ -59,9 +74,8 @@
     font-size: 0.85rem;
     color: #888;
     height: 20px;
-    margin-bottom: 20px;
+    margin-bottom: 8px;
   }
-
   textarea {
     width: 100%;
     border: 1.5px solid #e0e0e0;
@@ -77,7 +91,6 @@
     outline: none;
   }
   textarea:focus { border-color: #1a73e8; }
-
   button {
     width: 100%;
     background: #1a73e8;
@@ -93,20 +106,16 @@
   button:hover { background: #1558c4; }
   button:active { transform: scale(0.98); }
   button:disabled { background: #b0c8f5; cursor: not-allowed; }
-
-  /* Thank you */
   .thankyou { display: none; }
   .thankyou .big-icon { font-size: 4rem; margin-bottom: 16px; }
   .thankyou h2 { font-size: 1.3rem; color: #1a73e8; margin-bottom: 8px; }
   .thankyou p { font-size: 0.9rem; color: #666; line-height: 1.6; }
-
-  .error-msg { color: #e53e3e; font-size: 0.82rem; margin-top: -12px; margin-bottom: 12px; }
+  .error-msg { color: #e53e3e; font-size: 0.82rem; margin-bottom: 12px; }
 </style>
 </head>
 <body>
 <div class="card">
 
-  <!-- Form -->
   <div id="formView">
     <div class="logo">🧊</div>
     <div class="brand">SK ICE</div>
@@ -117,25 +126,13 @@
       <p>👷 ช่าง: <span id="techDisplay">—</span></p>
     </div>
 
-    <h2>คุณพอใจกับงานครั้งนี้แค่ไหน?</h2>
+    <div id="ratings-container"></div>
 
-    <div class="stars" id="stars">
-      <span class="star" data-val="1">★</span>
-      <span class="star" data-val="2">★</span>
-      <span class="star" data-val="3">★</span>
-      <span class="star" data-val="4">★</span>
-      <span class="star" data-val="5">★</span>
-    </div>
-    <div class="rating-label" id="ratingLabel">กรุณาเลือกคะแนน</div>
-
-    <p id="starError" class="error-msg" style="display:none">กรุณาเลือกคะแนนก่อนส่งครับ</p>
-
+    <p id="starError" class="error-msg" style="display:none">กรุณาให้คะแนนให้ครบก่อนส่งครับ</p>
     <textarea id="comment" placeholder="ความคิดเห็นเพิ่มเติม (ไม่บังคับ)"></textarea>
-
     <button id="submitBtn" onclick="submitRating()">ส่งคะแนน</button>
   </div>
 
-  <!-- Thank you -->
   <div class="thankyou" id="thankyou">
     <div class="big-icon">🙏</div>
     <h2>ขอบคุณมากครับ!</h2>
@@ -148,66 +145,131 @@
 const LABELS = ['', 'ต้องปรับปรุง', 'พอใช้ได้', 'ดีครับ', 'ดีมาก!', 'ดีเยี่ยม! 🌟'];
 const BASE   = 'https://n8n-production-b8f6.up.railway.app/webhook';
 
-let selectedRating = 0;
+const selectedRatings = {}; // index → star value (1-5)
 
-// Read URL params
-const params   = new URLSearchParams(location.search);
-const jobId    = params.get('job') || '';
-const techName = params.get('tech') || '';
-// รองรับช่างหลายคน — techs = comma-separated
-const techsRaw = params.get('techs') || techName;
-const techsList = techsRaw ? techsRaw.split(',').map(s=>decodeURIComponent(s.trim())).filter(Boolean) : ['ไม่ระบุ'];
+// ── URL params ──
+const params    = new URLSearchParams(location.search);
+const jobId     = params.get('job') || '';
+const techName  = params.get('tech') || '';
+const techsRaw  = params.get('techs') || techName;
+const techsList = techsRaw
+  ? techsRaw.split(',').map(function(s){ return decodeURIComponent(s.trim()); }).filter(Boolean)
+  : ['ไม่ระบุ'];
+
 document.getElementById('jobIdDisplay').textContent = jobId || 'ไม่ระบุ';
 document.getElementById('techDisplay').textContent  = techsList.join(', ');
 
-// ป้องกันรีวิวซ้ำ — เช็ค localStorage
+// ── ป้องกันรีวิวซ้ำ ──
 const RATED_KEY = 'sk_ice_rated_jobs';
-const ratedJobs = JSON.parse(localStorage.getItem(RATED_KEY) || '[]');
+var ratedJobs = JSON.parse(localStorage.getItem(RATED_KEY) || '[]');
 if (jobId && ratedJobs.includes(jobId)) {
   document.getElementById('formView').style.display = 'none';
   document.getElementById('thankyou').style.display = 'block';
   document.querySelector('.thankyou h2').textContent = 'ให้คะแนนแล้วครับ 😊';
-  document.querySelector('.thankyou p').textContent = 'คุณได้ประเมินงานนี้ไปแล้ว ขอบคุณมากครับ 🙏';
+  document.querySelector('.thankyou p').textContent  = 'คุณได้ประเมินงานนี้ไปแล้ว ขอบคุณมากครับ 🙏';
 }
 
-// Star rating
-document.querySelectorAll('.star').forEach(star => {
-  star.addEventListener('click', () => {
-    selectedRating = parseInt(star.dataset.val);
-    document.querySelectorAll('.star').forEach((s, i) => {
-      s.classList.toggle('active', i < selectedRating);
-    });
-    document.getElementById('ratingLabel').textContent = LABELS[selectedRating];
-    document.getElementById('starError').style.display = 'none';
+// ── Build rating blocks ด้วย DOM (ไม่ใช้ innerHTML กับ user-input) ──
+function buildRatings() {
+  var container = document.getElementById('ratings-container');
+  var isSingle  = techsList.length === 1;
+
+  var heading = document.createElement('h2');
+  heading.textContent = isSingle ? 'คุณพอใจกับงานครั้งนี้แค่ไหน?' : 'ให้คะแนนช่างแต่ละคนครับ';
+  container.appendChild(heading);
+
+  techsList.forEach(function(tech, idx) {
+    // divider ระหว่างช่าง
+    if (idx > 0) {
+      container.appendChild(document.createElement('hr')).className = 'tech-divider';
+    }
+
+    var block = document.createElement('div');
+    block.className = 'tech-block';
+
+    // label ชื่อช่าง (เฉพาะ multi-tech)
+    if (!isSingle) {
+      var label = document.createElement('div');
+      label.className   = 'tech-label';
+      label.textContent = '👷 ' + tech;
+      block.appendChild(label);
+    }
+
+    // stars row
+    var starsDiv = document.createElement('div');
+    starsDiv.className = 'stars';
+    starsDiv.id        = 'stars-' + idx;
+    for (var v = 1; v <= 5; v++) {
+      var star = document.createElement('span');
+      star.className    = 'star';
+      star.textContent  = '★';
+      star.dataset.idx  = idx;
+      star.dataset.val  = v;
+      star.addEventListener('click', onStarClick);
+      starsDiv.appendChild(star);
+    }
+    block.appendChild(starsDiv);
+
+    // rating label
+    var rlabel = document.createElement('div');
+    rlabel.className = 'rating-label';
+    rlabel.id        = 'label-' + idx;
+    rlabel.textContent = 'กรุณาเลือกคะแนน';
+    block.appendChild(rlabel);
+
+    container.appendChild(block);
   });
-});
+}
+
+function onStarClick() {
+  var idx = parseInt(this.dataset.idx);
+  var val = parseInt(this.dataset.val);
+  selectedRatings[idx] = val;
+  document.querySelectorAll('.star[data-idx="' + idx + '"]').forEach(function(s, i) {
+    s.classList.toggle('active', i < val);
+  });
+  document.getElementById('label-' + idx).textContent = LABELS[val];
+  document.getElementById('starError').style.display = 'none';
+}
+
+buildRatings();
+
+function allRated() {
+  return techsList.every(function(_, idx) { return !!selectedRatings[idx]; });
+}
 
 async function submitRating() {
-  if (!selectedRating) {
+  if (!allRated()) {
     document.getElementById('starError').style.display = 'block';
     return;
   }
-  const btn = document.getElementById('submitBtn');
-  btn.disabled = true;
+  var btn = document.getElementById('submitBtn');
+  btn.disabled    = true;
   btn.textContent = 'กำลังส่ง...';
+
+  var comment  = document.getElementById('comment').value.trim();
+  var isSingle = techsList.length === 1;
+
+  var payload = isSingle
+    ? { job_id: jobId, rating: selectedRatings[0], comment: comment,
+        tech_name: techsList[0], tech_names: techsList[0] }
+    : { job_id: jobId,
+        ratings: techsList.map(function(tech, idx) {
+          return { tech_name: tech, rating: selectedRatings[idx] };
+        }),
+        comment: comment, tech_names: techsList.join(', ') };
 
   try {
     await fetch(BASE + '/rate-job', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        job_id: jobId,
-        rating: selectedRating,
-        comment: document.getElementById('comment').value.trim(),
-        tech_name: techsList[0] || '',
-        tech_names: techsList.join(', ')
-      })
+      body: JSON.stringify(payload)
     });
-  } catch(e) { /* neverError */ }
+  } catch(e) {}
 
-  // บันทึก job_id ลง localStorage
+  // บันทึกกัน re-submit
   if (jobId) {
-    const updated = JSON.parse(localStorage.getItem(RATED_KEY) || '[]');
+    var updated = JSON.parse(localStorage.getItem(RATED_KEY) || '[]');
     if (!updated.includes(jobId)) updated.push(jobId);
     localStorage.setItem(RATED_KEY, JSON.stringify(updated));
   }

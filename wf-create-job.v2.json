@@ -3395,7 +3395,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst job_id = body.job_id || \"\";\nconst rating = parseInt(body.rating) || 0;\nconst comment = body.comment || \"\";\nconst tech_name = body.tech_name || \"\";\nconst tech_names = body.tech_names || tech_name;\nconst customer_name = body.customer_name || \"\";\nconst timestamp = new Date().toISOString().replace(\"T\",\" \").slice(0,19);\nreturn [{ json: { timestamp, job_id, rating, comment, tech_names, customer_name } }];"
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst job_id        = body.job_id || '';\nconst comment       = body.comment || '';\nconst tech_names_all = body.tech_names || body.tech_name || '';\nconst customer_name = body.customer_name || '';\nconst timestamp     = new Date().toISOString().replace('T',' ').slice(0,19);\n\n// Multi-tech mode: body.ratings = [{tech_name, rating}, ...]\nif (body.ratings && Array.isArray(body.ratings) && body.ratings.length > 0) {\n  return body.ratings.map(r => ({\n    json: {\n      timestamp,\n      job_id,\n      rating:        parseInt(r.rating) || 0,\n      comment,\n      tech_name:     r.tech_name || '',\n      tech_names:    tech_names_all,\n      customer_name\n    }\n  }));\n}\n\n// Single-tech mode\nreturn [{ json: {\n  timestamp,\n  job_id,\n  rating:        parseInt(body.rating) || 0,\n  comment,\n  tech_name:     body.tech_name || '',\n  tech_names:    tech_names_all,\n  customer_name\n} }];"
       },
       "id": "5e75d278-8389-476f-b1a9-f4957946cd00",
       "name": "Parse Rating Body",
