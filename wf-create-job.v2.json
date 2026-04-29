@@ -4,15 +4,15 @@
     {
       "parameters": {
         "content": "# CREATE JOB\n",
-        "height": 4752,
+        "height": 5056,
         "width": 5648,
         "color": 6
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        12048,
-        -3728
+        5584,
+        -4480
       ],
       "id": "dc7cbe25-1d83-4ecb-9da4-336c5f3beb39",
       "name": "Sticky Note1"
@@ -65,7 +65,8 @@
       "position": [
         944,
         -1872
-      ]
+      ],
+      "disabled": true
     },
     {
       "parameters": {
@@ -498,8 +499,8 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        4896,
-        2640
+        5744,
+        -3616
       ],
       "webhookId": "get-customers-webhook"
     },
@@ -527,8 +528,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        5120,
-        2640
+        5968,
+        -3616
       ]
     },
     {
@@ -540,8 +541,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5344,
-        2640
+        6192,
+        -3616
       ]
     },
     {
@@ -568,8 +569,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        5568,
-        2640
+        6416,
+        -3616
       ]
     },
     {
@@ -581,8 +582,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5776,
-        2640
+        6624,
+        -3616
       ]
     },
     {
@@ -605,8 +606,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        6000,
-        2640
+        6848,
+        -3616
       ]
     },
     {
@@ -620,8 +621,8 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        4880,
-        3280
+        5728,
+        -2976
       ],
       "webhookId": "get-techs-webhook"
     },
@@ -649,8 +650,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        5104,
-        3280
+        5952,
+        -2976
       ]
     },
     {
@@ -662,8 +663,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5328,
-        3280
+        6176,
+        -2976
       ]
     },
     {
@@ -690,8 +691,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        5552,
-        3280
+        6400,
+        -2976
       ]
     },
     {
@@ -703,8 +704,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5760,
-        3280
+        6608,
+        -2976
       ]
     },
     {
@@ -727,8 +728,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        5984,
-        3280
+        6832,
+        -2976
       ]
     },
     {
@@ -743,8 +744,8 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        4880,
-        3616
+        5728,
+        -2640
       ],
       "webhookId": "create-job-webhook"
     },
@@ -757,8 +758,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5104,
-        3616
+        5952,
+        -2640
       ]
     },
     {
@@ -785,8 +786,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        5328,
-        3616
+        6176,
+        -2640
       ]
     },
     {
@@ -798,8 +799,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        6000,
-        3616
+        6848,
+        -2640
       ]
     },
     {
@@ -826,8 +827,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        6208,
-        3616
+        7056,
+        -2640
       ]
     },
     {
@@ -839,8 +840,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        6432,
-        3616
+        7280,
+        -2640
       ]
     },
     {
@@ -863,8 +864,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        6656,
-        3616
+        7504,
+        -2640
       ]
     },
     {
@@ -878,8 +879,8 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        4880,
-        3904
+        5728,
+        -2352
       ],
       "webhookId": "get-jobs-webhook"
     },
@@ -907,8 +908,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        5104,
-        3904
+        5952,
+        -2352
       ]
     },
     {
@@ -920,8 +921,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5328,
-        3904
+        6176,
+        -2352
       ]
     },
     {
@@ -948,8 +949,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        5552,
-        3904
+        6400,
+        -2352
       ]
     },
     {
@@ -961,8 +962,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5760,
-        3904
+        6608,
+        -2352
       ]
     },
     {
@@ -985,8 +986,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        5984,
-        3904
+        6832,
+        -2352
       ]
     },
     {
@@ -1000,8 +1001,8 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        4880,
-        4176
+        5728,
+        -2080
       ],
       "webhookId": "get-attendance-webhook"
     },
@@ -1029,8 +1030,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        5104,
-        4176
+        5952,
+        -2080
       ]
     },
     {
@@ -1042,8 +1043,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5328,
-        4176
+        6176,
+        -2080
       ]
     },
     {
@@ -1070,8 +1071,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        5552,
-        4176
+        6400,
+        -2080
       ]
     },
     {
@@ -1083,8 +1084,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5760,
-        4176
+        6608,
+        -2080
       ]
     },
     {
@@ -1107,8 +1108,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        5984,
-        4176
+        6832,
+        -2080
       ]
     },
     {
@@ -1122,8 +1123,8 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        4880,
-        4464
+        5728,
+        -1792
       ],
       "webhookId": "get-products-webhook"
     },
@@ -1151,8 +1152,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        5104,
-        4464
+        5952,
+        -1792
       ]
     },
     {
@@ -1164,8 +1165,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5328,
-        4464
+        6176,
+        -1792
       ]
     },
     {
@@ -1192,8 +1193,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        5552,
-        4464
+        6400,
+        -1792
       ]
     },
     {
@@ -1205,8 +1206,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5760,
-        4464
+        6608,
+        -1792
       ]
     },
     {
@@ -1233,8 +1234,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        5984,
-        4464
+        6832,
+        -1792
       ]
     },
     {
@@ -1249,8 +1250,8 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        4880,
-        4736
+        5728,
+        -1520
       ],
       "webhookId": "complete-job-webhook"
     },
@@ -1263,8 +1264,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5104,
-        4736
+        5952,
+        -1520
       ]
     },
     {
@@ -1291,8 +1292,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        5328,
-        4736
+        6176,
+        -1520
       ]
     },
     {
@@ -1304,8 +1305,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5552,
-        4736
+        6400,
+        -1520
       ]
     },
     {
@@ -1332,8 +1333,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        5760,
-        4736
+        6608,
+        -1520
       ]
     },
     {
@@ -1345,8 +1346,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5984,
-        4736
+        6832,
+        -1520
       ]
     },
     {
@@ -1373,8 +1374,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        6208,
-        4736
+        7056,
+        -1520
       ]
     },
     {
@@ -1406,8 +1407,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        6432,
-        4736
+        7280,
+        -1520
       ]
     },
     {
@@ -1419,8 +1420,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        6656,
-        4720
+        7504,
+        -1536
       ]
     },
     {
@@ -1447,8 +1448,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        6880,
-        4720
+        7728,
+        -1536
       ]
     },
     {
@@ -1460,8 +1461,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        7104,
-        4720
+        7952,
+        -1536
       ]
     },
     {
@@ -1488,41 +1489,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        7328,
-        4720
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "loose"
-          },
-          "conditions": [
-            {
-              "id": "cmpj-if-line",
-              "leftValue": "={{ $('Parse Complete Body').first().json.customer_line_id }}",
-              "rightValue": "",
-              "operator": {
-                "type": "string",
-                "operation": "notEmpty",
-                "singleValue": true
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "ba44b4ad-530d-48d8-9918-aa56ae362da3",
-      "name": "If LINE Complete",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [
-        9920,
-        3600
+        8176,
+        -1536
       ]
     },
     {
@@ -1534,8 +1502,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        7600,
-        4720
+        8448,
+        -1536
       ]
     },
     {
@@ -1568,8 +1536,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        7840,
-        4720
+        8688,
+        -1536
       ]
     },
     {
@@ -1581,8 +1549,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        8096,
-        4720
+        8944,
+        -1536
       ]
     },
     {
@@ -1615,8 +1583,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        8336,
-        4720
+        9184,
+        -1536
       ]
     },
     {
@@ -1628,8 +1596,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        8592,
-        4720
+        9440,
+        -1536
       ]
     },
     {
@@ -1662,8 +1630,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        8848,
-        4720
+        9696,
+        -1536
       ]
     },
     {
@@ -1686,8 +1654,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        9520,
-        4720
+        10368,
+        -1536
       ]
     },
     {
@@ -1699,8 +1667,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        9072,
-        4720
+        9920,
+        -1536
       ]
     },
     {
@@ -1737,8 +1705,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        9296,
-        4720
+        10144,
+        -1536
       ]
     },
     {
@@ -1752,8 +1720,8 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        4880,
-        5024
+        5728,
+        -1232
       ],
       "webhookId": "get-bookings-webhook"
     },
@@ -1781,8 +1749,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        5104,
-        5024
+        5952,
+        -1232
       ]
     },
     {
@@ -1809,8 +1777,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        5328,
-        5024
+        6176,
+        -1232
       ]
     },
     {
@@ -1822,8 +1790,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5552,
-        5024
+        6400,
+        -1232
       ]
     },
     {
@@ -1850,8 +1818,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        5760,
-        5024
+        6608,
+        -1232
       ]
     },
     {
@@ -1866,8 +1834,8 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        4880,
-        5296
+        5728,
+        -960
       ],
       "webhookId": "create-booking-webhook"
     },
@@ -1895,8 +1863,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        5104,
-        5296
+        5952,
+        -960
       ]
     },
     {
@@ -1908,8 +1876,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5328,
-        5296
+        6176,
+        -960
       ]
     },
     {
@@ -1936,8 +1904,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        5552,
-        5296
+        6400,
+        -960
       ]
     },
     {
@@ -1960,8 +1928,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        5760,
-        5296
+        6608,
+        -960
       ]
     },
     {
@@ -1976,8 +1944,8 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        4880,
-        5584
+        5728,
+        -672
       ],
       "webhookId": "edit-booking-webhook"
     },
@@ -1990,8 +1958,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5104,
-        5584
+        5952,
+        -672
       ]
     },
     {
@@ -2018,8 +1986,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        5328,
-        5584
+        6176,
+        -672
       ]
     },
     {
@@ -2041,8 +2009,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        5552,
-        5584
+        6400,
+        -672
       ]
     },
     {
@@ -2054,8 +2022,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5760,
-        5584
+        6608,
+        -672
       ]
     },
     {
@@ -2082,8 +2050,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        5984,
-        5584
+        6832,
+        -672
       ]
     },
     {
@@ -2106,8 +2074,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        6208,
-        5584
+        7056,
+        -672
       ]
     },
     {
@@ -2122,8 +2090,8 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        4880,
-        5856
+        5728,
+        -400
       ],
       "webhookId": "cancel-booking-webhook"
     },
@@ -2136,8 +2104,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5104,
-        5856
+        5952,
+        -400
       ]
     },
     {
@@ -2164,8 +2132,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        5328,
-        5856
+        6176,
+        -400
       ]
     },
     {
@@ -2177,8 +2145,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5552,
-        5856
+        6400,
+        -400
       ]
     },
     {
@@ -2205,8 +2173,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        5792,
-        5856
+        6640,
+        -400
       ]
     },
     {
@@ -2229,8 +2197,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        6032,
-        5856
+        6880,
+        -400
       ]
     },
     {
@@ -2247,8 +2215,8 @@
       "name": "⏰ Poll Every 5 Min",
       "type": "n8n-nodes-base.scheduleTrigger",
       "position": [
-        4880,
-        6144
+        5728,
+        -112
       ],
       "typeVersion": 1.2
     },
@@ -2265,8 +2233,8 @@
       "name": "🔑 Get Lark Token",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        5120,
-        6144
+        5968,
+        -112
       ],
       "typeVersion": 4.1
     },
@@ -2292,8 +2260,8 @@
       "name": "📋 Read T5 Scheduled Jobs",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        5392,
-        6144
+        6240,
+        -112
       ],
       "typeVersion": 4.1
     },
@@ -2305,8 +2273,8 @@
       "name": "⚙️ Extract Job Data",
       "type": "n8n-nodes-base.code",
       "position": [
-        5632,
-        6144
+        6480,
+        -112
       ],
       "typeVersion": 2
     },
@@ -2338,8 +2306,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        5872,
-        6144
+        6720,
+        -112
       ],
       "id": "279d05d6-1d3d-49b0-8c60-6050648c16b7",
       "name": "If"
@@ -2352,8 +2320,8 @@
       "name": "💬 Build Tech Message",
       "type": "n8n-nodes-base.code",
       "position": [
-        6160,
-        6128
+        7008,
+        -128
       ],
       "typeVersion": 2
     },
@@ -2388,8 +2356,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        6384,
-        6128
+        7232,
+        -128
       ],
       "id": "722574d1-88ef-4701-b049-af3574c60642",
       "name": "📲 Lark → Tech"
@@ -2426,8 +2394,8 @@
       "name": "📱 LINE → Tech",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        6640,
-        6128
+        7488,
+        -128
       ],
       "typeVersion": 4.1
     },
@@ -2459,8 +2427,8 @@
       "name": "📨 SMS → Tech",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        6928,
-        6128
+        7776,
+        -128
       ],
       "typeVersion": 4.1
     },
@@ -2472,8 +2440,8 @@
       "name": "🔄 Prep Mark Tech",
       "type": "n8n-nodes-base.code",
       "position": [
-        7200,
-        6128
+        8048,
+        -128
       ],
       "typeVersion": 2
     },
@@ -2499,8 +2467,8 @@
       "name": "✅ Mark Notified Tech",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        7472,
-        6128
+        8320,
+        -128
       ],
       "typeVersion": 4.1
     },
@@ -2518,8 +2486,8 @@
       "name": "⏰ Poll Every 5 Min1",
       "type": "n8n-nodes-base.scheduleTrigger",
       "position": [
-        4880,
-        6416
+        5728,
+        160
       ],
       "typeVersion": 1.2
     },
@@ -2536,8 +2504,8 @@
       "name": "🔑 Get Lark Token1",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        5120,
-        6416
+        5968,
+        160
       ],
       "typeVersion": 4.1
     },
@@ -2563,8 +2531,8 @@
       "name": "📋 Read T5 OnWay Jobs",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        5392,
-        6416
+        6240,
+        160
       ],
       "typeVersion": 4.1
     },
@@ -2576,8 +2544,8 @@
       "name": "⚙️ Extract Job Data1",
       "type": "n8n-nodes-base.code",
       "position": [
-        5632,
-        6416
+        6480,
+        160
       ],
       "typeVersion": 2
     },
@@ -2609,8 +2577,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        5888,
-        6416
+        6736,
+        160
       ],
       "id": "c0ef5b20-6a94-4234-864d-770e0b4e023a",
       "name": "If1"
@@ -2637,8 +2605,8 @@
       "name": "👤 Read T1 Customer",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        6160,
-        6400
+        7008,
+        144
       ],
       "typeVersion": 4.1
     },
@@ -2650,8 +2618,8 @@
       "name": "💬 Build Customer Message",
       "type": "n8n-nodes-base.code",
       "position": [
-        6384,
-        6400
+        7232,
+        144
       ],
       "typeVersion": 2
     },
@@ -2687,8 +2655,8 @@
       "name": "📱 LINE → Customer",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        6640,
-        6400
+        7488,
+        144
       ],
       "typeVersion": 4.1
     },
@@ -2720,8 +2688,8 @@
       "name": "📨 SMS → Customer",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        6928,
-        6400
+        7776,
+        144
       ],
       "typeVersion": 4.1
     },
@@ -2733,8 +2701,8 @@
       "name": "🔄 Prep Mark Customer",
       "type": "n8n-nodes-base.code",
       "position": [
-        7216,
-        6400
+        8064,
+        144
       ],
       "typeVersion": 2
     },
@@ -2760,8 +2728,8 @@
       "name": "✅ Mark Notified Customer",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        7488,
-        6400
+        8336,
+        144
       ],
       "typeVersion": 4.1
     },
@@ -2780,8 +2748,8 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
       "position": [
-        4896,
-        2080
+        5744,
+        -4176
       ],
       "disabled": true
     },
@@ -2797,8 +2765,8 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        4896,
-        2352
+        5744,
+        -3904
       ],
       "webhookId": "init-careplan-webhook",
       "disabled": true
@@ -2812,8 +2780,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5120,
-        2352
+        5968,
+        -3904
       ]
     },
     {
@@ -2845,8 +2813,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        5344,
-        2352
+        6192,
+        -3904
       ]
     },
     {
@@ -2862,8 +2830,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        5664,
-        2368
+        6512,
+        -3888
       ]
     },
     {
@@ -2890,8 +2858,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        5664,
-        2080
+        6512,
+        -4176
       ]
     },
     {
@@ -2903,8 +2871,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5872,
-        2080
+        6720,
+        -4176
       ]
     },
     {
@@ -2926,8 +2894,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        6096,
-        2080
+        6944,
+        -4176
       ]
     },
     {
@@ -2939,8 +2907,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        6320,
-        2080
+        7168,
+        -4176
       ]
     },
     {
@@ -2971,8 +2939,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        6544,
-        2080
+        7392,
+        -4176
       ]
     },
     {
@@ -2984,8 +2952,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        6832,
-        1968
+        7680,
+        -4288
       ]
     },
     {
@@ -3012,8 +2980,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        7056,
-        1968
+        7904,
+        -4288
       ]
     },
     {
@@ -3025,8 +2993,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        7280,
-        1968
+        8128,
+        -4288
       ]
     },
     {
@@ -3058,8 +3026,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        7504,
-        1968
+        8352,
+        -4288
       ]
     },
     {
@@ -3071,8 +3039,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        7744,
-        1968
+        8592,
+        -4288
       ]
     },
     {
@@ -3084,8 +3052,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        7968,
-        1968
+        8816,
+        -4288
       ]
     },
     {
@@ -3112,8 +3080,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        8192,
-        1968
+        9040,
+        -4288
       ]
     },
     {
@@ -3125,8 +3093,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        8416,
-        1968
+        9264,
+        -4288
       ]
     },
     {
@@ -3142,8 +3110,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        8624,
-        1968
+        9472,
+        -4288
       ]
     },
     {
@@ -3155,8 +3123,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        7744,
-        1968
+        8592,
+        -4288
       ]
     },
     {
@@ -3172,8 +3140,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        7968,
-        1968
+        8816,
+        -4288
       ]
     },
     {
@@ -3189,8 +3157,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        6832,
-        2160
+        7680,
+        -4096
       ]
     },
     {
@@ -3204,8 +3172,8 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        4880,
-        2976
+        5728,
+        -3280
       ],
       "webhookId": "get-machines-webhook"
     },
@@ -3233,8 +3201,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        5104,
-        2976
+        5952,
+        -3280
       ]
     },
     {
@@ -3246,8 +3214,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5328,
-        2976
+        6176,
+        -3280
       ]
     },
     {
@@ -3274,8 +3242,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        5552,
-        2976
+        6400,
+        -3280
       ]
     },
     {
@@ -3287,8 +3255,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5760,
-        2976
+        6608,
+        -3280
       ]
     },
     {
@@ -3302,8 +3270,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        5984,
-        2976
+        6832,
+        -3280
       ]
     },
     {
@@ -3330,8 +3298,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        5552,
-        3616
+        6400,
+        -2640
       ]
     },
     {
@@ -3343,8 +3311,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5776,
-        3616
+        6624,
+        -2640
       ]
     },
     {
@@ -3357,8 +3325,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        8336,
-        4992
+        9184,
+        -1264
       ]
     },
     {
@@ -3370,8 +3338,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        8592,
-        4992
+        9440,
+        -1264
       ]
     },
     {
@@ -3404,8 +3372,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        8848,
-        4992
+        9696,
+        -1264
       ]
     },
     {
@@ -3420,47 +3388,111 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        9840,
-        3056
+        5776,
+        992
       ],
       "webhookId": "rate-job-webhook"
     },
     {
       "parameters": {
-        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst job_id  = body.job_id  || '';\nconst rating  = parseInt(body.rating) || 0;\nconst comment = body.comment || '';\nconst tech_name = body.tech_name || '';\nconst customer_name = body.customer_name || '';\nconst ts = new Date().toISOString().replace('T',' ').slice(0,19);\nreturn [{ json: { ts, job_id, rating, comment, tech_name, customer_name } }];"
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst job_id = body.job_id || \"\";\nconst rating = parseInt(body.rating) || 0;\nconst comment = body.comment || \"\";\nconst tech_name = body.tech_name || \"\";\nconst tech_names = body.tech_names || tech_name;\nconst customer_name = body.customer_name || \"\";\nconst timestamp = new Date().toISOString().replace(\"T\",\" \").slice(0,19);\nreturn [{ json: { timestamp, job_id, rating, comment, tech_names, customer_name } }];"
       },
       "id": "5e75d278-8389-476f-b1a9-f4957946cd00",
       "name": "Parse Rating Body",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        10080,
-        3056
+        6016,
+        992
       ]
     },
     {
       "parameters": {
+        "authentication": "serviceAccount",
         "operation": "append",
         "documentId": {
           "__rl": true,
           "value": "15ZWCa3JCWm0GKODJG9lipzeho4gebu2hepO6drygOek",
-          "mode": "id"
+          "mode": "list",
+          "cachedResultName": "T18_GPS_Tracking T19_Ratings",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/15ZWCa3JCWm0GKODJG9lipzeho4gebu2hepO6drygOek/edit?usp=drivesdk"
         },
         "sheetName": {
           "__rl": true,
-          "value": "T19_Ratings",
-          "mode": "name"
+          "value": 1916410889,
+          "mode": "list",
+          "cachedResultName": "T19_Ratings",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/15ZWCa3JCWm0GKODJG9lipzeho4gebu2hepO6drygOek/edit#gid=1916410889"
         },
         "columns": {
-          "mappingMode": "defineBelow",
+          "mappingMode": "autoMapInputData",
           "value": {
-            "timestamp": "={{ $json.ts }}",
-            "job_id": "={{ $json.job_id }}",
-            "rating": "={{ $json.rating }}",
-            "comment": "={{ $json.comment }}",
-            "tech_name": "={{ $json.tech_name }}",
-            "customer_name": "={{ $json.customer_name }}"
-          }
+            "Timestamp": "=\t={{ $json.ts }}",
+            "job_id": "=={{ $json.job_id }}",
+            "rating": "=={{ $json.rating }}",
+            "comment": "=={{ $json.comment }}",
+            "tech_name": "=={{ $json.tech_name }}",
+            "customer_name": "=={{ $json.customer_name }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "job_id",
+              "displayName": "job_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "rating",
+              "displayName": "rating",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "comment",
+              "displayName": "comment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tech_name",
+              "displayName": "tech_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "customer_name",
+              "displayName": "customer_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
         },
         "options": {}
       },
@@ -3469,13 +3501,13 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        10320,
-        3056
+        6256,
+        992
       ],
       "credentials": {
-        "googleSheetsOAuth2Api": {
-          "id": "luJx0ybaOG8fy4L9",
-          "name": "Google Sheets account 2"
+        "googleApi": {
+          "id": "OAN4CwYXo51bAkGB",
+          "name": "Google Sheets (Service Account)"
         }
       }
     },
@@ -3490,8 +3522,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        10560,
-        3056
+        6496,
+        992
       ]
     }
   ],
@@ -5092,7 +5124,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "63436a80-38b4-4f64-828c-6925504f7093",
+  "versionId": "f6238ca3-ea1a-430f-a57b-f501e23a59da",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "999f38d9444535a4c9da35e8c7be72e1c3b6cca77c4ee547703ada54237ec1b4"

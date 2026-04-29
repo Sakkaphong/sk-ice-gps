@@ -154,8 +154,11 @@ let selectedRating = 0;
 const params   = new URLSearchParams(location.search);
 const jobId    = params.get('job') || '';
 const techName = params.get('tech') || '';
+// รองรับช่างหลายคน — techs = comma-separated
+const techsRaw = params.get('techs') || techName;
+const techsList = techsRaw ? techsRaw.split(',').map(s=>decodeURIComponent(s.trim())).filter(Boolean) : ['ไม่ระบุ'];
 document.getElementById('jobIdDisplay').textContent = jobId || 'ไม่ระบุ';
-document.getElementById('techDisplay').textContent  = techName ? decodeURIComponent(techName) : 'ไม่ระบุ';
+document.getElementById('techDisplay').textContent  = techsList.join(', ');
 
 // ป้องกันรีวิวซ้ำ — เช็ค localStorage
 const RATED_KEY = 'sk_ice_rated_jobs';
@@ -196,7 +199,8 @@ async function submitRating() {
         job_id: jobId,
         rating: selectedRating,
         comment: document.getElementById('comment').value.trim(),
-        tech_name: decodeURIComponent(techName)
+        tech_name: techsList[0] || '',
+        tech_names: techsList.join(', ')
       })
     });
   } catch(e) { /* neverError */ }

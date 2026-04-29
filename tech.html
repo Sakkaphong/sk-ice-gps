@@ -206,6 +206,8 @@ html,body{font-family:var(--font);background:var(--bg);min-height:100vh;overflow
 const p    = new URLSearchParams(location.search);
 const W    = p.get('work')  || 'WRK-000';
 const T    = p.get('tech')  || 'ช่าง';
+// รองรับช่างหลายคน — techs = comma-separated, fallback เป็น T คนเดียว
+const TECHS = p.get('techs') ? p.get('techs').split(',').map(s=>decodeURIComponent(s.trim())).filter(Boolean) : [T];
 const CL   = p.get('cline') || '';
 const CN   = p.get('cname') || '-';
 const AD   = decodeURIComponent(p.get('addr') || '');
@@ -494,7 +496,7 @@ function submitReport(){
   btn.disabled=true; btn.textContent='⏳ กำลังส่ง...';
   compressAllPhotos(photoFiles, function(photoData){
     var payload={
-      job_id:W, tech_name:T, customer_line_id:CL, customer_name:CN,
+      job_id:W, tech_name:T, tech_names:TECHS, customer_line_id:CL, customer_name:CN,
       parts:parts,
       notes:document.getElementById('notes').value.trim(),
       photo_count:photoData.length,
