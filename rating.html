@@ -157,6 +157,16 @@ const techName = params.get('tech') || '';
 document.getElementById('jobIdDisplay').textContent = jobId || 'ไม่ระบุ';
 document.getElementById('techDisplay').textContent  = techName ? decodeURIComponent(techName) : 'ไม่ระบุ';
 
+// ป้องกันรีวิวซ้ำ — เช็ค localStorage
+const RATED_KEY = 'sk_ice_rated_jobs';
+const ratedJobs = JSON.parse(localStorage.getItem(RATED_KEY) || '[]');
+if (jobId && ratedJobs.includes(jobId)) {
+  document.getElementById('formView').style.display = 'none';
+  document.getElementById('thankyou').style.display = 'block';
+  document.querySelector('.thankyou h2').textContent = 'ให้คะแนนแล้วครับ 😊';
+  document.querySelector('.thankyou p').textContent = 'คุณได้ประเมินงานนี้ไปแล้ว ขอบคุณมากครับ 🙏';
+}
+
 // Star rating
 document.querySelectorAll('.star').forEach(star => {
   star.addEventListener('click', () => {
@@ -190,6 +200,13 @@ async function submitRating() {
       })
     });
   } catch(e) { /* neverError */ }
+
+  // บันทึก job_id ลง localStorage
+  if (jobId) {
+    const updated = JSON.parse(localStorage.getItem(RATED_KEY) || '[]');
+    if (!updated.includes(jobId)) updated.push(jobId);
+    localStorage.setItem(RATED_KEY, JSON.stringify(updated));
+  }
 
   document.getElementById('formView').style.display = 'none';
   document.getElementById('thankyou').style.display = 'block';
