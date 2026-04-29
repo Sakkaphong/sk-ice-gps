@@ -3,17 +3,503 @@
   "nodes": [
     {
       "parameters": {
+        "content": "# CREATE JOB\n",
+        "height": 4752,
+        "width": 5648,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        12048,
+        -3728
+      ],
+      "id": "dc7cbe25-1d83-4ecb-9da4-336c5f3beb39",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "careplan-cron+init",
+        "height": 800,
+        "width": 288,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        848,
+        -3248
+      ],
+      "id": "9fbe678f-0916-4a99-9fcf-139dc48958d3",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "# Careplan-Cron",
+        "height": 736,
+        "width": 4608
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        832,
+        -2288
+      ],
+      "id": "2c6b93b3-1161-4b89-b969-e2ec3f040599",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "id": "bc0cdc34-129d-40b3-85b8-a1723522a3fa",
+      "name": "Cron 07:00 Daily",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        944,
+        -1872
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// Prep T4 Search: หา CarePlan records ที่ Active\n// และ Next_Due_Date ≤ TODAY + max alert days (14)\n// ⚠️ Lark filter ไม่มี isOnOrBefore/isOnOrAfter — ใช้ isLessEqual/isGreaterEqual\n// ⚠️ today + horizon ต้องใช้ Bangkok TZ (server UTC) — ไม่งั้น cron 07:00 BKK = 00:00 UTC วันเดิม\n// ────────────────────────────────────────────\nconst token = $input.first().json.tenant_access_token;\n\n// Bangkok-aware today (shift +7h then getUTC*)\nfunction bkkDateStr(d) {\n  const bkk = new Date(d.getTime() + 7 * 3600 * 1000);\n  const yyyy = bkk.getUTCFullYear();\n  const mm = String(bkk.getUTCMonth() + 1).padStart(2, '0');\n  const dd = String(bkk.getUTCDate()).padStart(2, '0');\n  return yyyy + '-' + mm + '-' + dd;\n}\n\nconst now = new Date();\nconst todayStr = bkkDateStr(now);\nconst horizonStr = bkkDateStr(new Date(now.getTime() + 14 * 86400000));\n\n// Lark filter date value = ms timestamp (BKK midnight) — string YYYY-MM-DD ใช้ได้เฉพาะ text field\n// Next Due Date เป็น Date field → ต้องส่ง ms\nconst horizonMs = new Date(horizonStr + 'T23:59:59+07:00').getTime();\n\n// Lark filter — ไม่ใส่ filter เลย เพราะ Lark Date + Checkbox filter = 1254002 เสมอ\n// ⚠️ ทุก filter condition (Date isLessEqual, Checkbox is) ทำให้ Lark ตอบ 1254002 silently\n//    (HTTP 200 แต่ data=null) → n8n ไม่ error แต่ไม่ได้ข้อมูล\n// Solution: fetch ALL T4 records แล้วกรองทั้งหมดใน Parse T4 Records (n8n-side)\n//   - CP Status ≠ Done          → กรองใน Parse T4\n//   - Active？ = true             → กรองใน Parse T4\n//   - Auto Create Ticket？ = true → กรองใน Parse T4\n//   - Next Due Date ≤ horizon    → กรองใน Parse T4 (withinAlert)\n// T4 records ทั้งหมด ~200-500 rows → รับได้ใน 1 request (page_size: 500)\nconst searchBody = JSON.stringify({\n  page_size: 500\n  // ⚠️ ห้ามระบุ field_names — Lark จะไม่ return primary field ถ้า specify\n});\n\nreturn [{ json: { lark_token: token, searchBody, horizonStr, today: todayStr } }];"
+      },
+      "id": "36c27d55-ffba-4a76-b104-4a63659b11a9",
+      "name": "Prep Search T4",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1392,
+        -1872
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.larksuite.com/open-apis/bitable/v1/apps/UOZZb0ImVaRYy1sDjUNjm3jqpye/tables/tblyA9sHFA9AJVEi/records/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.lark_token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.searchBody }}",
+        "options": {}
+      },
+      "id": "7da1c24d-854f-4ab4-bf14-b26a85be63cd",
+      "name": "Fetch T4 CarePlan",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1616,
+        -1872
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// Parse T4 records → flat array\n// - Machine (Link→T2) / Customer (Link→T1): ใช้ extractLinkedRecord → record_id (group key)\n// - Shop Name / Customer ID: 2-hop Lookup → Lark คืน plain text → txt() พอ\n// ⚠️ Lark Date field = ms number (read) — ต้องใช้ dateStr() แปลง ไม่ใช่ txt().split('T')[0]\n// ────────────────────────────────────────────\nconst res = $input.first().json;\nconst items = (res.data && res.data.items) || [];\nconst today = $('Prep Search T4').first().json.today;\n\nfunction txt(v) {\n  if (v === null || v === undefined) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'number') return String(v);\n  if (v.text) return v.text;\n  if (v.value !== undefined) {\n    if (typeof v.value === 'string') return v.value;\n    // { value: { text: \"...\" } } — Lookup nested object\n    if (v.value && typeof v.value === 'object' && !Array.isArray(v.value)) {\n      return v.value.text || v.value.name || v.value.value || '';\n    }\n    if (Array.isArray(v.value) && v.value.length > 0) {\n      const f = v.value[0];\n      return typeof f === 'string' ? f : (f.text || f.name || f.value || '');\n    }\n  }\n  if (Array.isArray(v) && v[0]) {\n    const f = v[0];\n    return typeof f === 'string' ? f : (f.text || f.link || f.name || f.value || '');\n  }\n  return '';\n}\n\nfunction numVal(v) {\n  if (v === null || v === undefined) return 0;\n  if (typeof v === 'number') return v;\n  const n = Number(txt(v));\n  return isNaN(n) ? 0 : n;\n}\n\n// Lark Date field = Unix ms number. Convert to YYYY-MM-DD in Bangkok TZ.\n// รองรับทั้ง number (ms) / string (YYYY-MM-DD หรือ YYYY/MM/DD)\n// ⚠️ Formula Date field คืน { type: 5, value: [ms] } — ต้องแยก handle (พบ 2026-04-28)\nfunction dateStr(v) {\n  if (v === null || v === undefined || v === '') return '';\n  // Formula field: { type: 5, value: [ms_number] }\n  if (v && typeof v === 'object' && v.type === 5 && Array.isArray(v.value) && typeof v.value[0] === 'number') {\n    v = v.value[0];\n  }\n  if (typeof v === 'number') {\n    const bkk = new Date(v + 7 * 3600 * 1000);\n    const yyyy = bkk.getUTCFullYear();\n    const mm = String(bkk.getUTCMonth() + 1).padStart(2, '0');\n    const dd = String(bkk.getUTCDate()).padStart(2, '0');\n    return yyyy + '-' + mm + '-' + dd;\n  }\n  const s = typeof v === 'string' ? v : txt(v);\n  if (!s) return '';\n  return s.split('T')[0].replace(/\\//g, '-');\n}\n\n// รองรับ 4 รูปแบบ response ของ linked field จาก Lark Base\n//  1) [{ record_id, name }]\n//  2) [{ record_ids, text }]   ← record_ids เป็น array\n//  3) { value: [{ record_id, text }] }\n//  4) { link_record_ids: ['rec...'] }  ← format จริงจาก T4.Machine (พบ 2026-04-28)\nfunction extractLinkedRecord(v) {\n  if (!v) return { record_id: '', display: '' };\n  // Format 4: { link_record_ids: ['rec...'] }\n  if (v.link_record_ids && Array.isArray(v.link_record_ids) && v.link_record_ids.length) {\n    return { record_id: v.link_record_ids[0], display: '' };\n  }\n  const arr = Array.isArray(v) ? v : (Array.isArray(v.value) ? v.value : []);\n  if (!arr.length) return { record_id: '', display: '' };\n  const f = arr[0];\n  if (typeof f === 'string') return { record_id: '', display: f };\n  const rid = f.record_id || (Array.isArray(f.record_ids) ? f.record_ids[0] : f.record_ids) || '';\n  const display = f.name || f.text || '';\n  return { record_id: rid || '', display: display || '' };\n}\n\nconst records = items.map(it => {\n  const f = it.fields || {};\n  const dueDate = dateStr(f['Next Due Date']);\n  const stageNum = numVal(f['Stage Number']);\n\n  // Lead Time priority: Lead Time Override (per-machine) > Alert Before (Days) (default) > stage-based fallback\n  // เคส VIP อยากได้แจ้ง 21 วัน → admin ใส่ 21 ใน Lead Time Override field → cron ใช้ค่านั้น\n  const leadOverride = numVal(f['Lead Time Override']);\n  const alertBase = numVal(f['Alert Before (Days)']) || (stageNum <= 3 ? 7 : 14);\n  const alertDays = leadOverride > 0 ? leadOverride : alertBase;\n\n  // Linked fields → record_id เป็น group key\n  const machine = extractLinkedRecord(f['Machine']);\n  const customer = extractLinkedRecord(f['Customer']);\n  // Assigned Technician (optional) → pre-fill ใน T5 ตอนสร้าง admin override ได้\n  const assignedTech = extractLinkedRecord(f['Assigned Technician']);\n\n  // 2-hop Lookup → Lark คืน plain text ผ่าน txt()\n  const shopName = txt(f['Shop Name']);\n  const customerIdText = txt(f['Customer ID']);\n  // Machine code fallback: ดึงจาก Care Plan ID (format: CP-{CODE}-SN)\n  const careIdRaw = txt(f['Care Plan ID']);\n  const machineCodeFromId = (careIdRaw.match(/^CP-(.+)-S\\d+$/) || [])[1] || '';\n\n  // Check if within alert window: due_date - alert_days ≤ today\n  const dueMs = new Date(dueDate + 'T00:00:00').getTime();\n  const alertMs = dueMs - (alertDays * 86400000);\n  const todayMs = new Date(today + 'T00:00:00').getTime();\n  const withinAlert = todayMs >= alertMs;\n\n  return {\n    record_id: it.record_id,\n    care_plan_id: txt(f['Care Plan ID']),\n    machine_record_id: machine.record_id,          // ← group key (stable)\n    machine_code: machine.display || machineCodeFromId, // T2 primary หรือ extract จาก Care Plan ID\n    customer_record_id: customer.record_id,\n    customer_id: customerIdText,                    // business key 'CUS-041' จาก Lookup\n    shop_name: shopName,\n    stage_number: stageNum,\n    filter_name: txt(f['Filter Stage']) || txt(f['Service Item']),\n    care_type: txt(f['Care Type']),\n    next_due_date: dueDate,\n    alert_before_days: alertDays,\n    lead_override_used: leadOverride > 0,           // audit: ส่งต่อให้ Build T5 log ว่า override ทำงาน\n    assigned_technician_id: assignedTech.record_id,  // '' ถ้ายังไม่ assign\n    qty_per_visit: numVal(f['Qty per Visit']) || 1,\n    within_alert: withinAlert,\n    // n8n-side filters — ทั้งหมดเพราะ Lark API filter ไม่ reliable\n    // Default = true ถ้า field ไม่มีใน response (record เก่าก่อน Path D = backward compatible)\n    // Default = false ถ้า field มีแต่ถูก set เป็น false โดย admin\n    cp_status: txt(f['CP Status']),\n    active_flag: !('Active？' in f) ? true : (f['Active？'] === true || f['Active？'] === 1 || txt(f['Active？']) === 'true'),\n    auto_create_flag: !('Auto Create Ticket？' in f) ? true : (f['Auto Create Ticket？'] === true || f['Auto Create Ticket？'] === 1 || txt(f['Auto Create Ticket？']) === 'true')\n  };\n}).filter(r => {\n  if (!r.within_alert || !r.next_due_date || !r.machine_record_id) return false;\n  // n8n-side filters (Lark API filter = unreliable → 1254002 on Date+Checkbox)\n  if (r.cp_status === 'Done') return false;  // CP Status ≠ Done\n  if (!r.active_flag) return false;           // Active？ = true only\n  if (!r.auto_create_flag) return false;      // Auto Create Ticket？ = true only\n  return true;\n});\n\nif (records.length === 0) {\n  return [{ json: { has_records: false, count: 0, records: [] } }];\n}\n\nreturn [{ json: { has_records: true, count: records.length, records, lark_token: $('Prep Search T4').first().json.lark_token } }];"
+      },
+      "id": "88e0b070-2c58-4d33-9279-2acbf61b3572",
+      "name": "Parse T4 Records",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1840,
+        -1872
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "cp-if-has",
+              "leftValue": "={{ $json.has_records }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0f3e8c10-ec48-4e81-af53-b96c64754eb7",
+      "name": "If Has Due Records",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2064,
+        -1872
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// Group by (Machine_ID, ISO_WEEK(due_date))\n// เพื่อรวม stages ที่ due สัปดาห์เดียวกัน → 1 visit\n// ────────────────────────────────────────────\nconst data = $input.first().json;\nconst records = data.records;\nconst lark_token = data.lark_token;\n\nfunction getISOWeek(dateStr) {\n  const d = new Date(dateStr + 'T00:00:00');\n  d.setHours(0, 0, 0, 0);\n  d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));\n  const week1 = new Date(d.getFullYear(), 0, 4);\n  return d.getFullYear() + '-W' + String(1 + Math.round(((d.getTime() - week1.getTime()) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7)).padStart(2, '0');\n}\n\nconst groups = {};\nfor (const rec of records) {\n  const weekKey = getISOWeek(rec.next_due_date);\n  const key = rec.machine_record_id + '_' + weekKey;\n\n  if (!groups[key]) {\n    groups[key] = {\n      machine_record_id: rec.machine_record_id,\n      machine_code: rec.machine_code,\n      customer_record_id: rec.customer_record_id,\n      customer_id: rec.customer_id,\n      shop_name: rec.shop_name,\n      week_key: weekKey,\n      stages: [],\n      stage_names: [],\n      stage_details: [],\n      care_types: [],\n      t4_record_ids: [],\n      care_plan_ids: [],\n      assigned_technician_id: '',       // first non-empty wins (all stages of same machine should share tech)\n      total_qty_per_visit: 0,            // sum across stages → ช่างพกของรวม\n      max_due_date: rec.next_due_date,\n      max_lead_time: 0\n    };\n  }\n\n  const g = groups[key];\n  g.stages.push(rec.stage_number);\n  g.stage_names.push('Stage ' + rec.stage_number + ' (' + rec.filter_name + ')');\n  // checklist line: ☐ Stage N — FilterName [CareType] × Qty\n  const qtyLabel = rec.qty_per_visit > 1 ? ' × ' + rec.qty_per_visit : '';\n  g.stage_details.push('☐ Stage ' + rec.stage_number + ' — ' + rec.filter_name + ' [' + (rec.care_type || 'Service') + ']' + qtyLabel);\n  if (rec.care_type && !g.care_types.includes(rec.care_type)) g.care_types.push(rec.care_type);\n  g.t4_record_ids.push(rec.record_id);\n  if (rec.care_plan_id && !g.care_plan_ids.includes(rec.care_plan_id)) {\n    g.care_plan_ids.push(rec.care_plan_id);\n  }\n  if (!g.assigned_technician_id && rec.assigned_technician_id) {\n    g.assigned_technician_id = rec.assigned_technician_id;\n  }\n  g.total_qty_per_visit += (rec.qty_per_visit || 1);\n  if (rec.next_due_date > g.max_due_date) g.max_due_date = rec.next_due_date;\n\n  // ใช้ alert_before_days จาก T4 (ไม่มี Interval field แยกในขั้นตอนนี้)\n  const lt = rec.alert_before_days || (rec.stage_number <= 3 ? 7 : 14);\n  if (lt > g.max_lead_time) g.max_lead_time = lt;\n}\n\nconst groupList = Object.values(groups).sort((a, b) => a.max_due_date.localeCompare(b.max_due_date));\n\nreturn [{ json: { groups: groupList, group_count: groupList.length, lark_token } }];"
+      },
+      "id": "b50887f8-e7fe-4a62-88ed-ebd218c228c7",
+      "name": "Group by Machine+Week",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2272,
+        -1968
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// Prep: Search T5 for existing open jobs\n// เพื่อ idempotency check — ไม่สร้าง T5 ซ้ำ\n// ⚠️ ห้ามระบุ field_names — Lark จะตัด primary field ทิ้ง\n// ────────────────────────────────────────────\nconst data = $input.first().json;\n\n// Query T5: Status NOT IN (เสร็จแล้ว, Cancelled) AND Source Ref ID = AUTO-CAREPLAN\nconst searchBody = JSON.stringify({\n  filter: {\n    conjunction: 'and',\n    conditions: [\n      { field_name: 'Source Ref ID', operator: 'is', value: ['AUTO-CAREPLAN'] },\n      { field_name: 'Status', operator: 'isNot', value: ['เสร็จแล้ว'] },\n      { field_name: 'Status', operator: 'isNot', value: ['Cancelled'] }\n    ]\n  },\n  page_size: 500\n});\n\nreturn [{ json: { ...data, t5SearchBody: searchBody } }];"
+      },
+      "id": "8db4b71e-0e37-4d44-9df2-79fd62a14628",
+      "name": "Prep T5 Idempotency Search",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2496,
+        -1968
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.larksuite.com/open-apis/bitable/v1/apps/UOZZb0ImVaRYy1sDjUNjm3jqpye/tables/tblXb6wG3DI7FmzJ/records/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.lark_token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.t5SearchBody }}",
+        "options": {}
+      },
+      "id": "a874b5b7-5dd7-488b-a85f-483a0bedcba8",
+      "name": "Fetch Existing T5 (Open)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2720,
+        -1968
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "cp-if-new",
+              "leftValue": "={{ $json.has_new }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e1157d71-cdd1-4b49-828a-ba62a0699b12",
+      "name": "If New Jobs To Create",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        3152,
+        -1968
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// Capacity Allocate (cp-011b)  — Phase 1\n//\n// Person-day budget allocation for today's planned jobs.\n//\n// Source of truth for cost model: [[sop/maintenance/pm-capacity-per-day]]\n//\n// Logic:\n//   1) Compute cost per job from (job_type × machine_size)\n//   2) Sort by priority (all-C):\n//        1C = weighted overdue (10 pts/day overdue)\n//        2C = filter > pm_small > pm_large (light first to clear backlog)\n//        3C = customer_tier as tiebreaker (graceful: missing = 0)\n//   3) Greedy fill DAILY_BUDGET → split jobs_today vs jobs_deferred\n//   4) Deferred jobs are NOT created — cron tomorrow will retry\n//      (overdue weighting will push them up if they keep getting deferred)\n//\n// V2 TODO: subtract today's already-existing T5 cost from budget\n//          (currently assumes cron is sole creator; manual T5 ignored)\n// ────────────────────────────────────────────\n\nconst data = $input.first().json;\nconst jobs = data.jobs || [];\nconst lark_token = data.lark_token;\n\n// === CONFIG (edit ที่นี่ที่เดียวเมื่อ business เปลี่ยน) ===\nconst TOTAL_TECHS = 4;\nconst DAILY_BUDGET = TOTAL_TECHS * 1.0;  // 4.0 person-day\n\n// PM เครื่องเล็ก: 73-127kg/วัน (ทำ 3 ร้าน/วัน/ช่าง — ต้องรอน้ำแข็ง)\nconst SMALL_MACHINES = ['SK-160P', 'SK-210P', 'SK-230P', 'SK-280P'];\n\n// PM เครื่องใหญ่: ≥160kg/วัน — กิน 2 ช่าง × 1 วัน = 2.0 person-day budget\n// SK-350P, SK-420P, SK-500P, SK-700P, SK-1000P, SK-1500P, SK-2000P\n\nconst COST = {\n  filter:   0.12,   // 7-10 ร้าน/วัน/ช่าง — เบาสุด\n  pm_small: 0.33,   // 3 ร้าน/วัน/ช่าง — รอน้ำแข็ง\n  pm_large: 2.00,   // 2 ช่าง × 1 day — เครื่องใหญ่งานหนัก\n  default:  0.30    // ไม่รู้ประเภท → ปานกลาง\n};\n\nfunction categorizeJob(job) {\n  const stages = job.stages || [];\n  const code = (job.machine_code || '').toUpperCase();\n  const isSmall = SMALL_MACHINES.some(m => code.includes(m));\n\n  // Filter-only visit = stages ทั้งหมดเป็นงานเบา (Stage 1, 3, 5)\n  // Stage 2/4/6 = PM/ตะกรัน/RO → ของหนัก\n  const filterOnly = stages.length > 0 && stages.every(s => [1, 3, 5].includes(s));\n  if (filterOnly) return 'filter';\n\n  return isSmall ? 'pm_small' : 'pm_large';\n}\n\nfunction jobCost(job) {\n  return COST[categorizeJob(job)] ?? COST.default;\n}\n\n// === Priority sort (all-C) ===\nconst today = Date.now();\n\nfunction dueMs(job) {\n  return job.scheduled_date\n    ? new Date(job.scheduled_date + 'T00:00:00+07:00').getTime()\n    : today;\n}\n\nfunction overdueDays(job) {\n  return Math.max(0, (today - dueMs(job)) / 86400000);\n}\n\nfunction priorityScore(job) {\n  // Higher score = higher priority (สูงก่อน)\n  // 1C: weighted overdue — ทุก 1 วันที่ overdue เพิ่ม 10 pts\n  const overdueWeight = overdueDays(job) * 10;\n\n  // 2C: filter > pm_small > pm_large  (เบาก่อน clear backlog)\n  const cat = categorizeJob(job);\n  const stageWeight = cat === 'filter' ? 5 : (cat === 'pm_small' ? 2 : 0);\n\n  // 3C: customer tier as tiebreaker (graceful — ไม่มี field ก็ใช้งานได้)\n  const tierWeight = ({ A: 3, B: 2, C: 1 }[job.customer_tier] || 0);\n\n  // Tiebreaker: due date sooner ก่อน\n  // (ใช้เป็น decimal เล็กๆ ไม่ overshadow weights ข้างบน)\n  const dueProximity = -dueMs(job) / 1e13;\n\n  return overdueWeight + stageWeight + tierWeight + dueProximity;\n}\n\nconst sortedJobs = [...jobs].sort((a, b) => priorityScore(b) - priorityScore(a));\n\n// === Greedy allocation under DAILY_BUDGET ===\nconst jobsToday = [];\nconst jobsDeferred = [];\nlet remaining = DAILY_BUDGET;\n\nfor (const job of sortedJobs) {\n  const cost = jobCost(job);\n  if (cost <= remaining + 1e-9) {\n    jobsToday.push({ ...job, _cost: cost, _category: categorizeJob(job) });\n    remaining -= cost;\n  } else {\n    jobsDeferred.push({ ...job, _cost: cost, _category: categorizeJob(job), _reason: 'over_capacity' });\n  }\n}\n\n// === Output ===\n// jobs (ที่ส่งต่อให้ Split Jobs) = jobsToday only\n// jobs_deferred + capacity stats เก็บไว้สำหรับ Summary Log\nreturn [{ json: {\n  jobs: jobsToday,\n  jobs_deferred: jobsDeferred,\n  lark_token,\n  has_new: jobsToday.length > 0,\n  skipped: data.skipped || 0,\n  capacity: {\n    total_budget: DAILY_BUDGET,\n    used: DAILY_BUDGET - remaining,\n    remaining: remaining,\n    today_count: jobsToday.length,\n    deferred_count: jobsDeferred.length,\n    by_category: {\n      filter:   jobsToday.filter(j => j._category === 'filter').length,\n      pm_small: jobsToday.filter(j => j._category === 'pm_small').length,\n      pm_large: jobsToday.filter(j => j._category === 'pm_large').length\n    }\n  }\n}}];"
+      },
+      "id": "0e11af18-4abe-4fd4-a3fe-11fd69ca0a72",
+      "name": "Capacity Allocate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3376,
+        -2080
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// Split: แตก jobs array → 1 item per job\n// เพื่อให้ Loop node สร้าง T5 ทีละ record\n// ────────────────────────────────────────────\nconst data = $input.first().json;\nconst jobs = data.jobs || [];\nconst lark_token = data.lark_token;\n\nreturn jobs.map(job => ({ json: { ...job, lark_token } }));"
+      },
+      "id": "5b661b64-7b88-45d6-ad25-da02adf747df",
+      "name": "Split Jobs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3600,
+        -2080
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// Build T5 record body for Lark Base create\n// ⚠️ Per 2026-04-20 audit (fixed):\n//   • T5.Customer is a LOOKUP field — resolved from Machine link, DO NOT write.\n//   • T5.Machine is DuplexLink → T2 (writable). Write [\"rec...\"] NOT [{record_id}]\n//   • T5.Related Care Plan is DuplexLink → T4 (writable; was 'T4 Refs' Text before).\n//   • T5.Assigned Technician is Link → T8 (optional pre-fill from T4). Write [\"rec...\"]\n//   • 'Status' SingleSelect option is 'รอยืนยัน'.\n//   • 'Job Type' MultiSelect → must wrap ['CarePlan'] even for single value.\n//   • 'Scheduled Date' = Date field → write เป็น ms timestamp ไม่ใช่ YYYY-MM-DD string\n// ⚠️ Bug #7 pattern: ใช้ $input.all().map() ไม่ใช่ first()\n//   Split Jobs ส่งมาหลาย items (1 item/job) — first() จะ drop job ที่ 2+ เงียบๆ\n// ────────────────────────────────────────────\n\nfunction toMs(dateStr) {\n  if (!dateStr) return null;\n  const d = new Date(dateStr + 'T00:00:00+07:00');\n  return d.getTime();\n}\n\nreturn $input.all().map(item => {\n  const job = item.json;\n\n  const stagesText = job.stages.map(s => 'Stage ' + s).join(', ');\n  // Checklist format for technician (human-readable, with checkboxes)\n  const checklistText = (job.stage_details && job.stage_details.length > 0)\n    ? job.stage_details.join('\\n')\n    : job.stage_names.join('\\n');\n  const idempotencyKey = 'CP_' + job.machine_record_id + '_' + job.week_key;\n\n  const fields = {\n    'Job No.': job.job_no,\n    'Status': 'รอยืนยัน',\n    'Stages Covered': job.stages.map(s => 'Stage ' + s),\n    'Stage Details': checklistText,\n    'Job Type': ['CarePlan'],\n    // 'Total Qty': job.total_qty_per_visit, // ❌ field ไม่มีใน T5 schema\n    'Scheduled Date': toMs(job.scheduled_date),\n    'Source Ref ID': 'AUTO-CAREPLAN',\n    'Idempotency Key': idempotencyKey\n  };\n\n  // Writable links — Lark Write format = [\"rec...\"] (array of ID strings)\n  // 1) Machine (DuplexLink → T2) — always set (grouping key)\n  // 2) Related Care Plan (DuplexLink → T4) — array of every T4 record in this visit\n  // 3) Assigned Technician (Link → T8) — optional pre-fill; admin can override\n  if (job.machine_record_id) {\n    fields['Machine'] = [job.machine_record_id];\n  }\n  if (job.t4_record_ids && job.t4_record_ids.length > 0) {\n    fields['Related Care Plan'] = job.t4_record_ids.slice();  // array of record_id strings\n  }\n  if (job.assigned_technician_id) {\n    fields['Assigned Technician'] = [job.assigned_technician_id];\n  }\n\n  const body = JSON.stringify({ fields });\n\n  return { json: { ...job, createBody: body } };\n});"
+      },
+      "id": "1e9d83d9-1560-4d80-afa0-c88e1e169d52",
+      "name": "Build T5 Record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3824,
+        -2080
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.larksuite.com/open-apis/bitable/v1/apps/UOZZb0ImVaRYy1sDjUNjm3jqpye/tables/tblXb6wG3DI7FmzJ/records",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.lark_token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.createBody }}",
+        "options": {}
+      },
+      "id": "53dc5ddc-e763-42b5-8ee5-5637009570f9",
+      "name": "Create T5 in Lark",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4032,
+        -2080
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// Collect results: รวมผลลัพธ์จากทุก T5 ที่สร้าง\n// + สร้าง LINE notification message\n// ────────────────────────────────────────────\nconst allItems = $input.all();\nconst createdJobs = [];\nconst errors = [];\n\nfor (const item of allItems) {\n  const d = item.json;\n  // ตรวจว่า Lark ตอบ success\n  if (d.data && d.data.record) {\n    createdJobs.push({\n      job_no: d.data.record.fields?.['Job No.'] || 'unknown',\n      record_id: d.data.record.record_id,\n      shop_name: d.data.record.fields?.['Shop Name'] || ''\n    });\n  } else if (d.code && d.code !== 0) {\n    errors.push({ code: d.code, msg: d.msg || 'unknown error' });\n  }\n}\n\n// Reconstruct from Split Jobs data for notification\nconst splitItems = $('Split Jobs').all();\nconst jobDetails = splitItems.map(si => si.json);\n\n// Bangkok-aware today ในภาษาไทย + ค.ศ. (ไม่ใช้ toLocaleDateString('th-TH') เพราะ auto-แปลงเป็น พ.ศ.)\nconst TH_MONTHS_FULL = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];\nconst TH_WEEKDAYS = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];\nconst bkkNow = new Date(new Date().getTime() + 7 * 3600 * 1000);\nconst dateTH = 'วัน' + TH_WEEKDAYS[bkkNow.getUTCDay()] + 'ที่ ' + bkkNow.getUTCDate() + ' ' + TH_MONTHS_FULL[bkkNow.getUTCMonth()] + ' ' + bkkNow.getUTCFullYear();\n\nlet msg = '📋 SK-ICE CarePlan Alert\\n';\nmsg += '📅 ' + dateTH + '\\n\\n';\nmsg += '🔧 มี ' + jobDetails.length + ' เครื่อง ใกล้ถึงกำหนด PM:\\n\\n';\n\njobDetails.forEach((job, i) => {\n  const stageList = job.stages.sort((a,b) => a-b).join(', ');\n  const displayName = job.shop_name || job.customer_id || job.machine_code || '(ไม่พบชื่อร้าน)';\n  msg += (i + 1) + '. 🏪 ' + displayName + '\\n';\n  msg += '   Stage: ' + stageList + '\\n';\n  msg += '   📅 Due: ' + job.scheduled_date + '\\n';\n  msg += '   🏷️ ' + job.job_no + '\\n\\n';\n});\n\nif (errors.length > 0) {\n  msg += '\\n⚠️ Errors: ' + errors.length + ' records failed\\n';\n}\n\nmsg += '👉 เข้า Admin Dashboard เพื่อ confirm + assign ช่าง';\n\nconst skippedCount = $('Idempotency Filter1').first().json.skipped || 0;\n\nreturn [{ json: {\n  notification: msg,\n  created_count: createdJobs.length,\n  error_count: errors.length,\n  skipped_count: skippedCount,\n  lark_token: $('Idempotency Filter1').first().json.lark_token\n} }];"
+      },
+      "id": "b4dbd250-b119-4964-80dc-4f7cff3f290e",
+      "name": "Build Notification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4256,
+        -2080
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "cp-if-created",
+              "leftValue": "={{ $json.created_count }}",
+              "rightValue": "0",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "aaf36444-780b-445e-b790-57b016a8efb3",
+      "name": "If Created Any",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        4480,
+        -2080
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// Prep LINE Push → Admin Group\n// ────────────────────────────────────────────\nconst data = $input.first().json;\n\n// ⚠️ ใส่ LINE User ID ของ Admin ที่ต้องการรับแจ้งเตือน\nconst ADMIN_LINE_IDS = [\n  'U0c15c7dd5257e6ea5ae251279eee92f4'  // Admin: สักกะพงศ์\n];\n\n// สร้าง push messages สำหรับแต่ละ admin\nconst messages = ADMIN_LINE_IDS.map(lineId => ({\n  lineBody: JSON.stringify({\n    to: lineId,\n    messages: [{ type: 'text', text: data.notification }]\n  })\n}));\n\nreturn messages.map(m => ({ json: m }));"
+      },
+      "id": "1473757d-f6ec-4c1c-a18c-98697c8d4842",
+      "name": "Prep LINE Admin Notify",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4704,
+        -2176
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/push",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer Ng84+hoTD9tPknpLmBAt1cwStuEhjo79Snj7EtTZOK8GBzOZvwQj0LnpspyFLu7GjVc6Y/kvCPmo/lLsvgjAqv+RGKHLpKA6fq7/nkHCW9otlToTdeAwoi+/f6Pcy24QMkqdI8hn1ceyqQXlN6+pUQdB04t89/1O/w1cDnyilFU="
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.lineBody }}",
+        "options": {}
+      },
+      "id": "f43724c0-a04f-42bc-a2c7-c32839af32d9",
+      "name": "LINE Push Admin",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4912,
+        -2176
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// Summary Log — สรุปผลรอบนี้ + capacity stats\n// ────────────────────────────────────────────\nconst now = new Date().toISOString();\n\nlet created = 0, errors = 0, skipped = 0, notification = '';\ntry {\n  const d = $('Build Notification').first().json;\n  created = d.created_count || 0;\n  errors = d.error_count || 0;\n  skipped = d.skipped_count || 0;\n  notification = d.notification || '';\n} catch(e) {}\n\n// Phase 1: capacity stats from Capacity Allocate\nlet capacity = null, deferred = 0;\ntry {\n  const cap = $('Capacity Allocate').first().json;\n  capacity = cap.capacity || null;\n  deferred = cap.jobs_deferred?.length || 0;\n} catch(e) {}\n\nconst capLine = capacity\n  ? ' | budget=' + capacity.used.toFixed(2) + '/' + capacity.total_budget +\n    ' (' + capacity.by_category.filter + 'F+' + capacity.by_category.pm_small + 'S+' + capacity.by_category.pm_large + 'L)' +\n    (deferred > 0 ? ' | deferred=' + deferred : '')\n  : '';\n\nreturn [{ json: {\n  run_at: now,\n  summary: 'CarePlan Cron: created=' + created + ', skipped=' + skipped + ', errors=' + errors + capLine,\n  created, skipped, errors, deferred, capacity, notification\n} }];"
+      },
+      "id": "78b3618c-427b-4d82-8b53-c75360c45c74",
+      "name": "Summary Log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5152,
+        -2176
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// No-Op: ไม่มี T4 ที่ถึงกำหนด — จบ Cron รอบนี้\n// ────────────────────────────────────────────\nreturn [{ json: { summary: 'CarePlan Cron: No T4 records due within alert window. Nothing to do.', run_at: new Date().toISOString() } }];"
+      },
+      "id": "6360ee1c-1dcb-43e6-9d2c-ed44c89db2ef",
+      "name": "No Records Due",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2272,
+        -1760
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// All Skipped: ทุก group มี T5 open อยู่แล้ว\n// ────────────────────────────────────────────\nconst skipped = $input.first().json.skipped || 0;\nreturn [{ json: { summary: 'CarePlan Cron: ' + skipped + ' groups skipped (T5 already exists). No new jobs created.', run_at: new Date().toISOString() } }];"
+      },
+      "id": "ae2f50ea-88a5-4fb1-9f9b-64487afc206a",
+      "name": "All Skipped",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3376,
+        -1840
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// No new T5 created (errors or all failed)\n// ────────────────────────────────────────────\nconst data = $input.first().json;\nreturn [{ json: { summary: 'CarePlan Cron: 0 created, check errors.', run_at: new Date().toISOString() } }];"
+      },
+      "id": "271e55c1-a722-438f-94a6-c9a42c0225a5",
+      "name": "None Created",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4704,
+        -1952
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.larksuite.com/open-apis/auth/v3/tenant_access_token/internal",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "app_id",
+              "value": "cli_a9500a1d84f89e18"
+            },
+            {
+              "name": "app_secret",
+              "value": "GfKOk3vVSU4WwtXJKZEmHb2Q51JDOLgp"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c8dc2775-6bb1-4a6a-a2d3-ff40b0e3d42b",
+      "name": "Get Lark Token1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1168,
+        -1872
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ────────────────────────────────────────────\n// Idempotency: Filter out groups ที่มี T5 open อยู่แล้ว\n// Logic: อ่าน T5.Related Care Plan (DuplexLink → T4) ถ้า overlap กับ group.t4_record_ids → skip\n// ⚠️ Fixed 2026-04-20: เดิมอ่าน 'T4 Refs' (field ไม่มีใน T5 schema) → refs='' เสมอ → ไม่ skip อะไรเลย → สร้าง T5 ซ้ำทุกวัน\n//                     T5 schema จริงใช้ 'Related Care Plan' (DuplexLink) → ต้อง extract record_id[]\n// ────────────────────────────────────────────\nconst prevData = $('Prep T5 Idempotency Search').first().json;\nconst groups = prevData.groups;\nconst lark_token = prevData.lark_token;\n\n// Parse existing T5 records\nconst t5Res = $input.first().json;\nconst t5Items = (t5Res.data && t5Res.data.items) || [];\n\nfunction txt(v) {\n  if (v === null || v === undefined) return '';\n  if (typeof v === 'string') return v;\n  if (v.text) return v.text;\n  if (Array.isArray(v)) return v.map(i => typeof i === 'string' ? i : (i.text || '')).join(',');\n  return '';\n}\n\n// DuplexLink response format: [{ record_id, name/text }] หรือ { value: [...] }\nfunction extractLinkedIds(v) {\n  if (!v) return [];\n  const arr = Array.isArray(v) ? v : (Array.isArray(v.value) ? v.value : []);\n  return arr.map(r => {\n    if (typeof r === 'string') return '';\n    return r.record_id || (Array.isArray(r.record_ids) ? r.record_ids[0] : r.record_ids) || '';\n  }).filter(Boolean);\n}\n\nconst existingT5s = t5Items.map(it => {\n  const f = it.fields || {};\n  return {\n    record_id: it.record_id,\n    job_no: txt(f['Job No.']),\n    status: txt(f['Status']),\n    t4_refs: extractLinkedIds(f['Related Care Plan'])\n  };\n});\n\n// Filter: keep groups that have NO overlap with existing open T5\nconst newGroups = groups.filter(group => {\n  const hasOverlap = existingT5s.some(t5 => {\n    return t5.t4_refs.some(ref => group.t4_record_ids.includes(ref));\n  });\n  return !hasOverlap;\n});\n\nconst skipped = groups.length - newGroups.length;\n\nif (newGroups.length === 0) {\n  return [{ json: { has_new: false, new_count: 0, skipped, lark_token } }];\n}\n\n// Generate Job Numbers: CP-YYYY-MM-DD-NNN\nconst today = new Date().toISOString().split('T')[0];\nconst dated = today.replace(/-/g, '');\nconst jobsToCreate = newGroups.map((g, i) => {\n  const seq = String(i + 1).padStart(3, '0');\n  return {\n    job_no: 'CP-' + dated + '-' + seq,\n    machine_record_id: g.machine_record_id,   // ← stable T2 record_id for Link\n    customer_record_id: g.customer_record_id, // pass-through (T5.Customer is Lookup)\n    machine_code: g.machine_code,\n    customer_id: g.customer_id,\n    shop_name: g.shop_name,\n    stages: g.stages.sort((a,b) => a-b),\n    stage_names: g.stage_names,\n    stage_details: g.stage_details || [],\n    care_types: g.care_types || [],\n    t4_record_ids: g.t4_record_ids,\n    care_plan_ids: g.care_plan_ids,\n    assigned_technician_id: g.assigned_technician_id || '',\n    total_qty_per_visit: g.total_qty_per_visit || g.stages.length,\n    scheduled_date: g.max_due_date,\n    week_key: g.week_key\n  };\n});\n\nreturn [{ json: { has_new: true, new_count: jobsToCreate.length, skipped, jobs: jobsToCreate, lark_token } }];"
+      },
+      "id": "7726891f-af19-420b-8880-c2cdb4259543",
+      "name": "Idempotency Filter1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2944,
+        -1968
+      ]
+    },
+    {
+      "parameters": {
         "path": "get-customers",
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "bd9898f4-79c9-46c7-9e3f-21c17a921a6b",
+      "id": "2816b50e-2153-412b-8cb0-30024b15b57b",
       "name": "Webhook Get Customers",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        9440,
-        272
+        4896,
+        2640
       ],
       "webhookId": "get-customers-webhook"
     },
@@ -36,26 +522,26 @@
         },
         "options": {}
       },
-      "id": "5fd0792e-1d1f-4a4d-bf2a-5a0a9f85f6af",
+      "id": "ca2bc5eb-6d41-42db-942e-e038c5782d18",
       "name": "Get Token [GC]",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        9664,
-        272
+        5120,
+        2640
       ]
     },
     {
       "parameters": {
         "jsCode": "const token = $input.first().json.tenant_access_token;\n// รับ page_token จาก query string สำหรับ pagination (โหลดเพิ่ม)\nconst webhookData = $('Webhook Get Customers').first().json;\nconst incomingPageToken = (webhookData.query && webhookData.query.page_token) ? webhookData.query.page_token : '';\n// ไม่ระบุ field_names เพราะ Lark จะ return primary field ไม่ครบถ้า specify\nconst body = { page_size: 500 };\nif (incomingPageToken) body.page_token = incomingPageToken;\nreturn [{ json: { lark_token: token, searchBody: JSON.stringify(body) } }];"
       },
-      "id": "90e3253f-56a5-4551-b20f-38a76d700349",
+      "id": "3ce4284e-06c3-47d4-92b2-613d2b80964c",
       "name": "Prep Search T1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        9888,
-        272
+        5344,
+        2640
       ]
     },
     {
@@ -77,26 +563,26 @@
         "body": "={{ $('Prep Search T1').first().json.searchBody }}",
         "options": {}
       },
-      "id": "9d0b170d-4fde-4596-9a73-550db7219280",
+      "id": "a30be523-d367-4255-9174-902c178a9e0c",
       "name": "Fetch T1 Customers",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        10112,
-        272
+        5568,
+        2640
       ]
     },
     {
       "parameters": {
         "jsCode": "const data = $input.first().json;\nconst items = data.data?.items || [];\n// Lark pagination — ส่งกลับไปให้ dashboard โหลดหน้าต่อไปได้\nconst larkPageToken = data.data?.page_token || null;\nconst larkHasMore   = !!data.data?.has_more;\nconst txt = (v) => {\n  if (v === null || v === undefined) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'number') return String(v);\n  if (v.link) return v.link;\n  if (Array.isArray(v)) { if (!v.length) return ''; const f = v[0]; if (typeof f === 'string') return f; if (f.link) return f.link; return f.text || f.name || ''; }\n  if (v.text) return v.text;\n  if (v.value) { if (typeof v.value === 'string') return v.value; if (Array.isArray(v.value)) { const f = v.value[0]; if (!f) return ''; if (typeof f === 'string') return f; return f.text || f.name || ''; } }\n  return '';\n};\nconst customers = items.map(it => {\n  const f = it.fields;\n  const shopName   = txt(f['Shop Name']) || txt(f['Customer']) || '';\n  const lineUserId = txt(f['C.LINE User ID']) || txt(f['C.LINE ID']) || txt(f['LINE User ID']) || '';\n  const phone      = txt(f['Customer Phone 1']) || '';\n  const phone2     = txt(f['Customer Phone 2']) || '';\n  const contact    = txt(f['Customer Contact 1']) || '';\n  const contact2   = txt(f['Customer Contact 2']) || '';\n  const mapsUrl    = txt(f['Google Maps URL']) || txt(f['Machine Location']) || '';\n  const address    = txt(f['Address']) || '';\n  const peakCode   = txt(f['PEAK Code']) || '';\n  const custType   = txt(f['Customer Type']) || '';\n  const equipType  = txt(f['Equipment Type']) || '';\n  const health     = txt(f['Account Status']) || '';\n  const zone       = txt(f['Zone']) || '';\n  return {\n    record_id: it.record_id,\n    'Shop Name':          shopName,\n    'Customer ID':        txt(f['Customer ID']),\n    'Customer Phone 1':   phone,\n    'Customer Phone 2':   phone2,\n    'Customer Contact 1': contact,\n    'Customer Contact 2': contact2,\n    'C.LINE User ID':     lineUserId,\n    'Google Maps URL':    mapsUrl,\n    'Address':            address,\n    'PEAK Code':          peakCode,\n    'Customer Type':      custType,\n    'Equipment Type':     equipType,\n    'Account Status':     health,\n    shop_name: shopName, line_id: lineUserId, phone: phone, phone2: phone2,\n    maps_url: mapsUrl, address: address, contact: contact, contact2: contact2,\n    account_health: health, zone: zone\n  };\n}).filter(c => c['Shop Name']).sort((a, b) => a['Shop Name'].localeCompare(b['Shop Name'], 'th'));\nreturn [{ json: { customers, page_token: larkPageToken, has_more: larkHasMore } }];"
       },
-      "id": "3bc81e14-681a-42ec-b71e-0035c9a5acf3",
+      "id": "922fb366-fcb2-489e-8eb4-b305c314393c",
       "name": "Format Customers",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        10320,
-        272
+        5776,
+        2640
       ]
     },
     {
@@ -114,13 +600,13 @@
           }
         }
       },
-      "id": "7179d39a-030a-4c32-b451-ecd0853b87f9",
+      "id": "69792baf-4485-4311-aee3-16c44b63f44d",
       "name": "Respond Customers",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        10544,
-        272
+        6000,
+        2640
       ]
     },
     {
@@ -129,13 +615,13 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "ba8c7f0a-9b24-4fea-a7aa-015b8dd7bf32",
+      "id": "1ba8ac3a-b558-472b-b6dc-551006299441",
       "name": "Webhook Get Techs",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        9440,
-        560
+        4880,
+        3280
       ],
       "webhookId": "get-techs-webhook"
     },
@@ -158,26 +644,26 @@
         },
         "options": {}
       },
-      "id": "de9bddaf-85d8-4da4-a956-d800dd7504b5",
+      "id": "ef074f11-dab6-49ab-9524-7239bb14d702",
       "name": "Get Token [GT]",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        9664,
-        560
+        5104,
+        3280
       ]
     },
     {
       "parameters": {
         "jsCode": "const token = $input.first().json.tenant_access_token;\nreturn [{ json: { lark_token: token, searchBody: JSON.stringify({ page_size: 100 }) } }];"
       },
-      "id": "78f4dda2-4b49-4506-ae08-adbb7f6387e3",
+      "id": "875f289a-595d-4d3a-8d4b-08bf52a3221d",
       "name": "Prep Search T8",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        9888,
-        560
+        5328,
+        3280
       ]
     },
     {
@@ -199,26 +685,26 @@
         "body": "={{ $('Prep Search T8').first().json.searchBody }}",
         "options": {}
       },
-      "id": "840efeda-f7de-4958-91d6-745770d3848a",
+      "id": "39047748-52a4-4960-a7a3-963d5846a15b",
       "name": "Fetch T8 Techs",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        10112,
-        560
+        5552,
+        3280
       ]
     },
     {
       "parameters": {
         "jsCode": "const data = $input.first().json;\nconst items = data.data?.items || [];\nconst txt = (v) => {\n  if (v === null || v === undefined) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'number') return String(v);\n  if (v.link) return v.link;\n  if (Array.isArray(v)) { if (!v.length) return ''; const f = v[0]; if (typeof f === 'string') return f; return f.text || f.name || ''; }\n  if (v.text) return v.text;\n  if (v.value) { if (typeof v.value === 'string') return v.value; if (Array.isArray(v.value)) { const f = v.value[0]; if (!f) return ''; if (typeof f === 'string') return f; return f.text || f.name || ''; } }\n  return '';\n};\nconst technicians = items.map(it => {\n  const f = it.fields;\n  const staffName = txt(f['์Name']) || txt(f['Name']);\n  const techName = txt(f['Tech Name']);\n  const lineUserId = txt(f['Tech Line User ID']) || '';\n  const lineId = txt(f['Tech Line ID']) || '';\n  const role = txt(f['Role']) || '';\n  const staffId = txt(f['Staff ID']) || '';\n  const phone = txt(f['Staff Phone']) || '';\n  const larkId = txt(f['Tech Lark ID']) || '';\n  return {\n    record_id: it.record_id,\n    'Name': staffName,\n    'Tech Name': techName,\n    'Staff ID': staffId,\n    'Role': role,\n    'Staff Phone': phone,\n    'Tech Lark ID': larkId,\n    'Tech Line User ID': lineUserId,\n    'Tech Line ID': lineId,\n    name: staffName, tech_name: techName, staff_id: staffId,\n    line_id: lineUserId, phone: phone, role: role\n  };\n}).filter(t => t['Name']).sort((a, b) => a['Name'].localeCompare(b['Name'], 'th'));\nreturn [{ json: { technicians } }];"
       },
-      "id": "8415fd23-f791-4580-b420-86b18d4a7907",
+      "id": "a5b8e8d7-ffea-43ad-8f97-65856a5d9815",
       "name": "Format Techs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        10320,
-        560
+        5760,
+        3280
       ]
     },
     {
@@ -236,13 +722,13 @@
           }
         }
       },
-      "id": "73b6d829-9a16-492a-8441-2526eb59e9d1",
+      "id": "db33597a-813b-44c4-9a28-f1fbb7f25e24",
       "name": "Respond Techs",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        10544,
-        560
+        5984,
+        3280
       ]
     },
     {
@@ -252,13 +738,13 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "011ec507-b4ee-40d7-a45f-3529f8cb8e96",
+      "id": "6e973296-b2b0-454d-a6a6-83aded62bdb7",
       "name": "Webhook Create Job",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        9440,
-        832
+        4880,
+        3616
       ],
       "webhookId": "create-job-webhook"
     },
@@ -266,13 +752,13 @@
       "parameters": {
         "jsCode": "const d = $input.first().json;\nconst body = d.body || d;\nreturn [{ json: {\n  customer_record_id: body.customer_record_id || '',\n  machine_record_id:  body.machine_record_id  || '',\n  tech_record_id:     body.tech_record_id     || '',\n  job_type:           body.job_type           || 'ซ่อม',\n  priority:           body.priority           || 'ปกติ',\n  scheduled_date:     body.scheduled_date     || '',\n  problem:            body.problem            || '',\n  note:               body.note               || '',\n  source:             'Dashboard'\n}}];"
       },
-      "id": "b1bc4dc5-c201-477b-aee7-6506a12a1c70",
+      "id": "1dd1d978-42b3-4d3c-a959-fc02fa1b1f85",
       "name": "Parse Body",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        9664,
-        832
+        5104,
+        3616
       ]
     },
     {
@@ -294,26 +780,26 @@
         },
         "options": {}
       },
-      "id": "f836ed59-3d9d-4765-bf54-985f7cadd79e",
+      "id": "ca116e72-bbb2-47ee-a0d8-fe10afab94e9",
       "name": "Get Token [CJ]",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        9888,
-        832
+        5328,
+        3616
       ]
     },
     {
       "parameters": {
         "jsCode": "// ────────────────────────────────────────────\n// Prep T5 Body (manual create from admin dashboard)\n// ⚠️ Per 2026-04-18 audit + decision (Option B):\n//   • T5.Customer is a LOOKUP field — resolved via Machine link, DO NOT write.\n// ⚠️ Per 2026-04-20 live test (rental-cron bug #5):\n//   • Lark Link write format = [\"rec...\"] NOT { link_record_ids: [...] } (legacy object)\n//     legacy format = LinkFieldConvFail code 1254067 ทันที\n//\n// 📌 TECH DEBT (tracked 2026-04-18):\n//   Dashboard form ต้องเพิ่ม Machine selector → ส่ง machine_record_id →\n//   เพิ่ม Machine write ตรงนี้ → T5.Customer Lookup จะ resolve ได้อัตโนมัติ\n//   ปัจจุบัน dashboard ยังไม่ส่ง machine_record_id จึง skip Machine write ไปก่อน\n// ────────────────────────────────────────────\nconst token = $('Get Token [CJ]').first().json.tenant_access_token;\nconst src   = $('Compute Job No.').first().json;  // 🔧 includes job_no + Parse Body data\n\nlet scheduledMs = null;\nif (src.scheduled_date) {\n  // Bangkok midnight (ไม่งั้น server UTC จะเพี้ยน -7h)\n  try { scheduledMs = new Date(src.scheduled_date + 'T00:00:00+07:00').getTime(); } catch(e) {}\n  if (isNaN(scheduledMs)) {\n    try { scheduledMs = new Date(src.scheduled_date).getTime(); } catch(e) {}\n  }\n}\n\nconst fields = {};\n// 🔧 FIXED 2026-04-26: 'นัดแล้ว' is NOT in T5.Status options · Lark would reject\n//   T5.Status options = [รอยืนยัน, เสร็จแล้ว, Cancelled, Failed, ถึงแล้ว]\n//   Initial schedule state = 'รอยืนยัน' (matches careplan-cron pattern)\nfields['Status'] = 'รอยืนยัน';\n// 🔧 ADDED 2026-04-27: Job No. = J-YYYYMMDD-XXX (n8n-generated · vendor-portable)\nif (src.job_no)      fields['Job No.']        = src.job_no;\n// Job Type is MultiSelect (verified 2026-04-20) → must be array even for single value\nif (src.job_type)    fields['Job Type']       = Array.isArray(src.job_type) ? src.job_type : [src.job_type];\n// 🔧 FIXED 2026-04-27: Map dashboard codes (low/med/high) → T5.Priority options (Low/Medium/High)\n//   T5.Priority SingleSelect: [Very Urgent, High, Medium, Low] · case-sensitive · mismatch = silent reject\nconst PRIORITY_MAP = { low: 'Low', med: 'Medium', high: 'High', urgent: 'Very Urgent' };\nif (src.priority)    fields['Priority']       = PRIORITY_MAP[src.priority] || src.priority;\nif (src.problem)     fields['Defect']         = src.problem;\n// 🔧 FIXED 2026-04-26: T5 has no 'Note' field · use 'Billing Note' for admin remarks\nif (src.note)        fields['Billing Note']   = src.note;\n// 🔧 FIXED 2026-04-26: T5 has no 'Source' field · use 'Source Ref ID' for tracing\nif (src.source)      fields['Source Ref ID']  = src.source;\nif (scheduledMs)     fields['Scheduled Date'] = scheduledMs;\n// ❌ Removed: Customer write — T5.Customer = Lookup (silent-drop anyway).\n// 🔧 FIXED 2026-04-26: Field name = 'Assigned Technician' (T5 schema · SingleLink to T8)\n//   Was 'Technician' which doesn't exist · silent-dropped tech assignment\nif (src.tech_record_id)     fields['Assigned Technician']  = [src.tech_record_id];\n// 🔧 ADDED 2026-04-27: Machine link → T2 (required for Customer Lookup + Job No. formula to resolve)\nif (src.machine_record_id)  fields['Machine']              = [src.machine_record_id];\n// 🔧 ADDED 2026-04-30: Customer Link → T1 (direct link เพื่อให้ Lookup fields ทำงานทันที)\n//   Lark ไม่รองรับ 2-hop Lookup (T5→T2→T1) → ต้อง direct T5→T1 link สำหรับ Phone 1/2/3, LINE ID, Maps URL\nif (src.customer_record_id) fields['Customer Link']        = [src.customer_record_id];\n\nreturn [{ json: { ...src, lark_token: token, createBody: JSON.stringify({ fields }) } }];"
       },
-      "id": "254711f4-5810-4195-ac5d-90279cf20323",
+      "id": "39701e98-f341-461f-8d14-be73156153e9",
       "name": "Prep T5 Body",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        10560,
-        832
+        6000,
+        3616
       ]
     },
     {
@@ -335,26 +821,26 @@
         "body": "={{ $json.createBody }}",
         "options": {}
       },
-      "id": "977f8246-2457-464f-acfe-2e5cac87a13c",
+      "id": "11c100c3-3d92-4c13-960a-d9b5ba6cec86",
       "name": "Create T5 Record",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        10768,
-        832
+        6208,
+        3616
       ]
     },
     {
       "parameters": {
         "jsCode": "const result = $input.first().json;\nif (result.code !== 0) {\n  return [{ json: { ok: false, error: result.msg || 'Lark API error', code: result.code } }];\n}\nconst record = result.data?.record || {};\nreturn [{ json: {\n  ok: true,\n  record_id: record.record_id || '',\n  job_no:    record.fields?.['Job No.'] || '',\n  status:    record.fields?.['Status']  || 'นัดแล้ว',\n  message:   'สร้างงานสำเร็จ'\n} }];"
       },
-      "id": "59f9ecaa-67ea-4abb-ab3a-874907d5baf9",
+      "id": "fee526a8-4396-44e9-88d8-e8a6f9b309ad",
       "name": "Format Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        10992,
-        832
+        6432,
+        3616
       ]
     },
     {
@@ -372,13 +858,13 @@
           }
         }
       },
-      "id": "2f47cb92-9603-4a62-8971-e3b72dad2b27",
+      "id": "1a84b2fc-b85c-411b-a004-915048ab8992",
       "name": "Respond Create Job",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        11216,
-        832
+        6656,
+        3616
       ]
     },
     {
@@ -387,13 +873,13 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "a12c4781-1f89-4ba5-90b8-603a9d6cdc98",
+      "id": "e96b7649-08a3-4449-978d-4747fc5fbc35",
       "name": "Webhook Get Jobs",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        9440,
-        1120
+        4880,
+        3904
       ],
       "webhookId": "get-jobs-webhook"
     },
@@ -416,26 +902,26 @@
         },
         "options": {}
       },
-      "id": "6a00bd1d-4bf1-434d-b056-9dc68e070161",
+      "id": "9f2ec123-777b-4f7a-b374-2edf768bb20f",
       "name": "Get Token [GJ]",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        9664,
-        1120
+        5104,
+        3904
       ]
     },
     {
       "parameters": {
         "jsCode": "const token = $input.first().json.tenant_access_token;\nreturn [{ json: { lark_token: token, searchBody: JSON.stringify({ page_size: 100, sort: [{ field_name: 'Created Time', order: 'DESC' }] }) } }];"
       },
-      "id": "d9f37944-f02c-4cf1-9961-cec2647549f3",
+      "id": "5890f1c3-7052-474a-a175-51a2232c4736",
       "name": "Prep Search T5",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        9888,
-        1120
+        5328,
+        3904
       ]
     },
     {
@@ -457,26 +943,26 @@
         "body": "={{ $('Prep Search T5').first().json.searchBody }}",
         "options": {}
       },
-      "id": "310a76ce-9eac-4bce-a21c-29a55836de3f",
+      "id": "d69ccbcb-b9e1-4c6f-a003-1f31fbcf7659",
       "name": "Fetch T5 Jobs",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        10112,
-        1120
+        5552,
+        3904
       ]
     },
     {
       "parameters": {
         "jsCode": "const data = $input.first().json;\nconst items = data.data?.items || [];\nconst txt = (v) => {\n  if (v === null || v === undefined) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'number') return String(v);\n  if (Array.isArray(v)) { if (!v.length) return ''; const f = v[0]; if (typeof f === 'string') return f; return f.text || f.name || ''; }\n  if (v.value) { if (typeof v.value === 'string') return v.value; if (Array.isArray(v.value)) { const f = v.value[0]; if (!f) return ''; if (typeof f === 'string') return f; return f.text || f.name || ''; } }\n  return '';\n};\nconst jobs = items.map(it => {\n  const f = it.fields;\n  const created = f['Created Time'] || it.created_time;\n  const scheduled = f['Scheduled Date'];\n  return {\n    record_id: it.record_id,\n    job_id: txt(f['Job ID']) || txt(f['Job No.']) || txt(f['job_id']) || it.record_id,\n    status: txt(f['Status']) || 'new',\n    tech_name: txt(f['Tech Name']) || txt(f['Technician']) || txt(f['tech_name']),\n    customer_name: txt(f['Shop Name']) || txt(f['Customer Name']) || txt(f['Customer']),\n    job_type: txt(f['Job Type']),\n    priority: txt(f['Priority']),\n    job_address: txt(f['Job Address']) || txt(f['Address']),\n    scheduled_date: typeof scheduled === 'number' ? new Date(scheduled).toISOString() : txt(scheduled),\n    timestamp: typeof created === 'number' ? new Date(created).toISOString() : (typeof created === 'string' ? created : null)\n  };\n});\nreturn [{ json: { jobs } }];"
       },
-      "id": "23444223-b220-4052-a0ce-67a3e57f7d3f",
+      "id": "3c7ef195-3816-41f6-941e-6af6c0aac372",
       "name": "Format Jobs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        10320,
-        1120
+        5760,
+        3904
       ]
     },
     {
@@ -494,13 +980,13 @@
           }
         }
       },
-      "id": "53ca71c8-cb2f-429c-893c-60183a3ae104",
+      "id": "304f6fbe-601d-415b-8f22-888738338827",
       "name": "Respond Jobs",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        10544,
-        1120
+        5984,
+        3904
       ]
     },
     {
@@ -509,13 +995,13 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "2c13d59f-cd2b-49ef-9fed-7b01cf854ad1",
+      "id": "dc1048ee-bb04-4561-9bfe-a52c857b11c8",
       "name": "Webhook Get Attendance",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        9440,
-        1392
+        4880,
+        4176
       ],
       "webhookId": "get-attendance-webhook"
     },
@@ -538,26 +1024,26 @@
         },
         "options": {}
       },
-      "id": "1abbb84a-b90b-4e75-acd7-c5998f050ea3",
+      "id": "8e4d760a-ae96-4c56-8688-4537b37a1007",
       "name": "Get Token [GA]",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        9664,
-        1392
+        5104,
+        4176
       ]
     },
     {
       "parameters": {
         "jsCode": "const token = $input.first().json.tenant_access_token;\n// วันนี้ 00:00 - 23:59 (UTC+7)\nconst now = new Date();\nconst bkkOffset = 7 * 60 * 60 * 1000;\nconst todayBKK = new Date(Math.floor((now.getTime() + bkkOffset) / 86400000) * 86400000 - bkkOffset);\nconst from = Math.floor(todayBKK.getTime() / 1000);\nconst to   = from + 86399;\nreturn [{ json: { lark_token: token, from_ts: from, to_ts: to } }];"
       },
-      "id": "b5efb4a2-0e7d-466a-b0cf-dad5c8be1291",
+      "id": "e8711895-236a-45b2-ae62-745dbfd894e2",
       "name": "Prep Attendance Query",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        9888,
-        1392
+        5328,
+        4176
       ]
     },
     {
@@ -579,26 +1065,26 @@
         "body": "={\"page_size\":50,\"field_names\":[\"Name\",\"์Name\",\"Tech Name\",\"Tech Lark ID\",\"Role\",\"Account Status\",\"Work Status\"]}",
         "options": {}
       },
-      "id": "b2f42208-9d04-4ff5-ac72-7bd70460c419",
+      "id": "dbaa4ea4-2373-4f6f-91d5-cdc7c483ee65",
       "name": "Fetch T8 for Attendance",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        10112,
-        1392
+        5552,
+        4176
       ]
     },
     {
       "parameters": {
         "jsCode": "const data = $input.first().json;\nconst items = data.data?.items || [];\nconst txt = (v) => {\n  if (!v) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'number') return String(v);\n  if (Array.isArray(v)) { const f = v[0]; if (!f) return ''; return f.text || f.name || String(f); }\n  if (v.value) { const vv = v.value; if (typeof vv === 'string') return vv; if (Array.isArray(vv)) { const f = vv[0]; return f?.text || f?.name || ''; } }\n  return '';\n};\nconst team = items.map(it => {\n  const f = it.fields;\n  const nickname  = txt(f['์Name']) || txt(f['Name']);\n  const techName  = txt(f['Tech Name']);\n  const workSt    = txt(f['Work Status']) || 'หยุด';\n  const acctSt    = txt(f['Account Status']);\n  const statusMap = { 'เข้างาน': 'working', 'ลา': 'leave', 'หยุด': 'off' };\n  const status    = statusMap[workSt] || 'off';\n  return { nickname, tech_name: techName, name: nickname, checked_in: status === 'working', check_in_time: null, status, work_status: workSt, acct_status: acctSt };\n}).filter(t => t.nickname && t.acct_status !== 'Inactive');\nteam.sort((a, b) => (b.checked_in ? 1 : 0) - (a.checked_in ? 1 : 0));\nreturn [{ json: { team } }];"
       },
-      "id": "540b320e-df6d-4ae1-9d86-7f84ab5d9b2a",
+      "id": "0d357171-36b1-44f5-8d6a-c51ce8edaadd",
       "name": "Format Team Status",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        10320,
-        1392
+        5760,
+        4176
       ]
     },
     {
@@ -616,13 +1102,13 @@
           }
         }
       },
-      "id": "6de5eb76-0197-4244-9d50-9a9ac5d4a396",
+      "id": "39c31216-d35f-428d-85e6-2c3ad19fd130",
       "name": "Respond Attendance",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        10544,
-        1392
+        5984,
+        4176
       ]
     },
     {
@@ -631,13 +1117,13 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "b4a13b0d-2b5d-4fb3-835d-3ae0f55ef2c9",
+      "id": "254d0643-0045-4e01-932a-c5d47324b36c",
       "name": "Webhook Get Products",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        9440,
-        1680
+        4880,
+        4464
       ],
       "webhookId": "get-products-webhook"
     },
@@ -660,26 +1146,26 @@
         },
         "options": {}
       },
-      "id": "d110f421-5f3e-4294-93e3-359065e45e1d",
+      "id": "8cace184-da00-40cc-bacd-1c0b6683611d",
       "name": "Get Token [GP]",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        9664,
-        1680
+        5104,
+        4464
       ]
     },
     {
       "parameters": {
         "jsCode": "const token = $input.first().json.tenant_access_token;\nconst body = { page_size: 500 };\nreturn [{ json: { lark_token: token, searchBody: JSON.stringify(body) } }];"
       },
-      "id": "2858de3c-36c5-4db6-806b-eca298ae3d88",
+      "id": "cd373d89-51c9-45d6-9b3b-417670ce438e",
       "name": "Prep Search T3",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        9888,
-        1680
+        5328,
+        4464
       ]
     },
     {
@@ -701,26 +1187,26 @@
         "body": "={{ $json.searchBody }}",
         "options": {}
       },
-      "id": "ba30c488-497c-4dfa-ac2d-60694b400da7",
+      "id": "6287ac5a-115d-4bf6-8b3c-2c4711cdb75e",
       "name": "Fetch T3 Products",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        10112,
-        1680
+        5552,
+        4464
       ]
     },
     {
       "parameters": {
         "jsCode": "const items = $input.first().json.data && $input.first().json.data.items ? $input.first().json.data.items : [];\nconst BLOCKED = ['Machine (Sale)', 'Machine (Rental)'];\nfunction txt(v) {\n  if (!v) return '';\n  if (typeof v === 'string') return v;\n  if (v.text) return v.text;\n  if (v.value) return v.value;\n  if (Array.isArray(v) && v[0]) return txt(v[0]);\n  return '';\n}\nconst products = items\n  .map(function(r) {\n    const f = r.fields || {};\n    const name = txt(f['Product Name'] || f['Name'] || '') || Object.values(f)[0] && txt(Object.values(f)[0]) || '';\n    const cat  = txt(f['Sub Category'] || f['Category'] || '');\n    const price = parseFloat(f['Price'] || f['Unit Price'] || 0) || 0;\n    return { name: name, category: cat, price: price };\n  })\n  .filter(function(p) { return p.name && BLOCKED.indexOf(p.category) === -1; })\n  .sort(function(a, b) { return a.name.localeCompare(b.name, 'th'); });\nreturn [{ json: { products: products, total: products.length } }];"
       },
-      "id": "3b576f5a-63c0-45f2-a4c8-dd96de0053ab",
+      "id": "011bc5cc-042c-4f32-ac32-8cb83ccdcca1",
       "name": "Format Products",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        10320,
-        1680
+        5760,
+        4464
       ]
     },
     {
@@ -742,13 +1228,13 @@
           }
         }
       },
-      "id": "4e4e1392-434b-495c-98c6-c754319f45c3",
+      "id": "1343224d-24df-4310-b94a-4d8f7516e251",
       "name": "Respond Products",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        10544,
-        1680
+        5984,
+        4464
       ]
     },
     {
@@ -758,13 +1244,13 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "b5e5c9c9-21fd-40ce-868d-a6604c5b9289",
+      "id": "56cb7053-dae8-4969-af29-8f8b0225bef7",
       "name": "Webhook Complete Job",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        9440,
-        1952
+        4880,
+        4736
       ],
       "webhookId": "complete-job-webhook"
     },
@@ -772,13 +1258,13 @@
       "parameters": {
         "jsCode": "const b = $input.first().json.body || $input.first().json;\nconst parts = (b.parts || []).map(function(p){ return p.name + ' x' + p.qty; }).join(', ');\nreturn [{ json: {\n  job_id:           b.job_id           || '',\n  tech_name:        b.tech_name        || '',\n  customer_line_id: b.customer_line_id || '',\n  customer_name:    b.customer_name    || '',\n  parts_text:       parts,\n  notes:            b.notes            || '',\n  photo_count:      b.photo_count      || 0,\n  completed_at:     b.completed_at     || new Date().toISOString()\n}}];"
       },
-      "id": "65d9b761-2fcc-44e6-ba00-93ab8f2a3746",
+      "id": "49969134-3032-4a42-b17b-3106c69e3ce0",
       "name": "Parse Complete Body",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        9664,
-        1952
+        5104,
+        4736
       ]
     },
     {
@@ -800,26 +1286,26 @@
         },
         "options": {}
       },
-      "id": "af43f94c-554e-43e9-8e3d-d1b2ed57c493",
+      "id": "6673d5dd-2ee9-44d2-b42d-590e7c0fa3ea",
       "name": "Get Token [Complete]",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        9888,
-        1952
+        5328,
+        4736
       ]
     },
     {
       "parameters": {
         "jsCode": "const token = $('Get Token [Complete]').first().json.tenant_access_token;\nconst src = $('Parse Complete Body').first().json;\nreturn [{ json: {\n  ...src,\n  lark_token: token,\n  searchBody: JSON.stringify({ filter: { conjunction: 'and', conditions: [{ field_name: 'Job No.', operator: 'is', value: [src.job_id] }] } })\n}}];"
       },
-      "id": "fe4c528b-864f-43fa-bb41-25cf6c9d80dc",
+      "id": "33246abf-4e8b-4bc0-957f-68f9c3c19460",
       "name": "Prep Search T5 Complete",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        10112,
-        1952
+        5552,
+        4736
       ]
     },
     {
@@ -841,26 +1327,26 @@
         "body": "={{ $json.searchBody }}",
         "options": {}
       },
-      "id": "e7f2622f-8108-489b-ac11-fe5dce1c809b",
+      "id": "26c5319e-c260-4492-bee8-7a0a11246489",
       "name": "Search T5 Complete",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        10320,
-        1952
+        5760,
+        4736
       ]
     },
     {
       "parameters": {
         "jsCode": "// ⚠️ Fixed 2026-04-20:\n//    เดิมอ่าน 'T4 Refs' (Text field — ไม่มีใน T5 schema) → t4Refs='' เสมอ → isCarePlan=false เสมอ\n//    → branch Update T4 ไม่เคยรัน → Last Done Date ไม่ update → เครื่องถูกนัดซ้ำไม่รู้จบ\n//    T5 schema จริงใช้ 'Related Care Plan' (DuplexLink → T4).\nconst res = $input.first().json;\nconst items = res.data && res.data.items ? res.data.items : [];\nconst record_id = items.length > 0 ? items[0].record_id : '';\nconst src = $('Parse Complete Body').first().json;\nconst token = $('Get Token [Complete]').first().json.tenant_access_token;\n// 🔧 FIXED 2026-04-26: 'Note' and 'Photo Count' don't exist in T5\n//   'Note' → 'Resolution Summary' (T5 has it · for completion remarks)\n//   'Photo Count' → dropped (no equivalent · count via Photo Before/After attachments)\nconst fields = {\n  'Status': 'เสร็จแล้ว',\n  'Parts Used': src.parts_text || '',\n  'Resolution Summary': src.notes || ''\n};\n// Extract Related Care Plan (DuplexLink) + Source Ref ID for CarePlan loop closure\nfunction txt(v) { if (!v) return ''; if (typeof v === 'string') return v; if (v.text) return v.text; if (Array.isArray(v)) return v.map(i => typeof i === 'string' ? i : (i.text||'')).join(','); return ''; }\nfunction extractLinkedIds(v) {\n  if (!v) return [];\n  const arr = Array.isArray(v) ? v : (Array.isArray(v.value) ? v.value : []);\n  return arr.map(r => {\n    if (typeof r === 'string') return '';\n    return r.record_id || (Array.isArray(r.record_ids) ? r.record_ids[0] : r.record_ids) || '';\n  }).filter(Boolean);\n}\nlet t4RefIds = [];\nlet sourceRefId = '';\nif (items.length > 0) {\n  const f = items[0].fields || {};\n  t4RefIds = extractLinkedIds(f['Related Care Plan']);\n  sourceRefId = txt(f['Source Ref ID'] || '');\n}\nconst isCarePlan = (sourceRefId === 'AUTO-CAREPLAN' && t4RefIds.length > 0);\nreturn [{ json: { ...src, record_id, lark_token: token, updateBody: JSON.stringify({ fields }), t4_refs: t4RefIds, source_ref_id: sourceRefId, is_careplan: isCarePlan } }];"
       },
-      "id": "fc740766-61a5-4953-8b76-7e4a7fcda385",
+      "id": "d30a58c2-1452-47d3-9781-ee72a502a5d2",
       "name": "Prep Update T5 Complete",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        10544,
-        1952
+        5984,
+        4736
       ]
     },
     {
@@ -882,13 +1368,13 @@
         "body": "={{ $json.updateBody }}",
         "options": {}
       },
-      "id": "c250a581-35a1-4533-aa16-7ba9ddfb2882",
+      "id": "ac669d7c-2acf-42cc-aef1-7c87b2c4790f",
       "name": "Update T5 Complete",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        10768,
-        1952
+        6208,
+        4736
       ]
     },
     {
@@ -915,26 +1401,26 @@
         },
         "options": {}
       },
-      "id": "16c56c23-a44c-4d35-be95-c061236b42ca",
+      "id": "055253b9-3972-42c0-b89c-2805ea72b919",
       "name": "If CarePlan Job",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        10992,
-        1952
+        6432,
+        4736
       ]
     },
     {
       "parameters": {
         "jsCode": "// ────────────────────────────────────────────\n// Search T4 records referenced by this T5\n// เพื่อดึง Interval มาคำนวณ Next Due Date ใหม่\n// ⚠️ ห้ามระบุ field_names — Lark จะตัด primary field ทิ้ง\n// ⚠️ 2026-04-20: t4_refs เปลี่ยนเป็น array แล้ว (เดิมเป็น comma-string)\n// ────────────────────────────────────────────\nconst data = $('Prep Update T5 Complete').first().json;\nconst t4Refs = Array.isArray(data.t4_refs) ? data.t4_refs : (typeof data.t4_refs === 'string' ? data.t4_refs.split(',').map(s => s.trim()).filter(Boolean) : []);\nconst token = data.lark_token;\n\n// Lark: search by record IDs — use __id__ filter\nconst searchBody = JSON.stringify({\n  filter: {\n    conjunction: 'or',\n    conditions: t4Refs.map(id => ({ field_name: '__id__', operator: 'is', value: [id] }))\n  },\n  page_size: 20\n});\n\nreturn [{ json: { t4_refs: t4Refs, lark_token: token, searchBody, completed_at: data.completed_at } }];"
       },
-      "id": "f8b0564c-687b-4a02-a52e-5a687c393737",
+      "id": "a861ecdc-d346-4dab-80d5-56a381aec750",
       "name": "Prep Search T4 Refs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        11216,
-        1936
+        6656,
+        4720
       ]
     },
     {
@@ -956,26 +1442,26 @@
         "body": "={{ $json.searchBody }}",
         "options": {}
       },
-      "id": "a09129f2-d5da-495e-b92a-29a2d357a0ac",
+      "id": "2c74a988-247f-429d-a0f0-92beb0139026",
       "name": "Fetch T4 Refs",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        11440,
-        1936
+        6880,
+        4720
       ]
     },
     {
       "parameters": {
         "jsCode": "// ────────────────────────────────────────────\n// Update T4 after service completion\n// ⚠️ Per 2026-04-18 audit:\n//   • Next Due Date is a FORMULA → cannot write. Lark recomputes automatically\n//     from Last Done Date + Planned Interval (Months) once we update Last Done Date.\n//   • Interval (Months) field does NOT exist in T4 → use Planned Interval (Months) only.\n//   • Service Item is DuplexLink → read via Filter Stage (Text) instead.\n// ⚠️ Per 2026-04-20 live test (rental-cron bugs #2, #4):\n//   • Lark Date READ = ms number → ใช้ dateStr() ไม่ใช่ txt().split('T')[0]\n//   • Lark Date WRITE = ms number → ใช้ toMs() ไม่ใช่ 'YYYY-MM-DD' string\n// Split → 1 item per T4 update.\n// ────────────────────────────────────────────\nconst res = $input.first().json;\nconst items = (res.data && res.data.items) || [];\nconst prevData = $('Prep Search T4 Refs').first().json;\nconst completedAt = prevData.completed_at || new Date().toISOString();\nconst token = prevData.lark_token;\n\nfunction numVal(v) {\n  if (typeof v === 'number') return v;\n  if (!v) return 0;\n  const n = Number(typeof v === 'string' ? v : (v.text || v.value || 0));\n  return isNaN(n) ? 0 : n;\n}\n\nfunction txt(v) {\n  if (v === null || v === undefined) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'number') return String(v);\n  if (v.text) return v.text;\n  if (Array.isArray(v) && v[0]) { const x = v[0]; return typeof x === 'string' ? x : (x.text || x.name || ''); }\n  return '';\n}\n\n// Lark Date field = Unix ms number. Convert to YYYY-MM-DD in Bangkok TZ.\nfunction dateStr(v) {\n  if (v === null || v === undefined || v === '') return '';\n  if (typeof v === 'number') {\n    const bkk = new Date(v + 7 * 3600 * 1000);\n    const yyyy = bkk.getUTCFullYear();\n    const mm = String(bkk.getUTCMonth() + 1).padStart(2, '0');\n    const dd = String(bkk.getUTCDate()).padStart(2, '0');\n    return yyyy + '-' + mm + '-' + dd;\n  }\n  const s = typeof v === 'string' ? v : txt(v);\n  if (!s) return '';\n  return s.split('T')[0].replace(/\\//g, '-');\n}\n\n// Lark Date write = ms timestamp (Bangkok midnight)\nfunction toMs(dateStrVal) {\n  if (!dateStrVal) return null;\n  return new Date(dateStrVal + 'T00:00:00+07:00').getTime();\n}\n\n// Calculate months between two YYYY-MM-DD dates (rounded)\nfunction monthsBetween(oldStr, newStr) {\n  if (!oldStr || !newStr) return 0;\n  const a = new Date(oldStr + 'T00:00:00');\n  const b = new Date(newStr + 'T00:00:00');\n  if (isNaN(a) || isNaN(b)) return 0;\n  const days = (b - a) / 86400000;\n  return Math.round(days / 30.44); // avg month length\n}\n\n// Parse JSON array from string, safely\nfunction parseIntervals(s) {\n  if (!s) return [];\n  try {\n    const arr = JSON.parse(typeof s === 'string' ? s : txt(s));\n    return Array.isArray(arr) ? arr.filter(n => typeof n === 'number') : [];\n  } catch(e) { return []; }\n}\n\nconst updates = items.map(it => {\n  const f = it.fields || {};\n  // Planned Interval is the template baseline + single source of truth for Formula.\n  // Default 3 months as sane fallback if template value missing.\n  const interval = numVal(f['Planned Interval (Months)']) || 3;\n  // completedAt อาจเป็น ISO ยาว → เอาเฉพาะวันที่ (server UTC ISO ยังใกล้พอสำหรับการคำนวณห่างเดือน)\n  const completedDate = completedAt.split('T')[0];\n\n  // ── Actual Interval Tracking ──\n  // oldLastDone = previous completion date (null on first run)\n  // ⚠️ Last Done Date เป็น Date field = ms number → dateStr() แปลงก่อน\n  const oldLastDone = dateStr(f['Last Done Date']);\n  const actualInterval = monthsBetween(oldLastDone, completedDate);\n\n  // Keep last 3 actual intervals as JSON array string (for trend analysis / override audit)\n  const prevIntervals = parseIntervals(txt(f['Last 3 Actual Intervals']));\n  let newIntervals = prevIntervals;\n  if (actualInterval > 0) {\n    newIntervals = [...prevIntervals, actualInterval].slice(-3);\n  }\n\n  // ⚠️ DO NOT write 'Next Due Date' — it's a Formula (silent-drop on write).\n  // Lark recomputes: Next Due Date = Last Done Date + Planned Interval (Months).\n  // ⚠️ Last Done Date เป็น Date field → write = ms (ไม่ใช่ 'YYYY-MM-DD' ไม่งั้น DatetimeFieldConvFail)\n  const updateFields = {\n    'Last Done Date': toMs(completedDate),\n    'Last 3 Actual Intervals': JSON.stringify(newIntervals)\n  };\n\n  return {\n    record_id: it.record_id,\n    stage_number: numVal(f['Stage Number']),\n    filter_name: txt(f['Filter Stage']),\n    old_last_done: oldLastDone,\n    new_last_done: completedDate,\n    interval: interval,\n    actual_interval: actualInterval,\n    last_3_actual: newIntervals,\n    lark_token: token,\n    updateBody: JSON.stringify({ fields: updateFields })\n  };\n}).filter(u => u.record_id);\n\nif (updates.length === 0) return [{ json: { t4_updated: 0 } }];\nreturn updates.map(u => ({ json: u }));"
       },
-      "id": "22939b9b-239e-499f-ac17-9a76d5e77fde",
+      "id": "bd5ea6ae-7854-42bd-ad39-320384bf13f3",
       "name": "Calc Next Due Dates",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        11664,
-        1936
+        7104,
+        4720
       ]
     },
     {
@@ -997,13 +1483,13 @@
         "body": "={{ $json.updateBody }}",
         "options": {}
       },
-      "id": "87b330d6-5cc0-4f7b-9d63-a324101e872e",
+      "id": "978cff32-3f1c-4ef7-943c-b49943aa09c7",
       "name": "Update T4 Next Due",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        11888,
-        1936
+        7328,
+        4720
       ]
     },
     {
@@ -1030,26 +1516,26 @@
         },
         "options": {}
       },
-      "id": "20a4113e-4925-4d79-9101-4346b20b97ae",
+      "id": "ba44b4ad-530d-48d8-9918-aa56ae362da3",
       "name": "If LINE Complete",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        14480,
-        816
+        9920,
+        3600
       ]
     },
     {
       "parameters": {
         "jsCode": "const src = $('Parse Complete Body').first().json;\nconst text = '✅ งานเสร็จเรียบร้อยแล้วครับ!\\n\\n📋 รหัสงาน: ' + src.job_id + '\\n👷 ช่าง: ' + src.tech_name + (src.parts_text ? '\\n🔧 อะไหล่: ' + src.parts_text : '') + (src.notes ? '\\n📝 หมายเหตุ: ' + src.notes : '') + '\\n\\nขอบคุณที่ใช้บริการ SK ICE นะครับ 🧊';\nreturn [{ json: { lineBody: JSON.stringify({ to: src.customer_line_id, messages: [{ type: 'text', text: text }] }) } }];"
       },
-      "id": "1ab27855-959d-4b04-b107-39005b37a016",
+      "id": "e28a0123-a2d2-4c26-8c20-d4b7e58d42f7",
       "name": "Prep LINE Complete",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        12160,
-        1936
+        7600,
+        4720
       ]
     },
     {
@@ -1077,26 +1563,26 @@
           }
         }
       },
-      "id": "87f57525-5ee7-4815-a84d-30e7f3efe4b8",
+      "id": "43471bd7-817a-43ba-a159-f6aada52c5dd",
       "name": "LINE Notify Complete",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        12400,
-        1936
+        7840,
+        4720
       ]
     },
     {
       "parameters": {
         "jsCode": "const src = $('Parse Complete Body').first().json;\nconst rawPhone = (src.customer_phone || '').replace(/\\D/g, '');\nconst recipient = rawPhone.startsWith('0') ? '66' + rawPhone.slice(1) : rawPhone;\nconst msg = 'SK ICE: งาน ' + src.job_id + ' เสร็จเรียบร้อยแล้วครับ ขอบคุณที่ใช้บริการ';\nreturn [{ json: { smsBody: JSON.stringify({ recipient, sender_name: 'SK-ICE', message: msg }) } }];"
       },
-      "id": "55925703-4bc6-47a3-b25d-28a8405bd417",
+      "id": "8a52a433-8fd0-4e75-b2d5-6e054b7498f4",
       "name": "Prep SMS Complete",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        12656,
-        1936
+        8096,
+        4720
       ]
     },
     {
@@ -1124,26 +1610,26 @@
           }
         }
       },
-      "id": "18027514-883b-410a-b0b3-85aab605c166",
+      "id": "f87ce101-f385-4129-920d-9ab2912753f3",
       "name": "SMS Notify Complete",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        12896,
-        1936
+        8336,
+        4720
       ]
     },
     {
       "parameters": {
         "jsCode": "// ────────────────────────────────────────────\n// Admin Notify (LINE group) — เพิ่ม 2026-04-20 จาก migration gps-done → complete-job\n// รวมข้อมูล Parts/Note ที่ complete-job มี (gps-done ไม่มี)\n// Admin LINE group ID: C40b37d81f4e199a7b7357537166a1efd\n// ────────────────────────────────────────────\nconst src = $('Parse Complete Body').first().json;\nconst text = '✅ งานเสร็จแล้ว!\\n\\n📋 รหัสงาน: ' + src.job_id + '\\n👷 ช่าง: ' + src.tech_name + '\\n🏪 ร้าน: ' + src.customer_name + (src.parts_text ? '\\n🔧 อะไหล่: ' + src.parts_text : '') + (src.notes ? '\\n📝 หมายเหตุ: ' + src.notes : '') + (src.photo_count ? '\\n📷 รูป: ' + src.photo_count + ' ใบ' : '');\nreturn [{ json: { adminBody: JSON.stringify({ to: 'C40b37d81f4e199a7b7357537166a1efd', messages: [{ type: 'text', text: text }] }) } }];"
       },
-      "id": "16b89dc4-1efb-4c7d-adbc-7dd616674e11",
+      "id": "25bc11a6-4abd-4065-89c8-13a5e4956df7",
       "name": "Prep Admin Complete",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        13152,
-        1936
+        8592,
+        4720
       ]
     },
     {
@@ -1171,13 +1657,13 @@
           }
         }
       },
-      "id": "c8996109-554b-4636-8930-8f396ad2e07b",
+      "id": "bd3b8870-e3d8-45f3-90b3-44dbe5951a39",
       "name": "Admin Notify Complete",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        13408,
-        1936
+        8848,
+        4720
       ]
     },
     {
@@ -1195,26 +1681,26 @@
           }
         }
       },
-      "id": "a1a6d1a1-b4f0-4ae4-bff5-dc785c688fcd",
+      "id": "5804570a-cad5-44b7-ac06-85f813f2b44f",
       "name": "Respond Complete",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        14080,
-        1936
+        9520,
+        4720
       ]
     },
     {
       "parameters": {
         "jsCode": "// Lark DM → 3 admins (Split pattern: return 3 items → HTTP auto-iterates)\nconst ADMIN_IDS = ['e5d154gc', 'eceffed6', 'a978af6f'];\nconst src = $('Parse Complete Body').first().json;\nconst token = $('Get Token [Complete]').first().json.tenant_access_token;\nconst text = '✅ งานเสร็จแล้ว!\\n\\n' +\n  '📋 รหัสงาน: ' + (src.job_id || '-') + '\\n' +\n  '👷 ช่าง: ' + (src.tech_name || '-') + '\\n' +\n  '🏪 ร้าน: ' + (src.customer_name || '-') +\n  (src.parts_text ? '\\n🔧 อะไหล่: ' + src.parts_text : '') +\n  (src.notes ? '\\n📝 หมายเหตุ: ' + src.notes : '') +\n  (src.photo_count ? '\\n📷 รูป: ' + src.photo_count + ' ใบ' : '');\nreturn ADMIN_IDS.map(id => ({\n  json: {\n    lark_token: token,\n    larkBody: JSON.stringify({\n      receive_id: id,\n      msg_type: 'text',\n      content: JSON.stringify({ text: text })\n    })\n  }\n}));"
       },
-      "id": "aa0eabf4-b2e1-4fad-883a-7f0ef4c0002a",
+      "id": "68cd7b77-bec4-48e0-b461-3bf18ecde806",
       "name": "Prep Lark DM [Complete]",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        13632,
-        1936
+        9072,
+        4720
       ]
     },
     {
@@ -1246,13 +1732,13 @@
           }
         }
       },
-      "id": "251c796e-d4c0-4dea-9348-a9490e192fa2",
+      "id": "306c4c49-b750-446b-a15a-d187632e117b",
       "name": "Lark DM Admin [Complete]",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        13856,
-        1936
+        9296,
+        4720
       ]
     },
     {
@@ -1261,13 +1747,13 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "ba8e6a67-0195-4e28-a1cb-749d47731080",
+      "id": "1b1a6302-f991-4d4c-a7b9-dacabc8f6e82",
       "name": "Webhook Get Bookings",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        9440,
-        2240
+        4880,
+        5024
       ],
       "webhookId": "get-bookings-webhook"
     },
@@ -1290,13 +1776,13 @@
         },
         "options": {}
       },
-      "id": "76e18e8c-7bf0-4548-aeea-1c84cdd27cce",
+      "id": "be298446-56e6-49c9-9ddc-f1f3cde46c36",
       "name": "Get Token [GB]",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        9664,
-        2240
+        5104,
+        5024
       ]
     },
     {
@@ -1318,26 +1804,26 @@
         "body": "{\"page_size\":500}",
         "options": {}
       },
-      "id": "effa8363-cde1-4c75-926d-b892e1d0d11c",
+      "id": "f8cdbc09-545a-4f2e-aeb4-462bcf1e73d4",
       "name": "Search T6 Bookings",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        9888,
-        2240
+        5328,
+        5024
       ]
     },
     {
       "parameters": {
         "jsCode": "const items = $input.first().json.data && $input.first().json.data.items ? $input.first().json.data.items : [];\nfunction txt(v) {\n  if (!v) return '';\n  if (typeof v === 'string') return v;\n  if (v.text) return v.text;\n  if (v.value) return v.value;\n  if (Array.isArray(v) && v[0]) return txt(v[0]);\n  return '';\n}\nfunction fromMs(ms) {\n  if (!ms) return '';\n  return new Date(ms).toISOString().split('T')[0];\n}\nconst bookings = items.map(r => {\n  const f = r.fields || {};\n  let editLog = [];\n  try { editLog = JSON.parse(txt(f['Edit Log']) || '[]'); } catch(e) {}\n  return {\n    booking_id:    r.record_id,\n    customer_name: txt(f['Customer Name']),\n    appoint_date:  fromMs(f['Appoint Date']),\n    sched_date:    fromMs(f['Sched Date']),\n    sched_time:    txt(f['Sched Time']),\n    job_type:      txt(f['Job Type']),\n    priority:      txt(f['Priority']) || 'Med',\n    tech_name:     txt(f['Tech Name']),\n    notes:         txt(f['Notes']),\n    status:        txt(f['Status']) || 'active',\n    cancel_reason: txt(f['Cancel Reason']),\n    notify_date:   fromMs(f['Notify Date']),\n    created_by:    txt(f['Created By']),\n    created_at:    txt(f['Created At']),\n    edit_log:      editLog\n  };\n});\nreturn [{ json: bookings }];"
       },
-      "id": "4787d4f0-6cb2-4f9e-9285-b8845eab0957",
+      "id": "b8de3319-41b3-412c-8f51-b5d00f064d95",
       "name": "Format Bookings",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        10112,
-        2240
+        5552,
+        5024
       ]
     },
     {
@@ -1359,13 +1845,13 @@
           }
         }
       },
-      "id": "7ef25215-5b32-4f10-9d25-b393cf5dacfc",
+      "id": "1abfef5d-57a7-4a97-8b6a-4b1163e8b0b5",
       "name": "Respond Bookings",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        10320,
-        2240
+        5760,
+        5024
       ]
     },
     {
@@ -1375,13 +1861,13 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "51f1c66f-c298-4e4c-928e-054904479d23",
+      "id": "95f424e8-d27f-4a67-a2ac-4a2552168f4c",
       "name": "Webhook Create Booking",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        9440,
-        2512
+        4880,
+        5296
       ],
       "webhookId": "create-booking-webhook"
     },
@@ -1404,26 +1890,26 @@
         },
         "options": {}
       },
-      "id": "fef745a0-0005-45ee-99ad-0e0f95043eab",
+      "id": "314aaec0-b2c6-42a2-87f0-bfe658bd204b",
       "name": "Get Token [CB]",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        9664,
-        2512
+        5104,
+        5296
       ]
     },
     {
       "parameters": {
         "jsCode": "const token = $input.first().json.tenant_access_token;\nconst body = $('Webhook Create Booking').first().json.body || $('Webhook Create Booking').first().json;\nfunction toMs(dateStr) { if (!dateStr) return null; return new Date(dateStr + 'T00:00:00').getTime(); }\nconst fields = {};\nif (body.customer_name) fields['Customer Name'] = body.customer_name;\nif (body.appoint_date)  fields['Appoint Date']  = toMs(body.appoint_date);\nif (body.sched_date)    fields['Sched Date']    = toMs(body.sched_date);\nif (body.sched_time)    fields['Sched Time']    = body.sched_time;\nif (body.job_type)      fields['Job Type']      = body.job_type;\nif (body.priority)      fields['Priority']      = body.priority;\nif (body.tech_name)     fields['Tech Name']     = body.tech_name;\nif (body.notes)         fields['Notes']         = body.notes;\nfields['Status']      = 'active';\nif (body.notify_date)   fields['Notify Date']   = toMs(body.notify_date);\nfields['Created By']  = body.created_by || 'Admin';\nfields['Created At']  = new Date().toISOString();\nfields['Edit Log']    = '[]';\nreturn [{ json: { lark_token: token, createBody: JSON.stringify({ fields }) } }];"
       },
-      "id": "80bd6a09-eb6d-479d-820f-9b8a11eb0f54",
+      "id": "4aabf76d-915e-4a4b-9998-f5f125d1871e",
       "name": "Prep T6 Body",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        9888,
-        2512
+        5328,
+        5296
       ]
     },
     {
@@ -1445,13 +1931,13 @@
         "body": "={{ $json.createBody }}",
         "options": {}
       },
-      "id": "a5d80a6a-0d98-4615-b569-aa720dea3b48",
+      "id": "5a410ae4-5058-440d-865a-10bd0fce8945",
       "name": "Create T6 Record",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        10112,
-        2512
+        5552,
+        5296
       ]
     },
     {
@@ -1469,13 +1955,13 @@
           }
         }
       },
-      "id": "c7c82138-c5cd-416b-b305-f940c17354f5",
+      "id": "4b131906-1dd8-4765-aa5a-ebf708a810db",
       "name": "Respond Booking Created",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        10320,
-        2512
+        5760,
+        5296
       ]
     },
     {
@@ -1485,13 +1971,13 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "46714ae0-2ba6-4743-8b8b-fd38f026bbbf",
+      "id": "b11c1c88-8da7-43f7-b32a-395749b6aecb",
       "name": "Webhook Edit Booking",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        9440,
-        2800
+        4880,
+        5584
       ],
       "webhookId": "edit-booking-webhook"
     },
@@ -1499,13 +1985,13 @@
       "parameters": {
         "jsCode": "const b = $input.first().json.body || $input.first().json;\nreturn [{ json: { booking_id: b.booking_id || '', sched_date: b.sched_date || '', sched_time: b.sched_time || '', tech_name: b.tech_name || '', notify_date: b.notify_date || '', edit_reason: b.edit_reason || '', edited_by: b.edited_by || 'Admin', edited_at: b.edited_at || new Date().toISOString() } }];"
       },
-      "id": "88238071-2704-4a6f-9271-dc106be157ef",
+      "id": "297f3fe2-100b-4cc8-85fc-e2c206e00130",
       "name": "Parse Edit Body",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        9664,
-        2800
+        5104,
+        5584
       ]
     },
     {
@@ -1527,13 +2013,13 @@
         },
         "options": {}
       },
-      "id": "f3805644-de91-4f0d-b80e-75be098bfb2c",
+      "id": "872e6600-3820-4ff1-9d41-fb48f6d85dd2",
       "name": "Get Token [EB]",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        9888,
-        2800
+        5328,
+        5584
       ]
     },
     {
@@ -1550,26 +2036,26 @@
         },
         "options": {}
       },
-      "id": "971c4c9c-f859-4045-9e7f-af0a85e1faa8",
+      "id": "9158fc41-2756-46f8-a3b9-6dedfd39852e",
       "name": "Get T6 Record",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        10112,
-        2800
+        5552,
+        5584
       ]
     },
     {
       "parameters": {
         "jsCode": "const rec = $input.first().json.data && $input.first().json.data.record ? $input.first().json.data.record : {};\nconst body = $('Parse Edit Body').first().json;\nconst token = $('Get Token [EB]').first().json.tenant_access_token;\nconst f = rec.fields || {};\nfunction txt(v) { if (!v) return ''; if (typeof v === 'string') return v; if (v.text) return v.text; return ''; }\nfunction toMs(d) { if (!d) return null; return new Date(d + 'T00:00:00').getTime(); }\nlet editLog = [];\ntry { editLog = JSON.parse(txt(f['Edit Log']) || '[]'); } catch(e) {}\neditLog.push({ edited_by: body.edited_by, edited_at: body.edited_at, edit_reason: body.edit_reason });\nconst fields = {};\nif (body.sched_date)  fields['Sched Date']  = toMs(body.sched_date);\nif (body.sched_time)  fields['Sched Time']  = body.sched_time;\nif (body.tech_name)   fields['Tech Name']   = body.tech_name;\nif (body.notify_date) fields['Notify Date'] = toMs(body.notify_date);\nfields['Edit Log'] = JSON.stringify(editLog);\nreturn [{ json: { lark_token: token, booking_id: body.booking_id, updateBody: JSON.stringify({ fields }) } }];"
       },
-      "id": "32995be4-6285-466f-8c2b-cbd7d42ead04",
+      "id": "3f9f0f8d-ad96-4f00-858b-2c882d0065b2",
       "name": "Merge Edit Log",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        10320,
-        2800
+        5760,
+        5584
       ]
     },
     {
@@ -1591,13 +2077,13 @@
         "body": "={{ $json.updateBody }}",
         "options": {}
       },
-      "id": "5a0e1612-683f-4f26-b145-e11d46a4213c",
+      "id": "0228fd4e-c3ec-4f63-a45d-0813f9b26c0b",
       "name": "Update T6 Record",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        10544,
-        2800
+        5984,
+        5584
       ]
     },
     {
@@ -1615,13 +2101,13 @@
           }
         }
       },
-      "id": "00b5022f-c42d-49c9-8a68-096baf89e3a8",
+      "id": "1cf624fc-32dc-405b-a695-a0f3d97a3c3e",
       "name": "Respond Edit",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        10768,
-        2800
+        6208,
+        5584
       ]
     },
     {
@@ -1631,13 +2117,13 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "1067c5ac-2979-4a82-a7f0-21a987f7f7e5",
+      "id": "521f5e13-d2da-4c56-b44a-cc2687410b2b",
       "name": "Webhook Cancel Booking",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        9440,
-        3072
+        4880,
+        5856
       ],
       "webhookId": "cancel-booking-webhook"
     },
@@ -1645,13 +2131,13 @@
       "parameters": {
         "jsCode": "const b = $input.first().json.body || $input.first().json;\nreturn [{ json: { booking_id: b.booking_id || '', cancel_reason: b.cancel_reason || '', cancelled_by: b.cancelled_by || 'Admin', cancelled_at: b.cancelled_at || new Date().toISOString() } }];"
       },
-      "id": "82fcd33f-9256-4ecb-adf5-f47d7f3adbf2",
+      "id": "b8e7c295-2857-4106-b4c1-8ec76b68a8c6",
       "name": "Parse Cancel Body",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        9664,
-        3072
+        5104,
+        5856
       ]
     },
     {
@@ -1673,26 +2159,26 @@
         },
         "options": {}
       },
-      "id": "e4112bca-8802-4375-8ed8-3c4c79f00272",
+      "id": "0f755230-a333-4811-96a1-862cf3889fa3",
       "name": "Get Token [XB]",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        9888,
-        3072
+        5328,
+        5856
       ]
     },
     {
       "parameters": {
         "jsCode": "const token = $input.first().json.tenant_access_token;\nconst body = $('Parse Cancel Body').first().json;\nconst fields = { 'Status': 'cancelled', 'Cancel Reason': body.cancel_reason, 'Cancelled By': body.cancelled_by, 'Cancelled At': body.cancelled_at };\nreturn [{ json: { lark_token: token, booking_id: body.booking_id, updateBody: JSON.stringify({ fields }) } }];"
       },
-      "id": "a51907b5-4f13-458e-a5c2-f71ce57e8ee5",
+      "id": "38f05cee-4a02-4b40-a224-125dccb874a2",
       "name": "Prep Cancel Fields",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        10112,
-        3072
+        5552,
+        5856
       ]
     },
     {
@@ -1714,13 +2200,13 @@
         "body": "={{ $json.updateBody }}",
         "options": {}
       },
-      "id": "364f30cc-093f-4ec7-9eb8-35f32cd37e0f",
+      "id": "dd796e7c-095f-4579-bca9-be94f6d8de78",
       "name": "Cancel T6 Record",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        10352,
-        3072
+        5792,
+        5856
       ]
     },
     {
@@ -1738,13 +2224,13 @@
           }
         }
       },
-      "id": "a8424e53-85a5-41b6-af79-5fa4389d9fa7",
+      "id": "1632c525-f510-454b-872d-2dd0eb9c25ba",
       "name": "Respond Cancel",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        10592,
-        3072
+        6032,
+        5856
       ]
     },
     {
@@ -1757,12 +2243,12 @@
           ]
         }
       },
-      "id": "f7905e61-e02b-4c4b-9194-6fb9f3ffba00",
+      "id": "aef1a11e-b6a8-418a-a793-f204f7a99c0b",
       "name": "⏰ Poll Every 5 Min",
       "type": "n8n-nodes-base.scheduleTrigger",
       "position": [
-        9440,
-        3360
+        4880,
+        6144
       ],
       "typeVersion": 1.2
     },
@@ -1775,12 +2261,12 @@
         "jsonBody": "={\"app_id\":\"cli_a9500a1d84f89e18\",\"app_secret\":\"GfKOk3vVSU4WwtXJKZEmHb2Q51JDOLgp\"}",
         "options": {}
       },
-      "id": "0738c488-a948-4173-a857-0b28b6f78d02",
+      "id": "622f4f81-849d-45b9-ad67-b3fac3919672",
       "name": "🔑 Get Lark Token",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        9680,
-        3360
+        5120,
+        6144
       ],
       "typeVersion": 4.1
     },
@@ -1802,12 +2288,12 @@
         "jsonBody": "{\n  \"filter\": {\n    \"conjunction\": \"and\",\n    \"conditions\": [\n      {\n        \"field_name\": \"Status\",\n        \"operator\": \"is\",\n        \"value\": [\"นัดแล้ว\"]\n      },\n      {\n        \"field_name\": \"Tech Notified At\",\n        \"operator\": \"isEmpty\",\n        \"value\": []\n      }\n    ]\n  },\n  \"page_size\": 20\n}",
         "options": {}
       },
-      "id": "7603852c-f382-4ad9-a85b-1abb02a1f0bd",
+      "id": "dc27d77f-7955-416c-bfce-365a89c767ea",
       "name": "📋 Read T5 Scheduled Jobs",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        9952,
-        3360
+        5392,
+        6144
       ],
       "typeVersion": 4.1
     },
@@ -1815,12 +2301,12 @@
       "parameters": {
         "jsCode": "const input = $input.first().json;\nconst items = input.data?.items || [];\n\nif (items.length === 0) {\n  return [{ json: { _no_jobs: true } }];\n}\n\nconst txt = (v) => {\n  if (!v) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'number') return String(v);\n  if (v.value !== undefined && Array.isArray(v.value)) {\n    if (v.value.length === 0) return '';\n    const first = v.value[0];\n    if (typeof first === 'string') return first;\n    if (first?.text) return first.text;\n    if (first?.name) return first.name;\n  }\n  if (Array.isArray(v)) {\n    if (v.length === 0) return '';\n    const first = v[0];\n    if (typeof first === 'string') return first;\n    if (first?.text) return first.text;\n    if (first?.name) return first.name;\n  }\n  if (v.text) return v.text;\n  if (v.name) return v.name;\n  return '';\n};\n\nreturn items.map(item => {\n  const f = item.fields || {};\n  return {\n    json: {\n      record_id: item.record_id,\n      job_no: txt(f['Job No.']),\n      shop_name: txt(f['Shop Name']),\n      job_type: txt(f['Job Type']),\n      priority: txt(f['Priority']),\n      problem: txt(f['Problem Summary']),\n      scheduled_date: txt(f['Scheduled Date']),\n      tech_name: txt(f['Tech Name']),\n      tech_phone: txt(f['Staff Phone']),\n      tech_line_id: txt(f['Tech Line ID']),\n      tech_lark_id: txt(f['Tech Lark ID']),\n      assigned_tech: txt(f['Assigned Technician']),\n      google_maps: txt(f['Google Maps URL']),\n      machine_type: txt(f['Machine 1 Type']),\n      filter_system: txt(f['Filter System 1'])\n    }\n  };\n});\n"
       },
-      "id": "67a67e2b-c761-4a11-a88b-7e62c8201d94",
+      "id": "2890febf-3cdc-4077-b8bf-6862f2b43b17",
       "name": "⚙️ Extract Job Data",
       "type": "n8n-nodes-base.code",
       "position": [
-        10192,
-        3360
+        5632,
+        6144
       ],
       "typeVersion": 2
     },
@@ -1852,22 +2338,22 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        10432,
-        3360
+        5872,
+        6144
       ],
-      "id": "3cf8d560-07bd-4f3f-b11f-21f97c594626",
+      "id": "279d05d6-1d3d-49b0-8c60-6050648c16b7",
       "name": "If"
     },
     {
       "parameters": {
         "jsCode": "const j = $json;\nconst token = $('🔑 Get Lark Token').first().json.tenant_access_token;\n\nconst msg = `🔧 งานใหม่!\\n` +\n  `📋 ${j.job_no}\\n` +\n  `🏪 ${j.shop_name}\\n` +\n  `⚠️ ${j.problem || j.job_type}\\n` +\n  `📅 ${j.scheduled_date}\\n` +\n  `🎯 Priority: ${j.priority}\\n` +\n  (j.machine_type ? `🧊 ${j.machine_type}\\n` : '') +\n  (j.filter_system ? `💧 กรอง: ${j.filter_system}\\n` : '') +\n  (j.google_maps ? `📍 ${j.google_maps}` : '');\n\nconst techLineBody = JSON.stringify({\n  to: j.tech_line_id,\n  messages: [{ type: 'text', text: msg }]\n});\n\nconst techLarkBody = JSON.stringify({\n  receive_id: j.tech_lark_id,\n  msg_type: 'text',\n  content: JSON.stringify({ text: msg })\n});\n\nconst phone = (j.tech_phone || '').replace(/[-\\s]/g, '').replace(/^0/, '');\nconst techSmsBody = JSON.stringify({\n  recipient: '66' + phone,\n  sender_name: 'SK-ICE',\n  message: `SK ICE: งานใหม่ ${j.job_no} ร้าน${j.shop_name} ${j.scheduled_date}`\n});\n\nreturn [{ json: { \n  ...j, \n  tech_msg: msg, \n  tech_has_line: !!j.tech_line_id,\n  tech_has_lark: !!j.tech_lark_id,\n  lark_token: token,\n  techLineBody,\n  techLarkBody,\n  techSmsBody\n} }];\n"
       },
-      "id": "ca74c075-ab8f-4388-94a5-824369c10642",
+      "id": "10d30cbd-77ba-4f80-8495-a1559a1ba273",
       "name": "💬 Build Tech Message",
       "type": "n8n-nodes-base.code",
       "position": [
-        10720,
-        3344
+        6160,
+        6128
       ],
       "typeVersion": 2
     },
@@ -1902,10 +2388,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        10944,
-        3344
+        6384,
+        6128
       ],
-      "id": "1c0f24bc-c605-446c-a011-8fc55943cb9c",
+      "id": "722574d1-88ef-4701-b049-af3574c60642",
       "name": "📲 Lark → Tech"
     },
     {
@@ -1936,12 +2422,12 @@
           }
         }
       },
-      "id": "906a30c8-d517-48fa-8fd9-ac54ec39a2b2",
+      "id": "7550841d-3790-4553-96b4-98eb429f7b38",
       "name": "📱 LINE → Tech",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        11200,
-        3344
+        6640,
+        6128
       ],
       "typeVersion": 4.1
     },
@@ -1969,12 +2455,12 @@
           }
         }
       },
-      "id": "d967ebc8-d5a9-427a-b145-e0ee7162e133",
+      "id": "5c1ae4d5-e44a-47a6-815d-c4f1212a143f",
       "name": "📨 SMS → Tech",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        11488,
-        3344
+        6928,
+        6128
       ],
       "typeVersion": 4.1
     },
@@ -1982,12 +2468,12 @@
       "parameters": {
         "jsCode": "const job = $('⚙️ Extract Job Data').first().json;\nconst markBody = JSON.stringify({\n  fields: { 'Tech Notified At': Date.now() }\n});\nreturn [{ json: { record_id: job.record_id, markBody } }];\n"
       },
-      "id": "2a65f93c-e07d-4b84-9e01-d241cc6545a9",
+      "id": "020b4339-1c5a-4c89-ae8a-91ddfafca153",
       "name": "🔄 Prep Mark Tech",
       "type": "n8n-nodes-base.code",
       "position": [
-        11760,
-        3344
+        7200,
+        6128
       ],
       "typeVersion": 2
     },
@@ -2009,12 +2495,12 @@
         "jsonBody": "={{ $json.markBody }}",
         "options": {}
       },
-      "id": "1928c0f5-cc0a-46eb-8f26-b1e61fca9a18",
+      "id": "3b8f331c-a026-4d67-8821-c18139925836",
       "name": "✅ Mark Notified Tech",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        12032,
-        3344
+        7472,
+        6128
       ],
       "typeVersion": 4.1
     },
@@ -2028,12 +2514,12 @@
           ]
         }
       },
-      "id": "853a5583-5c57-463d-a9fa-916f5ce1e92c",
+      "id": "1cf93840-be13-444f-a22f-9d144ad4aa13",
       "name": "⏰ Poll Every 5 Min1",
       "type": "n8n-nodes-base.scheduleTrigger",
       "position": [
-        9440,
-        3632
+        4880,
+        6416
       ],
       "typeVersion": 1.2
     },
@@ -2046,12 +2532,12 @@
         "jsonBody": "={\"app_id\":\"cli_a9500a1d84f89e18\",\"app_secret\":\"GfKOk3vVSU4WwtXJKZEmHb2Q51JDOLgp\"}",
         "options": {}
       },
-      "id": "382a2acc-df0d-4a15-931c-e695d7bc4d6a",
+      "id": "bd616c36-8ff4-4cf5-bd8c-0a1dc80035cc",
       "name": "🔑 Get Lark Token1",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        9680,
-        3632
+        5120,
+        6416
       ],
       "typeVersion": 4.1
     },
@@ -2073,12 +2559,12 @@
         "jsonBody": "={\n  \"filter\": {\n    \"conjunction\": \"and\",\n    \"conditions\": [\n      {\n        \"field_name\": \"Status\",\n        \"operator\": \"is\",\n        \"value\": [\"กำลังไป\"]\n      },\n      {\n        \"field_name\": \"Customer Notified - OnWay\",\n        \"operator\": \"isEmpty\",\n        \"value\": []\n      }\n    ]\n  },\n  \"page_size\": 20\n}\n",
         "options": {}
       },
-      "id": "2eb831e3-d6bf-4500-86d2-86130ed500dc",
+      "id": "17d52e35-08a2-476f-8d2c-0f56cc843660",
       "name": "📋 Read T5 OnWay Jobs",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        9952,
-        3632
+        5392,
+        6416
       ],
       "typeVersion": 4.1
     },
@@ -2086,12 +2572,12 @@
       "parameters": {
         "jsCode": "const input = $input.first().json;\nconst items = input.data?.items || [];\n\nif (items.length === 0) {\n  return [{ json: { _no_jobs: true } }];\n}\n\nconst txt = (v) => {\n  if (!v) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'number') return String(v);\n  if (v.value !== undefined && Array.isArray(v.value)) {\n    if (v.value.length === 0) return '';\n    const first = v.value[0];\n    if (typeof first === 'string') return first;\n    if (first?.text) return first.text;\n    if (first?.name) return first.name;\n  }\n  if (Array.isArray(v)) {\n    if (v.length === 0) return '';\n    const first = v[0];\n    if (typeof first === 'string') return first;\n    if (first?.text) return first.text;\n    if (first?.name) return first.name;\n  }\n  if (v.text) return v.text;\n  if (v.name) return v.name;\n  return '';\n};\n\nreturn items.map(item => {\n  const f = item.fields || {};\n  return {\n    json: {\n      record_id: item.record_id,\n      job_no: txt(f['Job No.']),\n      shop_name: txt(f['Shop Name']),\n      job_type: txt(f['Job Type']),\n      priority: txt(f['Priority']),\n      scheduled_date: txt(f['Scheduled Date']),\n      tech_name: txt(f['Tech Name']),\n      tech_phone: txt(f['Staff Phone']),\n      google_maps: txt(f['Google Maps URL']),\n      machine_type: txt(f['Machine 1 Type']),\n      customer_line_id: txt(f['C.LINE User ID']),\n      customer_phone: txt(f['Customer Phone 1']),\n      has_line: !!txt(f['C.LINE User ID'])\n    }\n  };\n});\n"
       },
-      "id": "40c66ffd-5e5a-4bea-b4d2-1c628ddd4c84",
+      "id": "e2afd03e-2713-4088-80e0-3c00df6fdf86",
       "name": "⚙️ Extract Job Data1",
       "type": "n8n-nodes-base.code",
       "position": [
-        10192,
-        3632
+        5632,
+        6416
       ],
       "typeVersion": 2
     },
@@ -2123,10 +2609,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        10448,
-        3632
+        5888,
+        6416
       ],
-      "id": "f2e320bd-ce6f-473f-8d23-b0462229abb6",
+      "id": "c0ef5b20-6a94-4234-864d-770e0b4e023a",
       "name": "If1"
     },
     {
@@ -2147,12 +2633,12 @@
         "jsonBody": "={\n  \"filter\": {\n    \"conjunction\": \"and\",\n    \"conditions\": [\n      {\n        \"field_name\": \"Shop Name\",\n        \"operator\": \"is\",\n        \"value\": [\"{{ $json.shop_name }}\"]\n      }\n    ]\n  },\n  \"page_size\": 1\n}",
         "options": {}
       },
-      "id": "6bf76de4-f9fd-447b-b869-14c25538ed46",
+      "id": "15a6fcd6-afd4-4dfe-8f44-36d23479eb31",
       "name": "👤 Read T1 Customer",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        10720,
-        3616
+        6160,
+        6400
       ],
       "typeVersion": 4.1
     },
@@ -2160,12 +2646,12 @@
       "parameters": {
         "jsCode": "const job = $('⚙️ Extract Job Data1').item.json;\nconst t1 = $input.first().json;\nconst cust = t1.data?.items?.[0]?.fields || {};\n\nconst txt = (v) => {\n  if (!v) return '';\n  if (typeof v === 'string') return v;\n  if (Array.isArray(v) && v[0]?.text) return v[0].text;\n  if (v.text) return v.text;\n  return String(v);\n};\n\nconst line_uid = txt(cust['C.LINE User ID']);\nconst phone = txt(cust['Customer Phone 1']);\nconst contact = txt(cust['Customer Contact 1']);\n\nconst msg = `สวัสดีค่ะ คุณ${contact} 🙏\\n` +\n  `แจ้งจาก SK ICE:\\n` +\n  `ช่าง${job.tech_name} กำลังเดินทางไปบริการ\\n` +\n  `📋 ${job.job_type}\\n` +\n  `📅 ${job.scheduled_date}\\n` +\n  `☎️ โทรช่างได้ที่ ${job.tech_phone}\\n` +\n  `หากต้องการเลื่อนนัด กรุณาแจ้งล่วงหน้าค่ะ`;\n\nconst custLineBody = JSON.stringify({\n  to: line_uid,\n  messages: [{ type: 'text', text: msg }]\n});\n\nconst phoneClean = phone ? '66' + phone.replace(/[-\\s]/g, '').replace(/^0/, '') : '';\nconst custSmsBody = JSON.stringify({\n  recipient: phoneClean,\n  sender_name: 'SK-ICE',\n  message: `SK ICE: ช่าง${job.tech_name} กำลังเดินทางไปบริการร้าน${job.shop_name} โทร ${job.tech_phone}`\n});\n\nreturn [{\n  json: {\n    ...job,\n    cust_line_uid: line_uid,\n    cust_phone: phone,\n    cust_contact: contact,\n    cust_msg: msg,\n    cust_has_line: !!line_uid,\n    custLineBody,\n    custSmsBody\n  }\n}];"
       },
-      "id": "b08b9d1a-0839-4a2a-bc8c-3a20ab0f8442",
+      "id": "2986eea2-8c4b-42c8-baa8-a53bb54404e8",
       "name": "💬 Build Customer Message",
       "type": "n8n-nodes-base.code",
       "position": [
-        10944,
-        3616
+        6384,
+        6400
       ],
       "typeVersion": 2
     },
@@ -2197,12 +2683,12 @@
           }
         }
       },
-      "id": "9a2b90de-43e9-4773-ac4c-0dcd145e2a18",
+      "id": "2262f4c6-1363-4104-bf1d-44bebb389fa6",
       "name": "📱 LINE → Customer",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        11200,
-        3616
+        6640,
+        6400
       ],
       "typeVersion": 4.1
     },
@@ -2230,12 +2716,12 @@
           }
         }
       },
-      "id": "b807b615-703d-4d42-8e76-59991a348bc6",
+      "id": "a009586f-9d21-40d6-a0fb-e1af18e368d8",
       "name": "📨 SMS → Customer",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        11488,
-        3616
+        6928,
+        6400
       ],
       "typeVersion": 4.1
     },
@@ -2243,12 +2729,12 @@
       "parameters": {
         "jsCode": "const job = $('💬 Build Customer Message').first().json;\nconst markBody = JSON.stringify({\n  fields: { 'Customer Notified - OnWay': Date.now() }\n});\nreturn [{ json: { record_id: job.record_id, markBody } }];\n"
       },
-      "id": "ead35844-e528-4481-aea2-a58f564a9bea",
+      "id": "b25d973a-985b-42df-b6a7-690c0e97f993",
       "name": "🔄 Prep Mark Customer",
       "type": "n8n-nodes-base.code",
       "position": [
-        11776,
-        3616
+        7216,
+        6400
       ],
       "typeVersion": 2
     },
@@ -2270,12 +2756,12 @@
         "jsonBody": "={{ $json.markBody }}",
         "options": {}
       },
-      "id": "683fad4b-db80-4bfe-96ec-5ab2de753ded",
+      "id": "2095945c-807b-43a4-970c-10a56c24a78f",
       "name": "✅ Mark Notified Customer",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        12048,
-        3616
+        7488,
+        6400
       ],
       "typeVersion": 4.1
     },
@@ -2289,13 +2775,13 @@
           ]
         }
       },
-      "id": "89733731-c342-4282-aa4d-3f38cfba8932",
+      "id": "17e26bf6-adfb-4ced-9efd-5bf0ff8e7a0b",
       "name": "Cron Daily T4 Init",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
       "position": [
-        9440,
-        -288
+        4896,
+        2080
       ],
       "disabled": true
     },
@@ -2306,13 +2792,13 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "b5b9df94-c48c-47c0-8477-2850028eff57",
+      "id": "9e284e84-1b43-4821-9d37-e644847b3851",
       "name": "Webhook Init CarePlan",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        9440,
-        -16
+        4896,
+        2352
       ],
       "webhookId": "init-careplan-webhook",
       "disabled": true
@@ -2321,13 +2807,13 @@
       "parameters": {
         "jsCode": "// ────────────────────────────────────────────\n// Auth check + Parse incoming body\n// Expected: { machine_record_id: 'recXXX', install_date_override?: 'YYYY-MM-DD' }\n// ────────────────────────────────────────────\nconst VALID_TOKEN = 'sk-ice-api-v3-2026';\n\nconst raw = $input.first().json;\nconst headers = raw.headers || {};\nconst query = raw.query || {};\nconst token = headers['x-api-key'] || headers['X-API-Key'] || headers['X-Api-Key'] || query.token || '';\n\nif (token !== VALID_TOKEN) {\n  return [{ json: { __error: true, __unauthorized: true, message: 'Unauthorized' } }];\n}\n\nconst body = raw.body || raw;\nconst machine_record_id = body.machine_record_id || body.machine_id || '';\nconst install_date_override = body.install_date_override || '';\n\nif (!machine_record_id) {\n  return [{ json: { __error: true, message: 'machine_record_id is required' } }];\n}\n\nreturn [{ json: { machine_record_id, install_date_override } }];"
       },
-      "id": "52600725-07cf-4d3e-9dcd-2f35b9889123",
+      "id": "b4fcbde9-b594-4122-93e2-1f65ea056e74",
       "name": "Parse Init Body",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        9664,
-        -16
+        5120,
+        2352
       ]
     },
     {
@@ -2354,13 +2840,13 @@
         },
         "options": {}
       },
-      "id": "a53ec1a7-cf6d-492f-903d-999efa64901a",
+      "id": "5380035e-c12e-4867-af1f-20db36a9cb95",
       "name": "If Valid Input",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        9888,
-        -16
+        5344,
+        2352
       ]
     },
     {
@@ -2371,13 +2857,13 @@
           "responseCode": "={{ $('Parse Init Body').first().json.__unauthorized ? 401 : 400 }}"
         }
       },
-      "id": "68ef17db-cf7a-4b35-8bdf-3c1c1f1f8755",
+      "id": "fcdf07c8-7ce4-4d0c-8189-fc3979c81c9f",
       "name": "Respond 400",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        10208,
-        0
+        5664,
+        2368
       ]
     },
     {
@@ -2399,26 +2885,26 @@
         },
         "options": {}
       },
-      "id": "46c174a2-eaff-42d1-8a13-cf8edee9d5ab",
+      "id": "09a496ef-12cd-4c08-a32f-d374ada2fdd1",
       "name": "Get Lark Token",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        10208,
-        -288
+        5664,
+        2080
       ]
     },
     {
       "parameters": {
         "jsCode": "// ────────────────────────────────────────────\n// Prep: Fetch T2 Machine record by record_id\n// ────────────────────────────────────────────\nconst token = $input.first().json.tenant_access_token;\nconst initData = $('Parse Init Body').first().json;\n\nreturn [{ json: {\n  lark_token: token,\n  machine_record_id: initData.machine_record_id,\n  install_date_override: initData.install_date_override\n} }];"
       },
-      "id": "4286839e-747c-4535-96ee-e2824078a45b",
+      "id": "e83bd2be-f9b3-4c30-8d6f-e21df4dd5c6e",
       "name": "Prep Fetch T2",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        10416,
-        -288
+        5872,
+        2080
       ]
     },
     {
@@ -2435,26 +2921,26 @@
         },
         "options": {}
       },
-      "id": "722ab669-b095-4e67-897f-9f0e2adfdfdc",
+      "id": "ea586d26-bcdc-49a5-bfe9-cd4b2a6f68e7",
       "name": "Fetch T2 Machine",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        10640,
-        -288
+        6096,
+        2080
       ]
     },
     {
       "parameters": {
         "jsCode": "// ────────────────────────────────────────────\n// Parse T2 + Select Template\n// ────────────────────────────────────────────\nconst res = $input.first().json;\nconst prevData = $('Prep Fetch T2').first().json;\n\nif (!res.data || !res.data.record) {\n  return [{ json: { __error: true, message: 'T2 record not found: ' + prevData.machine_record_id } }];\n}\n\nconst f = res.data.record.fields || {};\nconst machine_record_id = prevData.machine_record_id;\nconst lark_token = prevData.lark_token;\nconst install_date_override = prevData.install_date_override;\n\nfunction txt(v) {\n  if (v === null || v === undefined) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'number') return String(v);\n  if (v.text) return v.text;\n  if (v.value && typeof v.value === 'string') return v.value;\n  if (Array.isArray(v) && v[0]) {\n    const x = v[0];\n    return typeof x === 'string' ? x : (x.text || x.name || x.value || '');\n  }\n  return '';\n}\n\n// Lark Date field = Unix ms number. Convert to YYYY-MM-DD in Bangkok TZ.\nfunction dateStr(v) {\n  if (v === null || v === undefined || v === '') return '';\n  if (typeof v === 'number') {\n    const bkk = new Date(v + 7 * 3600 * 1000);\n    const yyyy = bkk.getUTCFullYear();\n    const mm = String(bkk.getUTCMonth() + 1).padStart(2, '0');\n    const dd = String(bkk.getUTCDate()).padStart(2, '0');\n    return yyyy + '-' + mm + '-' + dd;\n  }\n  const s = typeof v === 'string' ? v : txt(v);\n  if (!s) return '';\n  return s.split('T')[0].replace(/\\//g, '-');\n}\n\n// Bangkok-aware today (for fallback when Install date empty)\nfunction bkkTodayStr() {\n  const bkk = new Date(new Date().getTime() + 7 * 3600 * 1000);\n  const yyyy = bkk.getUTCFullYear();\n  const mm = String(bkk.getUTCMonth() + 1).padStart(2, '0');\n  const dd = String(bkk.getUTCDate()).padStart(2, '0');\n  return yyyy + '-' + mm + '-' + dd;\n}\n\nconst shopName      = txt(f['Shop Name']);\nconst machineCode   = txt(f['Machine Code']);\nconst ownershipRaw  = txt(f['Ownership Type']);\nconst filterSystem1 = txt(f['Filter System 1']);\nconst customerRaw   = txt(f['Customer']);\n\n// ─── Determine rental vs sale ───\n// NOTE: Rental/Sale = billing model only (Included in Rental? flag),\n//       physical interval = material chemistry (independent of contract).\nconst isRental = ownershipRaw === 'เช่า' || ownershipRaw.toLowerCase().includes('rental');\n\n// ─── Determine stage count from Filter System ───\n// '3 ขั้นตอน' → 3, '5 ขั้นตอน' → 5, else → 6\nconst stageMatch = (filterSystem1 || '').match(/(\\d+)/);\nconst maxStage = stageMatch ? parseInt(stageMatch[1]) : 6;\n\n// ─── Install date ───\n// ⚠️ Install date อาจเป็น Date field (ms number) — ใช้ dateStr() แปลง ห้ามใช้ txt().split('T')[0]\n// (bug ที่เจอใน rental-cron: ms number → string = literal '1793898000000' แล้ว split('T') ก็ไม่ช่วย)\nconst installRaw = install_date_override || dateStr(f['Install date']) || dateStr(f['Install Date']);\nconst installDate = installRaw || bkkTodayStr();\n\n// ─── Fallback interval tables (used only if template row missing) ───\n// Physics-bound: Stage 4-6 interval doesn't change whether contract is Rental or Sale.\n// Only Stage 1-3 differs (Rental bills monthly → visit monthly; Sale pay-per-service).\nconst FALLBACK_SALE   = { 1: 1, 2: 3, 3: 3, 4: 10, 5: 12, 6: 12 };\nconst FALLBACK_RENTAL = { 1: 1, 2: 1, 3: 1, 4: 10, 5: 12, 6: 12 };\n\n// ─── RO Stage Templates ───\n// Care Type uses confirmed T4 SingleSelect options: Filter Change | Descaling | PM\n// All 6 RO stages = cartridge replacement → Filter Change\n// ⚠️ name MUST exactly match Lark T4.Filter Stage MultiSelect options\n//    (verified 2026-04-20). Spec detail like '10\"' / '300 GPD' belongs in T3 catalog,\n//    not here — this is a UI label only.\nconst RO_STAGE_CONFIG = [\n  { stage: 1, name: 'Stage 1 - PP Sediment',        t3_code: 'F00001', interval: 1,  alert: 7,  care_type: 'Filter Change' },\n  { stage: 2, name: 'Stage 2 - Carbon Block',       t3_code: 'F00002', interval: 3,  alert: 7,  care_type: 'Filter Change' },\n  { stage: 3, name: 'Stage 3 - Resin / Softener',   t3_code: 'F00003', interval: 3,  alert: 7,  care_type: 'Filter Change' },\n  { stage: 4, name: 'Stage 4 - RO Membrane',        t3_code: 'F00072', interval: 10, alert: 14, care_type: 'Filter Change' },\n  { stage: 5, name: 'Stage 5 - Post Carbon',        t3_code: 'F00004', interval: 12, alert: 14, care_type: 'Filter Change' },\n  { stage: 6, name: 'Stage 6 - Mineral / Alkaline', t3_code: 'F00005', interval: 12, alert: 14, care_type: 'Filter Change' }\n];\n\n// Filter stages based on machine's filter system count\nconst selectedStages = RO_STAGE_CONFIG.filter(s => s.stage <= maxStage);\n\n// Rental override: Stage 1-3 visits monthly (billing tie-in), Stage 4-6 physics-bound unchanged.\n// Care Type stays 'Filter Change' — the physical act doesn't change with contract type.\nconst stages = isRental\n  ? selectedStages.map(s => ({\n      ...s,\n      interval: FALLBACK_RENTAL[s.stage] || s.interval,\n      alert: s.stage <= 3 ? 7 : 14\n    }))\n  : selectedStages;\n\n// ─── Helper: Add months to date ───\nfunction addMonths(dateStr, months) {\n  const d = new Date(dateStr + 'T00:00:00');\n  d.setMonth(d.getMonth() + months);\n  return d.toISOString().split('T')[0];\n}\n\n// ─── Build stage records ───\nconst stageRecords = stages.map(s => {\n  const carePlanId = 'CP-' + (machineCode || machine_record_id.slice(-6)) + '-S' + s.stage;\n  const nextDueDate = addMonths(installDate, s.interval);\n\n  return {\n    care_plan_id: carePlanId,\n    machine_record_id,\n    shop_name: shopName,\n    machine_code: machineCode,\n    ownership_type: ownershipRaw,\n    stage: s.stage,\n    filter_name: s.name,\n    t3_code: s.t3_code,\n    interval: s.interval,\n    alert_days: s.alert,\n    care_type: s.care_type,\n    install_date: installDate,\n    next_due_date: nextDueDate,\n    lark_token\n  };\n});\n\nreturn [{ json: {\n  stage_records: stageRecords,\n  stage_count: stageRecords.length,\n  shop_name: shopName,\n  machine_code: machineCode,\n  is_rental: isRental,\n  install_date: installDate,\n  lark_token\n} }];"
       },
-      "id": "88ca515a-7de4-4ee9-9925-8ef2742fed8a",
+      "id": "7eb11d0d-59cc-49d0-bdd8-df01fbdd46f3",
       "name": "Parse T2 + Select Template",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        10864,
-        -288
+        6320,
+        2080
       ]
     },
     {
@@ -2480,26 +2966,26 @@
         },
         "options": {}
       },
-      "id": "d8858b87-3f3f-48ee-bd80-50e76c3fd19c",
+      "id": "02f575d0-32dc-425c-ae3d-0fb4c16c2f22",
       "name": "If Has Stages",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        11088,
-        -288
+        6544,
+        2080
       ]
     },
     {
       "parameters": {
         "jsCode": "// ────────────────────────────────────────────\n// Idempotency: ตรวจ T4 ว่า machine นี้มี CarePlan stage นี้อยู่แล้วไหม\n// เพื่อป้องกัน init ซ้ำ\n// ────────────────────────────────────────────\nconst data = $input.first().json;\nconst lark_token = data.lark_token;\nconst machine_record_id = data.stage_records[0].machine_record_id;\n\n// Search T4 by Machine linked record\nconst searchBody = JSON.stringify({\n  filter: {\n    conjunction: 'and',\n    conditions: [\n      // Machine is a linked field — search by record_id of the linked T2\n      { field_name: 'Machine', operator: 'is', value: [machine_record_id] }\n    ]\n  },\n  page_size: 20\n  // ⚠️ ห้ามระบุ field_names\n});\n\nreturn [{ json: { ...data, t4CheckBody: searchBody } }];"
       },
-      "id": "a52f3046-04fa-4d6f-a8f9-4ba56e626486",
+      "id": "0728b4c4-4050-4355-b9c9-14df769b2d0d",
       "name": "Prep Check Existing T4",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        11376,
-        -400
+        6832,
+        1968
       ]
     },
     {
@@ -2521,26 +3007,26 @@
         "body": "={{ $json.t4CheckBody }}",
         "options": {}
       },
-      "id": "bb961d50-fb32-49d0-a196-59c3cde575fd",
+      "id": "bc579835-d0c4-4ac0-924d-25eb71cf7d25",
       "name": "Check Existing T4",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        11600,
-        -400
+        7056,
+        1968
       ]
     },
     {
       "parameters": {
         "jsCode": "// ────────────────────────────────────────────\n// Filter: skip stages ที่มี T4 อยู่แล้ว (idempotency)\n// ────────────────────────────────────────────\nconst templateData = $('Prep Check Existing T4').first().json;\nconst stageRecords = templateData.stage_records;\nconst lark_token = templateData.lark_token;\n\nconst t4Res = $input.first().json;\nconst existingItems = (t4Res.data && t4Res.data.items) || [];\n\nfunction txt(v) {\n  if (!v) return '';\n  if (typeof v === 'string') return v;\n  if (v.text) return v.text;\n  if (Array.isArray(v) && v[0]) {\n    const x = v[0];\n    return typeof x === 'string' ? x : (x.text || x.name || '');\n  }\n  return '';\n}\n\n// Collect existing stage numbers\nconst existingStages = existingItems.map(it => {\n  const f = it.fields || {};\n  return parseInt(txt(f['Stage Number']) || '0');\n}).filter(n => !isNaN(n) && n > 0);\n\n// Only create stages that don't exist yet\nconst newStages = stageRecords.filter(s => !existingStages.includes(s.stage));\nconst skippedStages = stageRecords.filter(s => existingStages.includes(s.stage));\n\nif (newStages.length === 0) {\n  return [{ json: {\n    has_new: false,\n    skipped: skippedStages.length,\n    message: 'All ' + skippedStages.length + ' stages already exist in T4',\n    lark_token\n  } }];\n}\n\nreturn [{ json: {\n  has_new: true,\n  new_stages: newStages,\n  skipped_count: skippedStages.length,\n  new_count: newStages.length,\n  shop_name: templateData.shop_name,\n  machine_code: templateData.machine_code,\n  is_rental: templateData.is_rental,\n  lark_token\n} }];"
       },
-      "id": "78d0d011-7584-44af-989c-f782690aa191",
+      "id": "eacde431-8431-4e2e-88a6-2f856ad0e5f8",
       "name": "Idempotency Filter",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        11824,
-        -400
+        7280,
+        1968
       ]
     },
     {
@@ -2567,39 +3053,39 @@
         },
         "options": {}
       },
-      "id": "e6b6b6d0-aefa-4dd5-9410-cf4befcf746a",
+      "id": "9360cb2b-19cb-435b-be15-cbec8ef5d936",
       "name": "If New Stages",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        12048,
-        -400
+        7504,
+        1968
       ]
     },
     {
       "parameters": {
         "jsCode": "// ────────────────────────────────────────────\n// Split: แตก new_stages array → 1 item per stage\n// ────────────────────────────────────────────\nconst data = $input.first().json;\nreturn data.new_stages.map(s => ({ json: { ...s, lark_token: data.lark_token } }));"
       },
-      "id": "3a93f193-6dbd-474a-b480-07bf80d3a26d",
+      "id": "4faeb4a5-759f-4f51-b704-b13017b9c568",
       "name": "Split New Stages",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        12288,
-        -400
+        7744,
+        1968
       ]
     },
     {
       "parameters": {
         "jsCode": "// ────────────────────────────────────────────\n// Build T4 record body for Lark create\n// ⚠️ Fields NOT to write (per 2026-04-20 audit):\n//   • Next Due Date       — Formula (Last Done Date + Planned Interval) → auto-compute\n//   • Due Status          — Formula (derived from Next Due Date)\n//   • Service Item        — DuplexLink → T3 (needs record_id, not code string; filled separately)\n//   • Assigned Technician — Link → T8 (unassigned at init; admin sets later)\n//   • Lead Time Override  — Number (empty = fallback to Alert Before (Days))\n//   • Customer / Location — covered by Machine link + Lookup\n// Fields used (confirmed in T4 schema 2026-04-20):\n//   Planned Interval (Months) — Number (template baseline, source of truth)\n//   Care Type                 — MultiSelect [Filter Change | Descaling | PM]\n//   Filter Stage              — MultiSelect [Stage 1..6 - Material]  ← MUST match Lark options exactly\n//   Included in Rental        — Checkbox (true if rental contract)\n//   CP Status                 — SingleSelect [Pending | Active | Done]  ← no colon!\n//   Last Done Date            — Date (write as ms timestamp)\n//   Qty per Visit             — Number (default 1; admin tune per machine)\n//   Auto Create Ticket        — Checkbox (true = cron auto-schedules T5; false = admin schedules manually)\n//   Interval Override Reason  — Text (audit trail for fallback/override)\n//   Last 3 Actual Intervals   — Text (JSON array, filled by create-job workflow)\n// ⚠️ Bug #7 pattern: ใช้ $input.all().map() ไม่ใช่ first()\n//   Split New Stages ส่งมา 1 item/stage (3-6 stages) — first() จะ drop stage 2-6 เงียบๆ\n// ⚠️ Lark Date field write = ms number (bug #4 จาก rental-cron) ใช้ toMs()\n// ⚠️ Lark Link write = [\"rec...\"] NOT [{record_id}] (bug #5 จาก rental-cron)\n// ────────────────────────────────────────────\n\n// 🔧 FIXED 2026-04-27 (Path D): Last Done = install_date (ไม่ back-date แล้ว)\n//   เดิม: Last Done = install - interval → first due = install date → cron trigger ทันที (noise)\n//   ใหม่: Last Done = install_date → first due = install + interval (1 cycle full)\n//   Install QC visit (post-install QC สำหรับลูกค้าใหม่) แยกเป็น manual T5 จาก dashboard\n//   ไม่ผูกกับ T4 cycle — clean decoupling: PM = recurring, QC = one-shot\n\n// Lark Date write = ms timestamp (Bangkok midnight)\nfunction toMs(dateStr) {\n  if (!dateStr) return null;\n  return new Date(dateStr + 'T00:00:00+07:00').getTime();\n}\n\nreturn $input.all().map(item => {\n  const s = item.json;\n\n  const fields = {\n    // ── Identifiers ──\n    'Care Plan ID':  s.care_plan_id,\n    'Stage Number':  s.stage,\n    // MultiSelect fields → must be array even for single value\n    'Filter Stage':  [s.filter_name],\n    'Care Type':     [s.care_type],   // Filter Change | Descaling | PM\n\n    // ── Schedule ──\n    // Planned Interval = template baseline (source of truth for Formula).\n    // Next Due Date is a Formula — never write; Lark computes from Last Done Date + this.\n    // First cycle: install + interval (no back-dating · post-install QC handled separately)\n    'Planned Interval (Months)': s.interval,\n    'Alert Before (Days)':       s.alert_days,\n    'Last Done Date':            toMs(s.install_date),\n\n    // ── Billing model flag (separate from physical interval) ──\n    // 🔧 FIXED 2026-04-26: 'Included in Rental' is FORMULA in T4 (auto-computed) · removed write\n    //   Lark API rejects writes to formula fields → silent fail (root cause of 'no T4' bug)\n\n    // ── Status ──\n    // 🔧 FIXED 2026-04-27 (Path D): 'Active' ที่ init แทน 'Pending'\n    //   เดิม: Pending → ติดที่ Pending ตลอดกาล (no transition logic) → data hygiene issue\n    //   ใหม่: Active ที่ init = 80% ลูกค้า auto-mode default · admin pause ราย stage ผ่าน Active？ toggle\n    // SingleSelect — no colon in field name (schema confirmed 2026-04-20)\n    'CP Status': 'Active',\n\n    // ── Active flag (Path D — admin per-stage toggle) ──\n    // 🔧 FIXED 2026-04-26: Added Active？ (Checkbox) · default true · full-width '？'\n    // 🔧 ACTIVATED 2026-04-27: cron filter ใช้ field นี้แล้ว (ไม่ใช่ dead data)\n    //   admin set false → cron skip stage นั้น (ลูกค้า admin-managed / pause ชั่วคราว)\n    'Active？':           true,\n\n    // ── Visit defaults ──\n    // 🔧 FIXED 2026-04-26: Field name uses full-width '？' (Lark Base auto-conversion)\n    'Qty per Visit':       1,\n    'Auto Create Ticket？': true,\n\n    // ── Audit (empty at init; filled when fallback/override triggers) ──\n    'Interval Override Reason': '',\n    'Last 3 Actual Intervals':  '[]'\n  };\n\n  // Linked record: Machine → T2 (DuplexLink) — write format = [\"rec...\"]\n  if (s.machine_record_id) {\n    fields['Machine'] = [s.machine_record_id];\n  }\n\n  const body = JSON.stringify({ fields });\n  return { json: { ...s, createBody: body } };\n});"
       },
-      "id": "b22d2269-e463-46ff-8b04-1a9714ef26e2",
+      "id": "198df1a8-ee9e-4a47-ab6f-28a76a641d79",
       "name": "Build T4 Record",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        12512,
-        -400
+        7968,
+        1968
       ]
     },
     {
@@ -2621,26 +3107,26 @@
         "body": "={{ $json.createBody }}",
         "options": {}
       },
-      "id": "aa899d87-f351-474b-99e3-6047e2dfcb96",
+      "id": "77a8b66e-35a1-44b3-ba35-a2249889c8e5",
       "name": "Create T4 in Lark",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        12736,
-        -400
+        8192,
+        1968
       ]
     },
     {
       "parameters": {
         "jsCode": "// ────────────────────────────────────────────\n// Collect all created T4 records → build response\n// ────────────────────────────────────────────\nconst allItems = $input.all();\nconst created = [], errors = [];\n\nfor (const item of allItems) {\n  const d = item.json;\n  if (d.data && d.data.record) {\n    created.push({\n      record_id: d.data.record.record_id,\n      care_plan_id: d.data.record.fields?.['Care Plan ID'] || '',\n      stage: d.data.record.fields?.['Stage Number'] || ''\n    });\n  } else if (d.code && d.code !== 0) {\n    errors.push({ code: d.code, msg: d.msg || 'error' });\n  }\n}\n\n// Reconstruct source data from Split New Stages\nconst splitItems = $('Split New Stages').all();\nconst shopName = splitItems[0]?.json?.shop_name || '';\nconst machineCode = splitItems[0]?.json?.machine_code || '';\nconst isRental = splitItems[0]?.json?.is_rental || false;\nconst skippedCount = $('Idempotency Filter').first().json.skipped_count || 0;\n\nconst summary = {\n  success: errors.length === 0,\n  machine_code: machineCode,\n  shop_name: shopName,\n  ownership: isRental ? 'Rental' : 'Sale',\n  created_count: created.length,\n  skipped_count: skippedCount,\n  error_count: errors.length,\n  created_records: created,\n  errors: errors.length > 0 ? errors : undefined\n};\n\nreturn [{ json: summary }];"
       },
-      "id": "1613f8ba-ad12-493d-b940-fefb8a59f060",
+      "id": "62a8c048-05b4-4678-8e84-1ac8060f4a4a",
       "name": "Collect Results",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        12960,
-        -400
+        8416,
+        1968
       ]
     },
     {
@@ -2651,26 +3137,26 @@
           "responseCode": 200
         }
       },
-      "id": "6d8ebb13-d7fe-4913-9271-c67f0bd5555f",
+      "id": "c93fd1eb-e6c6-4ca0-945d-cb03b59aff2c",
       "name": "Respond Success",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        13168,
-        -400
+        8624,
+        1968
       ]
     },
     {
       "parameters": {
         "jsCode": "// All stages already exist\nconst data = $input.first().json;\nreturn [{ json: { success: true, message: data.message, skipped: data.skipped } }];"
       },
-      "id": "bbb73a8a-4159-4c7f-9111-0a178ef4e3d5",
+      "id": "0ed1c573-35cc-4a18-b347-e30f3749a9eb",
       "name": "All Already Exist",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        12288,
-        -400
+        7744,
+        1968
       ]
     },
     {
@@ -2681,13 +3167,13 @@
           "responseCode": 200
         }
       },
-      "id": "d79c5022-d0c1-4678-aa80-b4b75574d9e8",
+      "id": "4431c7ce-f74e-4f7f-b5f9-8e8b641a2116",
       "name": "Respond Already Exists",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        12512,
-        -400
+        7968,
+        1968
       ]
     },
     {
@@ -2698,29 +3184,28 @@
           "responseCode": 422
         }
       },
-      "id": "154b310c-5efb-4643-8d67-beeb2117a503",
+      "id": "a378a4aa-c78e-4e98-8159-746b66c3e41b",
       "name": "Respond No Stages",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        11376,
-        -208
+        6832,
+        2160
       ]
     },
     {
       "parameters": {
-        "httpMethod": "GET",
         "path": "get-machines",
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "gm-001",
+      "id": "88b7015b-ac85-4c52-bb76-c9a9957d537f",
       "name": "Webhook Get Machines",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        9440,
-        496
+        4880,
+        2976
       ],
       "webhookId": "get-machines-webhook"
     },
@@ -2729,7 +3214,6 @@
         "method": "POST",
         "url": "https://open.larksuite.com/open-apis/auth/v3/tenant_access_token/internal",
         "sendBody": true,
-        "contentType": "json",
         "bodyParameters": {
           "parameters": [
             {
@@ -2744,26 +3228,26 @@
         },
         "options": {}
       },
-      "id": "gm-002",
+      "id": "b210f80a-09d0-45a2-a65d-efbaf9dc4396",
       "name": "Get Token [GM]",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        9664,
-        496
+        5104,
+        2976
       ]
     },
     {
       "parameters": {
         "jsCode": "const token = $input.first().json.tenant_access_token;\n// page_token จาก query string สำหรับ pagination\nconst webhookData = $('Webhook Get Machines').first().json;\nconst incomingPageToken = (webhookData.query && webhookData.query.page_token) ? webhookData.query.page_token : '';\n// page_size 500 = T2 ~200-400 records โหลดครบใน 1 request\nconst body = { page_size: 500 };\nif (incomingPageToken) body.page_token = incomingPageToken;\n// pass-through customer_record_id filter (apply ใน Format Machines แบบ n8n filter)\nconst customer_record_id = (webhookData.query && webhookData.query.customer_record_id) ? webhookData.query.customer_record_id : '';\nreturn [{ json: { lark_token: token, searchBody: JSON.stringify(body), customer_record_id } }];"
       },
-      "id": "gm-003",
+      "id": "a18bb8a2-3661-4539-a685-5117e807756d",
       "name": "Prep Search T2",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        9888,
-        496
+        5328,
+        2976
       ]
     },
     {
@@ -2785,26 +3269,26 @@
         "body": "={{ $('Prep Search T2').first().json.searchBody }}",
         "options": {}
       },
-      "id": "gm-004",
+      "id": "dfa4968b-89ad-460a-bde9-f652cf4c9bd9",
       "name": "Fetch T2 Machines",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        10112,
-        496
+        5552,
+        2976
       ]
     },
     {
       "parameters": {
         "jsCode": "const data = $input.first().json;\nconst items = data.data?.items || [];\nconst customer_filter = $('Prep Search T2').first().json.customer_record_id || '';\nconst larkPageToken = data.data?.page_token || null;\nconst larkHasMore   = !!data.data?.has_more;\nconst txt = (v) => {\n  if (v === null || v === undefined) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'number') return String(v);\n  if (Array.isArray(v)) { if (!v.length) return ''; const f = v[0]; if (typeof f === 'string') return f; return f.text || f.name || f.value || ''; }\n  if (v.text) return v.text;\n  if (v.value) { if (typeof v.value === 'string') return v.value; if (Array.isArray(v.value)) { const f = v.value[0]; if (!f) return ''; if (typeof f === 'string') return f; return f.text || f.name || ''; } }\n  return '';\n};\n// link_record_ids extractor — link fields ใน Lark = { link_record_ids: ['rec...'] } หรือ array of objects\nconst linkIds = (v) => {\n  if (!v) return [];\n  if (v.link_record_ids && Array.isArray(v.link_record_ids)) return v.link_record_ids;\n  if (Array.isArray(v)) return v.map(x => (typeof x === 'object' && x.record_id) ? x.record_id : (typeof x === 'string' ? x : '')).filter(Boolean);\n  return [];\n};\nlet machines = items.map(it => {\n  const f = it.fields || {};\n  const customer_link_ids = linkIds(f['Shop Name']);\n  return {\n    record_id: it.record_id,\n    'Machine Code':     txt(f['Machine Code']),\n    'Customer ID':      txt(f['Customer ID']),\n    'Customer':         txt(f['Customer']),\n    'Equipment Type':   txt(f['Equipment Type']),\n    'Filter System 1':  txt(f['Filter System 1']),\n    'Machine Status':   txt(f['Machine Status']),\n    'Ownership Type':   txt(f['Ownership Type']),\n    'Machine Location': txt(f['Machine Location']),\n    'Install date':     f['Install date'] || null,\n    'Last Service Date': f['Last Service Date'] || null,\n    customer_record_ids: customer_link_ids,\n    machine_code: txt(f['Machine Code']),\n    customer_name: txt(f['Customer']),\n    customer_id: txt(f['Customer ID'])\n  };\n}).filter(m => m['Machine Code'] || m['Customer ID']);\n// n8n-side filter (chosen over Lark filter — see ADR/audit notes)\nif (customer_filter) {\n  machines = machines.filter(m => m.customer_record_ids.includes(customer_filter));\n}\nmachines.sort((a, b) => (a.customer_name || '').localeCompare(b.customer_name || '', 'th') || (a.machine_code || '').localeCompare(b.machine_code || ''));\nreturn [{ json: { ok: true, machines, page_token: larkPageToken, has_more: larkHasMore, count: machines.length } }];"
       },
-      "id": "gm-005",
+      "id": "b2c9e034-2b30-4461-a7f7-c0be3b7ac4c8",
       "name": "Format Machines",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        10320,
-        496
+        5760,
+        2976
       ]
     },
     {
@@ -2813,13 +3297,13 @@
         "responseBody": "={{ JSON.stringify($json) }}",
         "options": {}
       },
-      "id": "gm-006",
+      "id": "9ab3559e-917e-4e7f-a392-7e4a96d2300d",
       "name": "Respond Machines",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        10544,
-        496
+        5984,
+        2976
       ]
     },
     {
@@ -2841,54 +3325,53 @@
         "body": "={{ JSON.stringify({ filter: { conjunction: 'and', conditions: [{ field_name: 'Job No.', operator: 'contains', value: ['J-' + (() => { const d = new Date(Date.now()+7*3600*1000); return d.getUTCFullYear() + String(d.getUTCMonth()+1).padStart(2,'0') + String(d.getUTCDate()).padStart(2,'0'); })()] }] }, page_size: 500 }) }}",
         "options": {}
       },
-      "id": "cj-005",
+      "id": "d266a859-e94a-4c0a-a001-b3b1633ca351",
       "name": "Search Today T5",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        10112,
-        832
+        5552,
+        3616
       ]
     },
     {
       "parameters": {
         "jsCode": "// ────────────────────────────────────────────\n// Generate Job No. : J-YYYYMMDD-XXX (sequence per day)\n// 🎯 Owned in n8n (not Lark Formula) — vendor-portable.\n// Trade-off: race condition possible if 2 requests come ms-apart.\n//   Acceptable for admin dashboard (low concurrency).\n// ────────────────────────────────────────────\nconst res = $input.first().json;\nconst items = res.data?.items || [];\n\n// Bangkok-aware date prefix\nconst bkk = new Date(Date.now() + 7 * 3600 * 1000);\nconst yyyy = bkk.getUTCFullYear();\nconst mm   = String(bkk.getUTCMonth() + 1).padStart(2, '0');\nconst dd   = String(bkk.getUTCDate()).padStart(2, '0');\nconst datePrefix = `J-${yyyy}${mm}${dd}-`;\n\n// Extract sequence numbers from existing Job No.s\nconst seqs = items\n  .map(it => {\n    const v = it.fields?.['Job No.'];\n    let s = '';\n    if (typeof v === 'string') s = v;\n    else if (Array.isArray(v) && v[0]) s = v[0].text || v[0];\n    else if (v?.text) s = v.text;\n    else if (v?.value && Array.isArray(v.value) && v.value[0]) s = v.value[0].text || v.value[0];\n    return s;\n  })\n  .filter(s => s && s.startsWith(datePrefix))\n  .map(s => parseInt(s.slice(datePrefix.length), 10))\n  .filter(n => !isNaN(n));\n\nconst nextSeq = (seqs.length ? Math.max(...seqs) : 0) + 1;\nconst job_no = `${datePrefix}${String(nextSeq).padStart(3, '0')}`;\n\n// Pass through existing Parse Body data + add job_no\nconst src = $('Parse Body').first().json;\nreturn [{ json: { ...src, job_no, _seq_today: nextSeq, _date_prefix: datePrefix } }];"
       },
-      "id": "cj-006",
+      "id": "5a7b5e12-c060-471a-b4bc-42b17dfc7b55",
       "name": "Compute Job No.",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        10336,
-        832
+        5776,
+        3616
       ]
     },
     {
       "parameters": {
         "url": "=https://tinyurl.com/api-create.php?url={{ encodeURIComponent('https://sakkaphong.github.io/sk-ice-gps/rating.html?job=' + $('Parse Complete Body').first().json.job_id + '&tech=' + encodeURIComponent($('Parse Complete Body').first().json.tech_name || '')) }}",
-        "responseFormat": "text",
         "options": {}
       },
-      "id": "4c38d4d7-b34c-47d6-8293-5d93bed8e7cc",
+      "id": "3ef35a50-86b4-4e05-80a1-df8eb194ae24",
       "name": "Shorten Rating URL",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        12896,
-        2200
+        8336,
+        4992
       ]
     },
     {
       "parameters": {
         "jsCode": "const src = $('Parse Complete Body').first().json;\nconst shortUrl = $input.first().json.data || '';\n\n// รวม phone 1, 2, 3 จาก payload (tech.html ส่งมา)\nconst rawPhones = [\n  src.customer_phone  || '',\n  src.customer_phone_2 || '',\n  src.customer_phone_3 || ''\n];\n\nconst seen = new Set();\nconst items = [];\nfor (const raw of rawPhones) {\n  const digits = raw.replace(/\\D/g, '');\n  if (!/^0[6-9]/.test(digits)) continue; // Thai mobile only\n  const intl = '66' + digits.slice(1);\n  if (seen.has(intl)) continue;\n  seen.add(intl);\n  const msg = 'SK ICE: ประเมินงาน ' + src.job_id + ' ได้ที่: ' + shortUrl + ' ขอบคุณครับ 🙏';\n  items.push({ json: { sms_recipient: intl, sms_msg: msg } });\n}\nreturn items;"
       },
-      "id": "010c2de3-ea3f-49c8-a6a6-9c2f6f4744a0",
+      "id": "b7436d57-74a1-4a8c-b5cd-05961dc7119e",
       "name": "Split Phones [Rating]",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        13152,
-        2200
+        8592,
+        4992
       ]
     },
     {
@@ -2916,28 +3399,29 @@
           }
         }
       },
-      "id": "66f0eb37-1fcb-4846-b991-600a7681b31b",
+      "id": "5b6a205c-06aa-4325-a7fd-01ac17b8f555",
       "name": "SMS Rating",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        13408,
-        2200
+        8848,
+        4992
       ]
     },
     {
       "parameters": {
+        "httpMethod": "POST",
         "path": "rate-job",
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "f91135a5-eba3-4ee1-9d38-eec10da92972",
+      "id": "519497b8-f4bb-4c93-86fe-a3a569ceaf15",
       "name": "Webhook Rate Job",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        14400,
-        272
+        9840,
+        3056
       ],
       "webhookId": "rate-job-webhook"
     },
@@ -2945,13 +3429,13 @@
       "parameters": {
         "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst job_id  = body.job_id  || '';\nconst rating  = parseInt(body.rating) || 0;\nconst comment = body.comment || '';\nconst tech_name = body.tech_name || '';\nconst customer_name = body.customer_name || '';\nconst ts = new Date().toISOString().replace('T',' ').slice(0,19);\nreturn [{ json: { ts, job_id, rating, comment, tech_name, customer_name } }];"
       },
-      "id": "60391d1e-c5c9-4906-8b8b-fbca0dba3687",
+      "id": "5e75d278-8389-476f-b1a9-f4957946cd00",
       "name": "Parse Rating Body",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        14640,
-        272
+        10080,
+        3056
       ]
     },
     {
@@ -2980,14 +3464,20 @@
         },
         "options": {}
       },
-      "id": "9242b637-e2c2-4404-811b-41627cf8c165",
+      "id": "84317c0c-b0c5-40a5-934b-5cae0e72170d",
       "name": "Write Rating to Sheets",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        14880,
-        272
-      ]
+        10320,
+        3056
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "luJx0ybaOG8fy4L9",
+          "name": "Google Sheets account 2"
+        }
+      }
     },
     {
       "parameters": {
@@ -2995,18 +3485,248 @@
         "responseBody": "={ \"ok\": true }",
         "options": {}
       },
-      "id": "9be142d3-d280-4fb1-8bdb-3539ceebb514",
+      "id": "55ad0403-1cd9-434c-a90d-3661baa549c1",
       "name": "Respond Rate Job",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        15120,
-        272
+        10560,
+        3056
       ]
     }
   ],
   "pinData": {},
   "connections": {
+    "Cron 07:00 Daily": {
+      "main": [
+        [
+          {
+            "node": "Get Lark Token1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Search T4": {
+      "main": [
+        [
+          {
+            "node": "Fetch T4 CarePlan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch T4 CarePlan": {
+      "main": [
+        [
+          {
+            "node": "Parse T4 Records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse T4 Records": {
+      "main": [
+        [
+          {
+            "node": "If Has Due Records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Has Due Records": {
+      "main": [
+        [
+          {
+            "node": "Group by Machine+Week",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Records Due",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Group by Machine+Week": {
+      "main": [
+        [
+          {
+            "node": "Prep T5 Idempotency Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep T5 Idempotency Search": {
+      "main": [
+        [
+          {
+            "node": "Fetch Existing T5 (Open)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Existing T5 (Open)": {
+      "main": [
+        [
+          {
+            "node": "Idempotency Filter1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If New Jobs To Create": {
+      "main": [
+        [
+          {
+            "node": "Capacity Allocate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "All Skipped",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Capacity Allocate": {
+      "main": [
+        [
+          {
+            "node": "Split Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Jobs": {
+      "main": [
+        [
+          {
+            "node": "Build T5 Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build T5 Record": {
+      "main": [
+        [
+          {
+            "node": "Create T5 in Lark",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create T5 in Lark": {
+      "main": [
+        [
+          {
+            "node": "Build Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Notification": {
+      "main": [
+        [
+          {
+            "node": "If Created Any",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Created Any": {
+      "main": [
+        [
+          {
+            "node": "Prep LINE Admin Notify",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "None Created",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep LINE Admin Notify": {
+      "main": [
+        [
+          {
+            "node": "LINE Push Admin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LINE Push Admin": {
+      "main": [
+        [
+          {
+            "node": "Summary Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Lark Token1": {
+      "main": [
+        [
+          {
+            "node": "Prep Search T4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Idempotency Filter1": {
+      "main": [
+        [
+          {
+            "node": "If New Jobs To Create",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Webhook Get Customers": {
       "main": [
         [
@@ -4364,19 +5084,26 @@
   "active": true,
   "settings": {
     "executionOrder": "v1",
-    "binaryMode": "separate"
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": false,
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
   },
-  "versionId": "533a0d63-8b89-48e2-bee6-0e010c387698",
+  "versionId": "63436a80-38b4-4f64-828c-6925504f7093",
   "meta": {
+    "templateCredsSetupCompleted": true,
     "instanceId": "999f38d9444535a4c9da35e8c7be72e1c3b6cca77c4ee547703ada54237ec1b4"
   },
   "id": "tf6ywfbJfX29PC2g",
   "tags": [
     {
-      "name": "T4 T5 NEW",
-      "id": "oBpbYItMfELYi96C",
       "updatedAt": "2026-04-26T17:57:04.171Z",
-      "createdAt": "2026-04-26T17:57:04.171Z"
+      "createdAt": "2026-04-26T17:57:04.171Z",
+      "id": "oBpbYItMfELYi96C",
+      "name": "T4 T5 NEW"
     }
   ]
 }
