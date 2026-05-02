@@ -492,8 +492,8 @@ async function loadJobs() {
   body.appendChild(loading);
 
   try {
-    var techQ = (T && T !== 'ช่าง') ? '?tech=' + encodeURIComponent(T) : '';
-    var res  = await fetch(BASE + '/get-tech-jobs' + techQ, { headers: authH() });
+    var techQ = (T && T !== 'ช่าง') ? '&tech=' + encodeURIComponent(T) : '';
+    var res  = await fetch(BASE + '/get-tech-jobs?key=' + API_KEY + techQ);
     var data = await res.json();
     document.getElementById('job-list-date').textContent = data.date || '';
     while (body.firstChild) body.removeChild(body.firstChild);

@@ -1,0 +1,356 @@
+{
+  "name": "WF Facebook Webhook — After Hours + Pending",
+  "nodes": [
+
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "fb-webhook",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "fb-get-001",
+      "name": "FB Webhook Verify (GET)",
+      "type": "n8n-nodes-base.webhook",
+      "position": [-240, -100],
+      "webhookId": "fb-webhook-get",
+      "typeVersion": 2
+    },
+
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 3 },
+          "conditions": [
+            {
+              "id": "verify-mode",
+              "leftValue": "={{ $json.query['hub.mode'] }}",
+              "rightValue": "subscribe",
+              "operator": { "type": "string", "operation": "equals" }
+            },
+            {
+              "id": "verify-token",
+              "leftValue": "={{ $json.query['hub.verify_token'] }}",
+              "rightValue": "sk_ice_fb_verify",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "fb-get-002",
+      "name": "Token Valid?",
+      "type": "n8n-nodes-base.if",
+      "position": [0, -100],
+      "typeVersion": 2.3
+    },
+
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $('FB Webhook Verify (GET)').item.json.query['hub.challenge'] }}",
+        "options": { "responseCode": 200 }
+      },
+      "id": "fb-get-003",
+      "name": "Echo Challenge",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [240, -200],
+      "typeVersion": 1.1
+    },
+
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "Forbidden",
+        "options": { "responseCode": 403 }
+      },
+      "id": "fb-get-004",
+      "name": "Reject Verify",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [240, 0],
+      "typeVersion": 1.1
+    },
+
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "fb-webhook",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "fb-post-001",
+      "name": "FB Webhook POST",
+      "type": "n8n-nodes-base.webhook",
+      "position": [-240, 300],
+      "webhookId": "fb-webhook-post",
+      "typeVersion": 2
+    },
+
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "EVENT_RECEIVED",
+        "options": { "responseCode": 200 }
+      },
+      "id": "fb-post-002",
+      "name": "Respond to FB",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [0, 200],
+      "typeVersion": 1.1
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// ─────────────────────────────────────────────\n// Extract FB Message\n// Facebook ส่ง body แบบ entry[].messaging[]\n// ดึง PSID + messageText\n// ─────────────────────────────────────────────\nconst body     = $json.body || $json;\nconst entry    = (body.entry    || [])[0];\nif (!entry) return [];\n\nconst messaging = (entry.messaging || [])[0];\nif (!messaging || !messaging.message) return [];\n\n// กรอง echo (ข้อความที่บอทส่งเอง)\nif (messaging.message.is_echo) return [];\n\nconst psid    = messaging.sender.id || '';\nconst pageId  = messaging.recipient.id || '';\nconst text    = messaging.message.text || '';\nconst mid     = messaging.message.mid  || '';\n\nif (!psid || !text) return [];\n\nreturn [{ json: { psid, pageId, text, mid } }];"
+      },
+      "id": "fb-post-003",
+      "name": "Extract FB Message",
+      "type": "n8n-nodes-base.code",
+      "position": [0, 400],
+      "typeVersion": 2
+    },
+
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/{{ $json.psid }}?fields=name,profile_pic&access_token=YOUR_FB_PAGE_ACCESS_TOKEN",
+        "options": {}
+      },
+      "id": "fb-post-004",
+      "name": "Get FB Profile",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [240, 400],
+      "typeVersion": 4.1,
+      "onError": "continueRegularOutput"
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// ─────────────────────────────────────────────\n// Build FB Notification Data\n// รวม profile + message เหมือน LINE webhook\n// ─────────────────────────────────────────────\nconst profile = $input.first().json;\nconst msgData = $('Extract FB Message').first().json;\n\nconst displayName = profile.name || 'ลูกค้า Facebook';\nconst pictureUrl  = profile.profile_pic || '';\n\nreturn [{ json: {\n  psid:            msgData.psid,\n  channel:         'Facebook',\n  sourceLabel:     '📘 Facebook Messenger',\n  groupName:       '',          // FB Messenger ไม่มี group — เป็น DM ทั้งหมด\n  displayName:     displayName,\n  pictureUrl:      pictureUrl,\n  combinedMessage: msgData.text\n} }];"
+      },
+      "id": "fb-post-005",
+      "name": "Build FB Notification Data",
+      "type": "n8n-nodes-base.code",
+      "position": [480, 400],
+      "typeVersion": 2
+    },
+
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1AonEWwfw_e-DhFyoPcQB1yICIG7LY8n641-n1M971TE",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1708892739,
+          "mode": "list",
+          "cachedResultName": "LINE & FB User IDs"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "FB PSID":            "={{ $json.psid }}",
+            "ชื่อ / Display Name": "={{ $json.displayName }}",
+            "ช่องทาง":            "Facebook",
+            "ข้อความแรก":         "={{ $json.combinedMessage }}",
+            "วันที่ทักครั้งแรก":  "={{ $now.toISO() }}",
+            "อัปเดตล่าสุด":       "={{ $now.toISO() }}",
+            "สถานะ Match":        "รอจับคู่",
+            "หมายเหตุ":           "📘 Facebook Messenger"
+          },
+          "matchingColumns": ["FB PSID"],
+          "schema": [
+            { "id": "FB PSID",            "displayName": "FB PSID",            "required": false, "defaultMatch": true,  "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "ชื่อ / Display Name","displayName": "ชื่อ / Display Name","required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "ช่องทาง",            "displayName": "ช่องทาง",            "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "ข้อความแรก",         "displayName": "ข้อความแรก",         "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "วันที่ทักครั้งแรก",  "displayName": "วันที่ทักครั้งแรก",  "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "อัปเดตล่าสุด",       "displayName": "อัปเดตล่าสุด",       "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "สถานะ Match",        "displayName": "สถานะ Match",        "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "หมายเหตุ",           "displayName": "หมายเหตุ",           "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "fb-post-006",
+      "name": "Logger - FB",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [720, 280],
+      "typeVersion": 4.7,
+      "credentials": {
+        "googleApi": { "id": "OAN4CwYXo51bAkGB", "name": "Google Sheets (Service Account)" }
+      }
+    },
+
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 3 },
+          "conditions": [{
+            "id": "fb-after-hours",
+            "leftValue": "={{ (() => { const t = new Date(Date.now() + 7*60*60*1000); const h = t.getUTCHours(); const m = t.getUTCMinutes(); return h < 8 || (h === 8 && m < 30) || h >= 20; })() }}",
+            "rightValue": "=true",
+            "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+          }],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "fb-post-007",
+      "name": "Is After Hours? (FB)",
+      "type": "n8n-nodes-base.if",
+      "position": [720, 480],
+      "typeVersion": 2.3
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v19.0/me/messages?access_token=YOUR_FB_PAGE_ACCESS_TOKEN",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "Content-Type", "value": "application/json" }
+        ]},
+        "sendBody": true,
+        "contentType": "json",
+        "body": {
+          "recipient": { "id": "={{ $('Extract FB Message').item.json.psid }}" },
+          "messaging_type": "RESPONSE",
+          "message": {
+            "text": "ขอบคุณที่ติดต่อ SK ICE นะครับ 🧊\n\nขณะนี้อยู่นอกเวลาทำการครับ (เปิด 08:30–20:00 น.)\n\nทีมงานจะรีบติดต่อกลับในเช้าวันพรุ่งนี้ครับ 🙏"
+          }
+        },
+        "options": {}
+      },
+      "id": "fb-post-008",
+      "name": "FB Auto Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [960, 380],
+      "typeVersion": 4.4
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/push",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "Authorization", "value": "Bearer Ng84+hoTD9tPknpLmBAt1cwStuEhjo79Snj7EtTZOK8GBzOZvwQj0LnpspyFLu7GjVc6Y/kvCPmo/lLsvgjAqv+RGKHLpKA6fq7/nkHCW9otlToTdeAwoi+/f6Pcy24QMkqdI8hn1ceyqQXlN6+pUQdB04t89/1O/w1cDnyilFU=" },
+          { "name": "Content-Type", "value": "application/json" }
+        ]},
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={\"to\":\"C40b37d81f4e199a7b7357537166a1efd\",\"messages\":[{\"type\":\"text\",\"text\":\"🌙 ข้อความนอกเวลา\\n━━━━━━━━━━━━━━━\\n{{ $('Build FB Notification Data').item.json.sourceLabel }}\\n👤 ลูกค้า: {{ $('Build FB Notification Data').item.json.displayName }}\\n💬 {{ $('Build FB Notification Data').item.json.combinedMessage || '(ไม่มีข้อความ)' }}\\n🕐 {{ new Date(Date.now() + 7*60*60*1000).toLocaleTimeString('th-TH') }}\\n━━━━━━━━━━━━━━━\\n📌 After Hours | บอทตอบแล้ว\"}]}",
+        "options": {}
+      },
+      "id": "fb-post-009",
+      "name": "LINE Notify FB — SK TEAM",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1200, 380],
+      "typeVersion": 4.4
+    },
+
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1AonEWwfw_e-DhFyoPcQB1yICIG7LY8n641-n1M971TE",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "unanswered_msgs",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_id":       "={{ $now.toUnixInteger() + '_fb_' + $('Extract FB Message').item.json.psid.slice(-6) }}",
+            "group_id":     "={{ $('Extract FB Message').item.json.psid }}",
+            "group_name":   "",
+            "user_name":    "={{ $('Build FB Notification Data').item.json.displayName }}",
+            "message_text": "={{ $('Build FB Notification Data').item.json.combinedMessage }}",
+            "received_at":  "={{ $now.toISO() }}",
+            "acknowledged": "FALSE",
+            "alert_count":  "1",
+            "last_alert_at":"={{ $now.toISO() }}",
+            "channel":      "Facebook"
+          },
+          "schema": [
+            { "id": "row_id",        "displayName": "row_id",        "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "group_id",      "displayName": "group_id",      "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "group_name",    "displayName": "group_name",    "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "user_name",     "displayName": "user_name",     "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "message_text",  "displayName": "message_text",  "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "received_at",   "displayName": "received_at",   "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "acknowledged",  "displayName": "acknowledged",  "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "alert_count",   "displayName": "alert_count",   "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "last_alert_at", "displayName": "last_alert_at", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "channel",       "displayName": "channel",       "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "fb-post-010",
+      "name": "Save Pending Msg (FB)",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [1440, 380],
+      "typeVersion": 4.7,
+      "credentials": {
+        "googleApi": { "id": "OAN4CwYXo51bAkGB", "name": "Google Sheets (Service Account)" }
+      }
+    }
+
+  ],
+
+  "connections": {
+    "FB Webhook Verify (GET)": { "main": [[
+      { "node": "Token Valid?", "type": "main", "index": 0 }
+    ]]},
+    "Token Valid?": { "main": [
+      [{ "node": "Echo Challenge",  "type": "main", "index": 0 }],
+      [{ "node": "Reject Verify",   "type": "main", "index": 0 }]
+    ]},
+    "FB Webhook POST": { "main": [[
+      { "node": "Respond to FB",        "type": "main", "index": 0 },
+      { "node": "Extract FB Message",   "type": "main", "index": 0 }
+    ]]},
+    "Extract FB Message": { "main": [[
+      { "node": "Get FB Profile", "type": "main", "index": 0 }
+    ]]},
+    "Get FB Profile": { "main": [[
+      { "node": "Build FB Notification Data", "type": "main", "index": 0 }
+    ]]},
+    "Build FB Notification Data": { "main": [[
+      { "node": "Logger - FB",         "type": "main", "index": 0 },
+      { "node": "Is After Hours? (FB)","type": "main", "index": 0 }
+    ]]},
+    "Is After Hours? (FB)": { "main": [[
+      { "node": "FB Auto Reply", "type": "main", "index": 0 }
+    ]]},
+    "FB Auto Reply": { "main": [[
+      { "node": "LINE Notify FB — SK TEAM", "type": "main", "index": 0 }
+    ]]},
+    "LINE Notify FB — SK TEAM": { "main": [[
+      { "node": "Save Pending Msg (FB)", "type": "main", "index": 0 }
+    ]]}
+  },
+
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "999f38d9444535a4c9da35e8c7be72e1c3b6cca77c4ee547703ada54237ec1b4"
+  }
+}

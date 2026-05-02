@@ -9,7 +9,7 @@
       "position": [-60, -200],
       "typeVersion": 1,
       "parameters": {
-        "content": "## ⏰ Unanswered Message Escalation\n---\n**ทุก 15 นาที** — ตรวจ `pending_msgs` ใน Google Sheets\n\n📌 **เงื่อนไขแจ้งเตือน**\n- ข้อความค้างนาน **30+ นาที** ยังไม่มีคนตอบ\n- แจ้งเตือน SK TEAM ซ้ำสูงสุด **3 รอบ** (ทุก 15 นาที)\n- เกิน **8 ชั่วโมง** หยุดแจ้งอัตโนมัติ\n\n✅ **Mark ว่าตอบแล้ว** → เปิด Sheet → ตั้ง `acknowledged = TRUE`",
+        "content": "## ⏰ Unanswered Message Escalation\n---\n**ทุก 15 นาที** — ตรวจ `unanswered_msgs` ใน Google Sheets\n\n📌 **เงื่อนไขแจ้งเตือน**\n- ข้อความค้างนาน **60 นาที** ยังไม่มีคนตอบ\n- แจ้งเตือน SK TEAM ซ้ำสูงสุด **3 รอบ** (ทุก 15 นาที)\n- เกิน **8 ชั่วโมง** หยุดแจ้งอัตโนมัติ\n\n✅ **Mark ว่าตอบแล้ว** → กด ✅ ตอบแล้ว ใน Flex Message",
         "height": 280,
         "width":  500,
         "color":  3
@@ -128,7 +128,7 @@
       "typeVersion": 4.7,
       "parameters": {
         "authentication": "serviceAccount",
-        "operation": "appendOrUpdate",
+        "operation": "update",
         "documentId": {
           "__rl": true,
           "value": "1AonEWwfw_e-DhFyoPcQB1yICIG7LY8n641-n1M971TE",
