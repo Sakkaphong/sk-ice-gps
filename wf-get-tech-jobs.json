@@ -1,0 +1,131 @@
+{
+  "name": "WF Get Tech Jobs — A2 Job List",
+  "nodes": [
+
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "get-tech-jobs",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "gtj-001",
+      "name": "GET /get-tech-jobs",
+      "type": "n8n-nodes-base.webhook",
+      "position": [0, 200],
+      "webhookId": "get-tech-jobs",
+      "typeVersion": 2
+    },
+
+    {
+      "parameters": {
+        "url": "https://open.larksuite.com/open-apis/auth/v3/tenant_access_token/internal",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "app_id",     "value": "cli_a9500a1d84f89e18" },
+            { "name": "app_secret", "value": "GfKOk3vVSU4WwtXJKZEmHb2Q51JDOLgp" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "gtj-002",
+      "name": "Get Lark Token",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [240, 200],
+      "typeVersion": 4.2
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// ─────────────────────────────────────────────\n// Prep T5 Fetch\n// รับ param: ?tech=PAM (optional)\n// Fetch ALL T5 ที่ Status ≠ เสร็จแล้ว\n// กรอง date ใน N8N-side (Lark Date filter มีปัญหา 1254002)\n// ─────────────────────────────────────────────\nconst token     = $input.first().json.tenant_access_token;\nconst qs        = $('GET /get-tech-jobs').first().json.query || {};\nconst techParam = (qs.tech || '').toUpperCase();\n\n// Fetch ทุก T5 ที่ยังไม่ Done — ไม่ใส่ date filter (Lark Date filter พัง)\n// ใส่ Status filter (SingleSelect ทำงานได้)\nconst searchBody = JSON.stringify({\n  page_size: 500,\n  filter: {\n    conjunction: 'and',\n    conditions: [{\n      field_name: 'Status',\n      operator:   'isNot',\n      value:      ['เสร็จแล้ว']\n    }]\n  }\n});\n\nreturn [{ json: { lark_token: token, techParam, searchBody } }];"
+      },
+      "id": "gtj-003",
+      "name": "Prep T5 Fetch",
+      "type": "n8n-nodes-base.code",
+      "position": [480, 200],
+      "typeVersion": 2
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open.larksuite.com/open-apis/bitable/v1/apps/UOZZb0ImVaRYy1sDjUNjm3jqpye/tables/tblXb6wG3DI7FmzJ/records/search",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{
+          "name": "Authorization",
+          "value": "={{ 'Bearer ' + $json.lark_token }}"
+        }]},
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.searchBody }}",
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "gtj-004",
+      "name": "Search T5",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [720, 200],
+      "typeVersion": 4.2,
+      "onError": "continueRegularOutput"
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// ─────────────────────────────────────────────\n// Parse & Filter Jobs\n// กรอง: scheduled date = วันนี้ ± 1 วัน (BKK)\n// คืน array of jobs สำหรับ tech.html\n// ─────────────────────────────────────────────\nfunction txt(v) {\n  if (!v) return '';\n  if (typeof v === 'string') return v;\n  if (typeof v === 'number') return String(v);\n  if (v.value !== undefined && Array.isArray(v.value)) {\n    if (v.value.length === 0) return '';\n    const f = v.value[0];\n    if (typeof f === 'string') return f;\n    if (f?.text) return f.text;\n    if (f?.name) return f.name;\n  }\n  if (Array.isArray(v)) {\n    if (v.length === 0) return '';\n    const f = v[0];\n    if (typeof f === 'string') return f;\n    if (f?.text) return f.text;\n    if (f?.name) return f.name;\n  }\n  if (v.text) return v.text;\n  if (v.name) return v.name;\n  return '';\n}\n\nconst prep   = $('Prep T5 Fetch').first().json;\nconst tech   = prep.techParam || '';     // 'PAM' | '' (all)\nconst data   = $input.first().json;\nconst items  = data.data?.items || [];\n\n// Bangkok date range: ยอมรับงานย้อนหลัง 1 วัน ถึงอนาคต 7 วัน\nconst BKK       = 7 * 3600 * 1000;\nconst nowMs     = Date.now();\nconst bkk       = new Date(nowMs + BKK);\nconst todayMs   = Date.UTC(bkk.getUTCFullYear(), bkk.getUTCMonth(), bkk.getUTCDate()) - BKK;\nconst rangeFrom = todayMs - 86400000;        // เมื่อวาน (งานค้างจากวาน)\nconst rangeTo   = todayMs + 7 * 86400000;   // ไป 7 วันข้างหน้า\n\nconst STATUS_LABELS = {\n  'รอยืนยัน':          '⏳ รอยืนยัน',\n  'ยืนยันแล้ว':         '✅ ยืนยันแล้ว',\n  'กำลังดำเนินการ':     '🔧 กำลังดำเนินการ',\n  'เสร็จแล้ว':          '✅ เสร็จแล้ว'\n};\n\nconst jobs = items\n  .map(item => {\n    const f  = item.fields || {};\n    const sd = parseInt(f['Scheduled Date']) || 0;\n    return {\n      record_id:    item.record_id,\n      job_id:       txt(f['Job No.']),\n      shop_name:    txt(f['Shop Name'])    || '(ไม่มีชื่อร้าน)',\n      status:       txt(f['Status'])       || 'รอยืนยัน',\n      status_label: STATUS_LABELS[txt(f['Status'])] || txt(f['Status']),\n      scheduled_ms: sd,\n      scheduled_date: sd ? new Date(sd + BKK).toISOString().substring(0, 10) : '',\n      job_type:     Array.isArray(f['Job Type'])\n                      ? f['Job Type'].join(', ')\n                      : txt(f['Job Type']),\n      stages:       Array.isArray(f['Stages Covered'])\n                      ? f['Stages Covered'].join(', ')\n                      : txt(f['Stages Covered']),\n      maps_url:     txt(f['Google Maps URL'])  || '',\n      line_id:      txt(f['C.LINE User ID'])   || ''\n    };\n  })\n  .filter(job => {\n    // กรองตาม date range\n    if (job.scheduled_ms && (job.scheduled_ms < rangeFrom || job.scheduled_ms > rangeTo)) return false;\n    return true;\n  })\n  .sort((a, b) => (a.scheduled_ms || 0) - (b.scheduled_ms || 0));\n\n// Date display สำหรับ header\nconst TH_DAYS = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัส','ศุกร์','เสาร์'];\nconst dateLabel = 'วัน' + TH_DAYS[bkk.getUTCDay()] + ' ' + bkk.getUTCDate() + '/' + (bkk.getUTCMonth()+1);\n\nreturn [{ json: { jobs, count: jobs.length, techFilter: tech, dateLabel } }];"
+      },
+      "id": "gtj-005",
+      "name": "Parse Jobs",
+      "type": "n8n-nodes-base.code",
+      "position": [960, 200],
+      "typeVersion": 2
+    },
+
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, jobs: $json.jobs, count: $json.count, date: $json.dateLabel, tech: $json.techFilter }) }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" },
+              { "name": "Content-Type",                "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "gtj-006",
+      "name": "Respond Jobs JSON",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [1200, 200],
+      "typeVersion": 1.1
+    }
+
+  ],
+
+  "connections": {
+    "GET /get-tech-jobs": { "main": [[
+      { "node": "Get Lark Token", "type": "main", "index": 0 }
+    ]]},
+    "Get Lark Token": { "main": [[
+      { "node": "Prep T5 Fetch", "type": "main", "index": 0 }
+    ]]},
+    "Prep T5 Fetch": { "main": [[
+      { "node": "Search T5", "type": "main", "index": 0 }
+    ]]},
+    "Search T5": { "main": [[
+      { "node": "Parse Jobs", "type": "main", "index": 0 }
+    ]]},
+    "Parse Jobs": { "main": [[
+      { "node": "Respond Jobs JSON", "type": "main", "index": 0 }
+    ]]}
+  },
+
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "999f38d9444535a4c9da35e8c7be72e1c3b6cca77c4ee547703ada54237ec1b4"
+  }
+}

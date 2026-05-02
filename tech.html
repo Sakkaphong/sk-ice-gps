@@ -112,6 +112,26 @@ html,body{font-family:var(--font);background:var(--bg);min-height:100vh;overflow
 .check-wrap{display:flex;align-items:center;gap:14px;background:#F5F5F7;border-radius:14px;padding:16px;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;}
 .check-wrap input[type=checkbox]{width:24px;height:24px;accent-color:var(--green);cursor:pointer;flex-shrink:0;}
 .check-lbl{font-size:15px;font-weight:600;color:var(--text);}
+/* ── A2 Job List ── */
+.job-list-card{background:var(--card);border-radius:var(--radius);padding:20px;box-shadow:0 2px 12px rgba(0,0,0,.06);margin-bottom:16px;}
+.job-list-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+.job-list-title{font-size:17px;font-weight:700;color:var(--text);}
+.job-list-date{font-size:12px;color:var(--muted);}
+.job-item{display:flex;flex-direction:column;gap:5px;padding:14px;border-radius:12px;border:1.5px solid var(--border);margin-bottom:10px;cursor:pointer;transition:border-color .15s,background .15s;-webkit-tap-highlight-color:transparent;}
+.job-item:active{background:#F0F7FF;border-color:var(--accent);}
+.job-item:last-child{margin-bottom:0;}
+.job-item-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+.job-shop{font-size:15px;font-weight:700;color:var(--text);}
+.job-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:var(--radius-pill);flex-shrink:0;}
+.badge-wait{background:#FFF3CD;color:#856404;}
+.badge-confirm{background:#D1FAE5;color:#065F46;}
+.badge-wip{background:#DBEAFE;color:#1E40AF;}
+.job-item-mid{display:flex;gap:12px;font-size:12px;color:var(--muted);}
+.job-type-tag{background:#F5F5F7;border-radius:6px;padding:2px 8px;font-weight:600;color:var(--muted);}
+.job-no{font-size:11px;color:#C7C7CC;}
+.job-empty{text-align:center;padding:28px 0;font-size:14px;color:var(--muted);}
+.job-loading{text-align:center;padding:28px 0;font-size:14px;color:var(--muted);}
+.job-list-retry{background:none;border:1.5px solid var(--border);border-radius:var(--radius-pill);padding:8px 18px;font-size:13px;font-weight:600;color:var(--accent);cursor:pointer;margin-top:10px;font-family:var(--font);}
 </style>
 </head>
 <body>
@@ -138,6 +158,18 @@ html,body{font-family:var(--font);background:var(--bg);min-height:100vh;overflow
 </div>
 
 <div class="content">
+
+  <!-- A2: Job List — แสดงก่อนเลือกงาน -->
+  <div class="job-list-card" id="job-list-card">
+    <div class="job-list-header">
+      <div class="job-list-title">📋 งานวันนี้</div>
+      <div class="job-list-date" id="job-list-date">กำลังโหลด...</div>
+    </div>
+    <div id="job-list-body">
+      <div class="job-loading">⏳ กำลังดึงข้อมูลงาน...</div>
+    </div>
+  </div>
+
   <div class="steps">
     <div class="step" id="step-1"></div>
     <div class="step" id="step-2"></div>
@@ -444,7 +476,88 @@ async function initLIFF() {
 window.addEventListener('load', function(){
   initLIFF();          // A1: ดึง LINE identity
   setTimeout(checkResume, 600);
+  loadJobs();          // A2: ดึง Job List
 });
+
+// ── A2: Job List ──────────────────────────────
+var JOBS_LOADED = false;
+var BADGE_MAP = { 'รอยืนยัน':'badge-wait', 'ยืนยันแล้ว':'badge-confirm', 'กำลังดำเนินการ':'badge-wip' };
+
+async function loadJobs() {
+  var body = document.getElementById('job-list-body');
+  while (body.firstChild) body.removeChild(body.firstChild);
+  var loading = document.createElement('div');
+  loading.className = 'job-loading';
+  loading.textContent = '⏳ กำลังดึงข้อมูลงาน...';
+  body.appendChild(loading);
+
+  try {
+    var techQ = (T && T !== 'ช่าง') ? '?tech=' + encodeURIComponent(T) : '';
+    var res  = await fetch(BASE + '/get-tech-jobs' + techQ);
+    var data = await res.json();
+    document.getElementById('job-list-date').textContent = data.date || '';
+    while (body.firstChild) body.removeChild(body.firstChild);
+
+    var jobs = data.jobs || [];
+    if (jobs.length === 0) {
+      var empty = document.createElement('div'); empty.className = 'job-empty';
+      empty.textContent = 'ยังไม่มีงานวันนี้ 😊';
+      var retry = document.createElement('button'); retry.className = 'job-list-retry';
+      retry.textContent = 'โหลดใหม่'; retry.onclick = loadJobs;
+      empty.appendChild(document.createElement('br')); empty.appendChild(retry);
+      body.appendChild(empty); return;
+    }
+
+    jobs.forEach(function(job) {
+      var card = document.createElement('div'); card.className = 'job-item';
+      card.addEventListener('click', function() { selectJob(job); });
+
+      var top = document.createElement('div'); top.className = 'job-item-top';
+      var shopEl = document.createElement('div'); shopEl.className = 'job-shop';
+      shopEl.textContent = job.shop_name || '(ไม่มีชื่อร้าน)';
+      var badgeEl = document.createElement('div');
+      badgeEl.className = 'job-badge ' + (BADGE_MAP[job.status] || 'badge-wait');
+      badgeEl.textContent = job.status_label || job.status;
+      top.appendChild(shopEl); top.appendChild(badgeEl);
+
+      var mid = document.createElement('div'); mid.className = 'job-item-mid';
+      var typeTag = document.createElement('span'); typeTag.className = 'job-type-tag';
+      typeTag.textContent = job.job_type || 'PM';
+      var dateEl = document.createElement('span');
+      dateEl.textContent = (job.scheduled_date || '') + (job.stages ? ' · ' + job.stages : '');
+      mid.appendChild(typeTag); mid.appendChild(dateEl);
+
+      var noEl = document.createElement('div'); noEl.className = 'job-no';
+      noEl.textContent = job.job_id || '';
+
+      card.appendChild(top); card.appendChild(mid); card.appendChild(noEl);
+      body.appendChild(card);
+    });
+    JOBS_LOADED = true;
+  } catch(e) {
+    while (body.firstChild) body.removeChild(body.firstChild);
+    var errDiv = document.createElement('div'); errDiv.className = 'job-empty';
+    errDiv.textContent = 'โหลดงานไม่สำเร็จ';
+    var retry2 = document.createElement('button'); retry2.className = 'job-list-retry';
+    retry2.textContent = 'ลองใหม่'; retry2.onclick = loadJobs;
+    errDiv.appendChild(document.createElement('br')); errDiv.appendChild(retry2);
+    body.appendChild(errDiv);
+  }
+}
+
+function selectJob(job) {
+  if (job.job_id)    W  = job.job_id;
+  if (job.shop_name) CN = job.shop_name;
+  if (job.maps_url)  AD = job.maps_url;
+  if (job.line_id)   CL = job.line_id;
+  document.getElementById('nav-work-tag').textContent = job.job_id || '-';
+  var dShop = document.getElementById('d-shop');
+  var dJob  = document.getElementById('d-job');
+  if (dShop) dShop.textContent = job.shop_name || '-';
+  if (dJob)  dJob.textContent  = job.job_id    || '-';
+  document.getElementById('job-list-card').style.display = 'none';
+}
+// ─────────────────────────────────────────────
 
 // ── GPS ──
 function startGPS(isResume){
