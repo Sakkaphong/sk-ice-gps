@@ -1,0 +1,444 @@
+{
+  "name": "WF LINE OA Webhook — After Hours + Group Name",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "line-oa-webhook",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "108e83b3-fcae-439e-b51e-0a4306ac67a9",
+      "name": "LINE OA Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [-240, 112],
+      "webhookId": "line-oa-webhook",
+      "typeVersion": 2
+    },
+
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "OK",
+        "options": { "responseCode": 200 }
+      },
+      "id": "c529b71e-3a33-471a-989c-24bb46729974",
+      "name": "Respond to LINE",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [0, 0],
+      "typeVersion": 1.1
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// ─────────────────────────────────────────────\n// Extract Event\n// จัดการทั้ง 'message' และ 'postback' (ack จากปุ่ม ✅ ตอบแล้ว)\n// ─────────────────────────────────────────────\nconst body   = $json.body || $json;\nconst events = body.events || [];\nconst event  = events[0];\n\nif (!event) return [];\n\n// ── Postback: SK TEAM กด ✅ ตอบแล้ว ──\nif (event.type === 'postback') {\n  const postData = event.postback?.data || '';\n  const params   = Object.fromEntries(new URLSearchParams(postData));\n  if (params.action === 'ack' && params.row_id) {\n    return [{ json: {\n      eventType:  'postback_ack',\n      rowId:      params.row_id,\n      userId:     event.source?.userId  || '',\n      groupId:    event.source?.groupId || '',\n      replyToken: event.replyToken      || ''\n    }}];\n  }\n  return [];\n}\n\n// ── Message ──\nif (event.type !== 'message') return [];\n\nconst source      = event.source || {};\nconst sourceType  = source.type || 'user';\nconst userId      = source.userId  || '';\nconst groupId     = source.groupId || source.roomId || '';\nconst replyToken  = event.replyToken || '';\nconst messageText = event.message?.text || '';\nconst messageType = event.message?.type || 'unknown';\n\nif (messageType !== 'text' || !userId) return [];\n\n// กลุ่มภายใน SK-ICE — หยุดทันที ไม่ผ่านไป After Hours ไม่ log\nconst INTERNAL_GROUPS = [\n  'C40b37d81f4e199a7b7357537166a1efd'  // SK TEAM (11)\n];\nif (sourceType === 'group' && INTERNAL_GROUPS.includes(groupId)) return [];\n\nreturn [{ json: {\n  eventType: 'message',\n  userId, groupId, sourceType, replyToken,\n  combinedMessage: messageText, messageType\n} }];"
+      },
+      "id": "6aa99820-f29e-4935-b956-77c689fc7f12",
+      "name": "Extract Message",
+      "type": "n8n-nodes-base.code",
+      "position": [0, 240],
+      "typeVersion": 2
+    },
+
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 3 },
+          "conditions": [{
+            "id": "is-ack-check",
+            "leftValue": "={{ $json.eventType }}",
+            "rightValue": "postback_ack",
+            "operator": { "type": "string", "operation": "equals" }
+          }],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ack-if-001",
+      "name": "Is Postback ACK?",
+      "type": "n8n-nodes-base.if",
+      "position": [240, 240],
+      "typeVersion": 2.3
+    },
+
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1AonEWwfw_e-DhFyoPcQB1yICIG7LY8n641-n1M971TE",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "unanswered_msgs",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_id":       "={{ $json.rowId }}",
+            "acknowledged": "TRUE",
+            "ack_at":       "={{ $now.toISO() }}"
+          },
+          "matchingColumns": ["row_id"],
+          "schema": [
+            { "id": "row_id",       "displayName": "row_id",       "required": false, "defaultMatch": true,  "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "acknowledged", "displayName": "acknowledged", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "ack_at",       "displayName": "ack_at",       "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "ack-sheets-001",
+      "name": "Mark Acknowledged",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [480, 100],
+      "typeVersion": 4.7,
+      "credentials": {
+        "googleApi": { "id": "OAN4CwYXo51bAkGB", "name": "Google Sheets (Service Account)" }
+      }
+    },
+
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 3 },
+          "conditions": [{
+            "id": "is-group-check",
+            "leftValue": "={{ $json.sourceType }}",
+            "rightValue": "group",
+            "operator": { "type": "string", "operation": "equals" }
+          }],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "new-is-group-001",
+      "name": "Is Group Source?",
+      "type": "n8n-nodes-base.if",
+      "position": [240, 240],
+      "typeVersion": 2.3
+    },
+
+    {
+      "parameters": {
+        "url": "=https://api.line.me/v2/bot/group/{{ $('Extract Message').first().json.groupId }}/summary",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{
+          "name": "Authorization",
+          "value": "Bearer Ng84+hoTD9tPknpLmBAt1cwStuEhjo79Snj7EtTZOK8GBzOZvwQj0LnpspyFLu7GjVc6Y/kvCPmo/lLsvgjAqv+RGKHLpKA6fq7/nkHCW9otlToTdeAwoi+/f6Pcy24QMkqdI8hn1ceyqQXlN6+pUQdB04t89/1O/w1cDnyilFU="
+        }]},
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "new-get-group-001",
+      "name": "Get Group Name",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [480, 140],
+      "typeVersion": 4.1,
+      "onError": "continueRegularOutput"
+    },
+
+    {
+      "parameters": {
+        "url": "=https://api.line.me/v2/bot/profile/{{ $('Extract Message').first().json.userId }}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{
+          "name": "Authorization",
+          "value": "Bearer Ng84+hoTD9tPknpLmBAt1cwStuEhjo79Snj7EtTZOK8GBzOZvwQj0LnpspyFLu7GjVc6Y/kvCPmo/lLsvgjAqv+RGKHLpKA6fq7/nkHCW9otlToTdeAwoi+/f6Pcy24QMkqdI8hn1ceyqQXlN6+pUQdB04t89/1O/w1cDnyilFU="
+        }]},
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "58bbdfa1-8048-42ea-af68-fcf136bda32b",
+      "name": "Get LINE Profile",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [720, 240],
+      "typeVersion": 4.1,
+      "onError": "continueRegularOutput"
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// ─────────────────────────────────────────────\n// Build Notification Data\n// รวม LINE profile + source info + message\n// เพื่อให้ nodes ถัดไปใช้ $json.xxx ได้เลย\n// ─────────────────────────────────────────────\nconst profile = $input.first().json;\nconst msgData = $('Extract Message').first().json;\nconst sourceType = msgData.sourceType || 'user';\nconst groupId    = msgData.groupId    || '';\n\nlet groupName   = '';\nlet sourceLabel = '💬 DM ส่วนตัว';\n\nif (sourceType === 'group') {\n  try {\n    const grp = $('Get Group Name').first().json;\n    groupName = grp.groupName || '';\n    sourceLabel = groupName\n      ? ('📢 กลุ่ม: ' + groupName)\n      : ('📢 กลุ่ม (ID: ' + groupId + ')');\n  } catch(e) {\n    sourceLabel = '📢 กลุ่ม (ID: ' + groupId + ')';\n  }\n} else if (sourceType === 'room') {\n  sourceLabel = '💬 ห้องกลุ่ม';\n}\n\nreturn [{ json: {\n  userId:          msgData.userId,\n  groupId:         groupId,\n  sourceType:      sourceType,\n  sourceLabel:     sourceLabel,\n  groupName:       groupName,\n  combinedMessage: msgData.combinedMessage,\n  replyToken:      msgData.replyToken,\n  displayName:     profile.displayName || 'ไม่ทราบชื่อ',\n  pictureUrl:      profile.pictureUrl  || ''\n}}];"
+      },
+      "id": "new-build-notif-001",
+      "name": "Build Notification Data",
+      "type": "n8n-nodes-base.code",
+      "position": [960, 240],
+      "typeVersion": 2
+    },
+
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1AonEWwfw_e-DhFyoPcQB1yICIG7LY8n641-n1M971TE",
+          "mode": "list",
+          "cachedResultName": "SK ICE LINE FB Logger",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1AonEWwfw_e-DhFyoPcQB1yICIG7LY8n641-n1M971TE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1708892739,
+          "mode": "list",
+          "cachedResultName": "LINE & FB User IDs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1AonEWwfw_e-DhFyoPcQB1yICIG7LY8n641-n1M971TE/edit#gid=1708892739"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "LINE User ID":       "={{ $json.userId }}",
+            "ชื่อ / Display Name": "={{ $json.displayName }}",
+            "ช่องทาง":            "={{ $json.sourceType === 'group' ? 'LINE Group' : 'LINE' }}",
+            "ข้อความแรก":         "={{ $json.combinedMessage }}",
+            "วันที่ทักครั้งแรก":  "={{ $now.toISO() }}",
+            "อัปเดตล่าสุด":       "={{ $now.toISO() }}",
+            "สถานะ Match":        "รอจับคู่",
+            "หมายเหตุ":           "={{ $json.sourceLabel }}"
+          },
+          "matchingColumns": ["LINE User ID"],
+          "schema": [
+            { "id": "LINE User ID",       "displayName": "LINE User ID",       "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true, "removed": false },
+            { "id": "FB PSID",            "displayName": "FB PSID",            "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "ชื่อ / Display Name","displayName": "ชื่อ / Display Name","required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": " Nickname (OA)",     "displayName": " Nickname (OA)",     "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "ชื่อร้าน (T1 Match)","displayName": "ชื่อร้าน (T1 Match)","required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Customer ID",        "displayName": "Customer ID",        "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "เบอร์โทร",           "displayName": "เบอร์โทร",           "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "ช่องทาง",            "displayName": "ช่องทาง",            "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "ข้อความแรก",         "displayName": "ข้อความแรก",         "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "วันที่ทักครั้งแรก",  "displayName": "วันที่ทักครั้งแรก",  "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "อัปเดตล่าสุด",       "displayName": "อัปเดตล่าสุด",       "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "สถานะ Match",        "displayName": "สถานะ Match",        "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "หมายเหตุ",           "displayName": "หมายเหตุ",           "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [1200, 100],
+      "id": "bb67f6f4-c7d1-4d93-971b-95c619a3a3e2",
+      "name": "Logger - LINE",
+      "credentials": {
+        "googleApi": { "id": "OAN4CwYXo51bAkGB", "name": "Google Sheets (Service Account)" }
+      }
+    },
+
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 3 },
+          "conditions": [{
+            "id": "bc81cb02-2a2f-4549-85f7-060fa97cdaf2",
+            "leftValue": "={{ (() => { const t = new Date(Date.now() + 7*60*60*1000); const h = t.getUTCHours(); const m = t.getUTCMinutes(); return h < 8 || (h === 8 && m < 30) || h >= 20; })() }}",
+            "rightValue": "=true",
+            "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+          }],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [1200, 300],
+      "id": "d693ce17-1181-4feb-89a4-7a7427b5cacb",
+      "name": "Is After Hours?"
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/push",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "Authorization", "value": "Bearer Ng84+hoTD9tPknpLmBAt1cwStuEhjo79Snj7EtTZOK8GBzOZvwQj0LnpspyFLu7GjVc6Y/kvCPmo/lLsvgjAqv+RGKHLpKA6fq7/nkHCW9otlToTdeAwoi+/f6Pcy24QMkqdI8hn1ceyqQXlN6+pUQdB04t89/1O/w1cDnyilFU=" },
+          { "name": "Content-Type", "value": "application/json" }
+        ]},
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={\"to\":\"C40b37d81f4e199a7b7357537166a1efd\",\"messages\":[{\"type\":\"text\",\"text\":\"🌙 ข้อความนอกเวลา\\n━━━━━━━━━━━━━━━\\n{{ $('Build Notification Data').item.json.sourceLabel }}\\n👤 ลูกค้า: {{ $('Build Notification Data').item.json.displayName }}\\n💬 {{ $('Build Notification Data').item.json.combinedMessage || '(ไม่มีข้อความ)' }}\\n🕐 {{ new Date(Date.now() + 7*60*60*1000).toLocaleTimeString('th-TH') }}\\n━━━━━━━━━━━━━━━\\n📌 After Hours | บอทตอบแล้ว\"}]}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [1440, 240],
+      "id": "dc9ffa26-6b61-473b-949c-168fa49153b4",
+      "name": "LINE Notify - After Hours Team"
+    },
+
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1AonEWwfw_e-DhFyoPcQB1yICIG7LY8n641-n1M971TE",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "unanswered_msgs",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_id":       "={{ $now.toUnixInteger() + '_' + $('Build Notification Data').item.json.userId.slice(-6) }}",
+            "group_id":     "={{ $('Build Notification Data').item.json.groupId }}",
+            "group_name":   "={{ $('Build Notification Data').item.json.groupName }}",
+            "user_name":    "={{ $('Build Notification Data').item.json.displayName }}",
+            "message_text": "={{ $('Build Notification Data').item.json.combinedMessage }}",
+            "received_at":  "={{ $now.toISO() }}",
+            "acknowledged": "FALSE",
+            "alert_count":  "1",
+            "last_alert_at":"={{ $now.toISO() }}"
+          },
+          "schema": [
+            { "id": "row_id",        "displayName": "row_id",        "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "group_id",      "displayName": "group_id",      "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "group_name",    "displayName": "group_name",    "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "user_name",     "displayName": "user_name",     "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "message_text",  "displayName": "message_text",  "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "received_at",   "displayName": "received_at",   "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "acknowledged",  "displayName": "acknowledged",  "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "alert_count",   "displayName": "alert_count",   "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "last_alert_at", "displayName": "last_alert_at", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [1440, 440],
+      "id": "pending-save-001",
+      "name": "Save Pending Msg",
+      "credentials": {
+        "googleApi": { "id": "OAN4CwYXo51bAkGB", "name": "Google Sheets (Service Account)" }
+      }
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/push",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "Authorization", "value": "Bearer Ng84+hoTD9tPknpLmBAt1cwStuEhjo79Snj7EtTZOK8GBzOZvwQj0LnpspyFLu7GjVc6Y/kvCPmo/lLsvgjAqv+RGKHLpKA6fq7/nkHCW9otlToTdeAwoi+/f6Pcy24QMkqdI8hn1ceyqQXlN6+pUQdB04t89/1O/w1cDnyilFU=" },
+          { "name": "Content-Type", "value": "application/json" }
+        ]},
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={\"to\":\"U0c15c7dd5257e6ea5ae251279eee92f4\",\"messages\":[{\"type\":\"text\",\"text\":\"🌙 ข้อความนอกเวลา\\n━━━━━━━━━━━━━━━\\n{{ $('Build Notification Data').item.json.sourceLabel }}\\n👤 ลูกค้า: {{ $('Build Notification Data').item.json.displayName }}\\n💬 {{ $('Build Notification Data').item.json.combinedMessage || '(ไม่มีข้อความ)' }}\\n🕐 {{ new Date(Date.now() + 7*60*60*1000).toLocaleTimeString('th-TH') }}\\n━━━━━━━━━━━━━━━\\n📌 After Hours | บอทตอบแล้ว\"}]}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [1680, 240],
+      "id": "5265376b-7a10-4d99-aaaa-e9118c36fe3f",
+      "name": "LINE Notify - After Hour Sakkphong"
+    },
+
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 3 },
+          "conditions": [{
+            "id": "repair-after-hours",
+            "leftValue": "={{ $('Build Notification Data').item.json.combinedMessage }}",
+            "rightValue": "(เสีย|พัง|ซ่อม|แจ้งซ่อม|ไม่ทำงาน|ใช้ไม่ได้|เครื่องมีปัญหา|มีปัญหา|ขอช่าง|ขึ้น error|ไม่ออก|ไม่ผลิต|น้ำแข็งน้อย|รั่ว|ขัดข้อง|น้ำไม่ออก|ไม่เย็น|E01|E02|E03|E04|E05|E06|HB|HT|OT)",
+            "operator": { "type": "string", "operation": "regex" }
+          }],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [1920, 240],
+      "id": "c194df71-fe9e-4005-a22b-d3a8fdf653be",
+      "name": "Is Repair (After Hours)?"
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/push",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "Authorization", "value": "Bearer Ng84+hoTD9tPknpLmBAt1cwStuEhjo79Snj7EtTZOK8GBzOZvwQj0LnpspyFLu7GjVc6Y/kvCPmo/lLsvgjAqv+RGKHLpKA6fq7/nkHCW9otlToTdeAwoi+/f6Pcy24QMkqdI8hn1ceyqQXlN6+pUQdB04t89/1O/w1cDnyilFU=" },
+          { "name": "Content-Type", "value": "application/json" }
+        ]},
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={\"to\":\"C40b37d81f4e199a7b7357537166a1efd\",\"messages\":[{\"type\":\"text\",\"text\":\"🚨 ซ่อมด่วน นอกเวลาทำการ!\\n━━━━━━━━━━━━━━━\\n{{ $('Build Notification Data').item.json.sourceLabel }}\\n👤 ลูกค้า: {{ $('Build Notification Data').item.json.displayName }}\\n💬 {{ $('Build Notification Data').item.json.combinedMessage || '(ไม่มีข้อความ)' }}\\n🕐 {{ new Date(Date.now() + 7*60*60*1000).toLocaleTimeString('th-TH') }}\\n━━━━━━━━━━━━━━━\\n📌 URGENT | Repair After Hours\"}]}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [2160, 220],
+      "id": "45cb9e02-d130-4584-845f-2b040bab459d",
+      "name": "LINE Notify - Urgent Repair"
+    }
+  ],
+
+  "connections": {
+    "LINE OA Webhook": { "main": [[
+      { "node": "Respond to LINE",  "type": "main", "index": 0 },
+      { "node": "Extract Message",  "type": "main", "index": 0 }
+    ]]},
+    "Extract Message": { "main": [[
+      { "node": "Is Postback ACK?", "type": "main", "index": 0 }
+    ]]},
+    "Is Postback ACK?": { "main": [
+      [{ "node": "Mark Acknowledged", "type": "main", "index": 0 }],
+      [{ "node": "Is Group Source?",  "type": "main", "index": 0 }]
+    ]},
+    "Is Group Source?": { "main": [
+      [{ "node": "Get Group Name",    "type": "main", "index": 0 }],
+      [{ "node": "Get LINE Profile",  "type": "main", "index": 0 }]
+    ]},
+    "Get Group Name": { "main": [[
+      { "node": "Get LINE Profile",   "type": "main", "index": 0 }
+    ]]},
+    "Get LINE Profile": { "main": [[
+      { "node": "Build Notification Data", "type": "main", "index": 0 }
+    ]]},
+    "Build Notification Data": { "main": [[
+      { "node": "Logger - LINE",     "type": "main", "index": 0 },
+      { "node": "Is After Hours?",   "type": "main", "index": 0 }
+    ]]},
+    "Is After Hours?": { "main": [[
+      { "node": "LINE Notify - After Hours Team", "type": "main", "index": 0 }
+    ]]},
+    "LINE Notify - After Hours Team": { "main": [[
+      { "node": "LINE Notify - After Hour Sakkphong", "type": "main", "index": 0 },
+      { "node": "Save Pending Msg",                  "type": "main", "index": 0 }
+    ]]},
+    "LINE Notify - After Hour Sakkphong": { "main": [[
+      { "node": "Is Repair (After Hours)?", "type": "main", "index": 0 }
+    ]]},
+    "Is Repair (After Hours)?": { "main": [[
+      { "node": "LINE Notify - Urgent Repair", "type": "main", "index": 0 }
+    ]]}
+  },
+
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "999f38d9444535a4c9da35e8c7be72e1c3b6cca77c4ee547703ada54237ec1b4"
+  }
+}

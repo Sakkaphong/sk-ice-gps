@@ -1,0 +1,195 @@
+{
+  "name": "WF Unanswered Message Escalation — Cron",
+  "nodes": [
+
+    {
+      "id": "sticky-um-001",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [-60, -200],
+      "typeVersion": 1,
+      "parameters": {
+        "content": "## ⏰ Unanswered Message Escalation\n---\n**ทุก 15 นาที** — ตรวจ `pending_msgs` ใน Google Sheets\n\n📌 **เงื่อนไขแจ้งเตือน**\n- ข้อความค้างนาน **30+ นาที** ยังไม่มีคนตอบ\n- แจ้งเตือน SK TEAM ซ้ำสูงสุด **3 รอบ** (ทุก 15 นาที)\n- เกิน **8 ชั่วโมง** หยุดแจ้งอัตโนมัติ\n\n✅ **Mark ว่าตอบแล้ว** → เปิด Sheet → ตั้ง `acknowledged = TRUE`",
+        "height": 280,
+        "width":  500,
+        "color":  3
+      }
+    },
+
+    {
+      "id": "um-001",
+      "name": "Cron — Every 15 Min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [0, 200],
+      "typeVersion": 1.1,
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "minutes", "minutesInterval": 15 }]
+        }
+      }
+    },
+
+    {
+      "id": "um-002",
+      "name": "Read Pending Msgs",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [240, 200],
+      "typeVersion": 4.7,
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "getRows",
+        "documentId": {
+          "__rl": true,
+          "value": "1AonEWwfw_e-DhFyoPcQB1yICIG7LY8n641-n1M971TE",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "unanswered_msgs",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleApi": { "id": "OAN4CwYXo51bAkGB", "name": "Google Sheets (Service Account)" }
+      }
+    },
+
+    {
+      "id": "um-003",
+      "name": "Filter + Build Alert",
+      "type": "n8n-nodes-base.code",
+      "position": [480, 200],
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "// ─────────────────────────────────────────────\n// Filter + Build Flex Alert\n// หา rows ที่: acknowledged=FALSE, ค้างนาน 60+ นาที, แจ้งไม่เกิน 3 ครั้ง\n// ส่ง Flex Message Carousel — แต่ละการ์ดมีปุ่ม ✅ ตอบแล้ว (postback)\n// เมื่อ SK TEAM tap → webhook รับ postback → mark acknowledged=TRUE อัตโนมัติ\n// ─────────────────────────────────────────────\nconst now          = Date.now();\nconst BKK          = 7 * 3600 * 1000;\nconst bkk          = new Date(now + BKK);\nconst timeStr      = bkk.toISOString().replace('T', ' ').substring(0, 16);\n\nconst THRESHOLD_MS = 60 * 60 * 1000;   // 1 ชั่วโมง — ยังไม่ตอบถึงจะ escalate\nconst MAX_ALERTS   = 3;                // แจ้งสูงสุด 3 รอบ (ทุก 15 นาที = 45 นาที)\nconst MAX_AGE_MS   = 8 * 3600 * 1000;  // เกิน 8 ชม. หยุดแจ้งอัตโนมัติ\n\nconst rows = $input.all().map(r => r.json);\n\nconst pending = rows.filter(row => {\n  if (!row.row_id) return false;\n  if ((row.acknowledged || 'FALSE').toUpperCase() === 'TRUE') return false;\n  if (parseInt(row.alert_count || 0) >= MAX_ALERTS) return false;\n  const received = new Date(row.received_at).getTime();\n  const elapsed  = now - received;\n  if (isNaN(elapsed) || elapsed < THRESHOLD_MS) return false;\n  if (elapsed > MAX_AGE_MS) return false;\n  return true;\n});\n\nif (pending.length === 0) return [];\n\n// ── สร้าง Flex Carousel — 1 การ์ดต่อ 1 ข้อความค้าง ──\nconst bubbles = pending.map(row => {\n  const elapsedMin = Math.round((now - new Date(row.received_at).getTime()) / 60000);\n  const alertRound = parseInt(row.alert_count || 0) + 1;\n  const isUrgent   = alertRound >= MAX_ALERTS;\n  const headerBg   = isUrgent ? '#B71C1C' : '#E53935';\n  const src        = row.group_name ? `📢 ${row.group_name}` : '💬 DM ส่วนตัว';\n  const msgPreview = (row.message_text || '').substring(0, 80);\n\n  return {\n    type: 'bubble', size: 'kilo',\n    header: {\n      type: 'box', layout: 'vertical',\n      backgroundColor: headerBg, paddingAll: '12px',\n      contents: [{\n        type: 'text',\n        text: `⏰ รอบที่ ${alertRound}/${MAX_ALERTS} — ยังไม่ตอบ!`,\n        color: '#ffffff', weight: 'bold', size: 'sm'\n      }]\n    },\n    body: {\n      type: 'box', layout: 'vertical', spacing: 'sm', paddingAll: '14px',\n      contents: [\n        { type: 'text', text: src, weight: 'bold', size: 'md', wrap: true },\n        { type: 'text', text: `👤 ${row.user_name || 'ไม่ทราบชื่อ'}`, size: 'sm', color: '#555555' },\n        { type: 'text', text: `💬 ${msgPreview}`, size: 'sm', wrap: true, color: '#333333' },\n        { type: 'separator', margin: 'md' },\n        { type: 'text', text: `⏱ รอมา ${elapsedMin} นาที`, size: 'sm', color: headerBg, weight: 'bold' }\n      ]\n    },\n    footer: {\n      type: 'box', layout: 'vertical', paddingAll: '10px',\n      contents: [{\n        type: 'button', height: 'sm', style: 'primary', color: '#34a853',\n        action: {\n          type: 'postback',\n          label: '✅ ตอบแล้ว',\n          data: `action=ack&row_id=${row.row_id}`,\n          displayText: `✅ ตอบแล้ว (${row.user_name || 'ลูกค้า'})`\n        }\n      }]\n    }\n  };\n});\n\nconst flexPayload = JSON.stringify({\n  to: 'C40b37d81f4e199a7b7357537166a1efd',\n  messages: [{\n    type: 'flex',\n    altText: `⏰ ${pending.length} ข้อความรอตอบ (ค้างนาน 1+ ชม.) — กด ✅ ตอบแล้ว`,\n    contents: { type: 'carousel', contents: bubbles }\n  }]\n});\n\nreturn [{ json: { flexPayload, pendingRows: pending, count: pending.length } }];"
+      }
+    },
+
+    {
+      "id": "um-004",
+      "name": "Has Unanswered?",
+      "type": "n8n-nodes-base.if",
+      "position": [720, 200],
+      "typeVersion": 2.3,
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 3 },
+          "conditions": [{
+            "id": "check-count",
+            "leftValue": "={{ $json.count }}",
+            "rightValue": 0,
+            "operator": { "type": "number", "operation": "gt" }
+          }],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+
+    {
+      "id": "um-005",
+      "name": "LINE Escalation — SK TEAM",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [960, 100],
+      "typeVersion": 4.4,
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/push",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "Authorization", "value": "Bearer Ng84+hoTD9tPknpLmBAt1cwStuEhjo79Snj7EtTZOK8GBzOZvwQj0LnpspyFLu7GjVc6Y/kvCPmo/lLsvgjAqv+RGKHLpKA6fq7/nkHCW9otlToTdeAwoi+/f6Pcy24QMkqdI8hn1ceyqQXlN6+pUQdB04t89/1O/w1cDnyilFU=" },
+          { "name": "Content-Type", "value": "application/json" }
+        ]},
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.flexPayload }}",
+        "options": {}
+      }
+    },
+
+    {
+      "id": "um-006",
+      "name": "Expand Rows to Items",
+      "type": "n8n-nodes-base.code",
+      "position": [1200, 100],
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "// ขยาย pendingRows array เป็น items แยกกัน\n// เพื่อให้ Google Sheets node update ทีละ row\nconst rows = $json.pendingRows || [];\nreturn rows.map(row => ({\n  json: {\n    row_id:        row.row_id,\n    alert_count:   String(parseInt(row.alert_count || 0) + 1),\n    last_alert_at: new Date().toISOString()\n  }\n}));"
+      }
+    },
+
+    {
+      "id": "um-007",
+      "name": "Update Alert Count",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [1440, 100],
+      "typeVersion": 4.7,
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1AonEWwfw_e-DhFyoPcQB1yICIG7LY8n641-n1M971TE",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "unanswered_msgs",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_id":        "={{ $json.row_id }}",
+            "alert_count":   "={{ $json.alert_count }}",
+            "last_alert_at": "={{ $json.last_alert_at }}"
+          },
+          "matchingColumns": ["row_id"],
+          "schema": [
+            { "id": "row_id",        "displayName": "row_id",        "required": false, "defaultMatch": true,  "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "alert_count",   "displayName": "alert_count",   "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "last_alert_at", "displayName": "last_alert_at", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleApi": { "id": "OAN4CwYXo51bAkGB", "name": "Google Sheets (Service Account)" }
+      }
+    }
+
+  ],
+
+  "connections": {
+    "Cron — Every 15 Min": { "main": [[
+      { "node": "Read Pending Msgs", "type": "main", "index": 0 }
+    ]]},
+    "Read Pending Msgs": { "main": [[
+      { "node": "Filter + Build Alert", "type": "main", "index": 0 }
+    ]]},
+    "Filter + Build Alert": { "main": [[
+      { "node": "Has Unanswered?", "type": "main", "index": 0 }
+    ]]},
+    "Has Unanswered?": { "main": [
+      [{ "node": "LINE Escalation — SK TEAM", "type": "main", "index": 0 }],
+      []
+    ]},
+    "LINE Escalation — SK TEAM": { "main": [[
+      { "node": "Expand Rows to Items", "type": "main", "index": 0 }
+    ]]},
+    "Expand Rows to Items": { "main": [[
+      { "node": "Update Alert Count", "type": "main", "index": 0 }
+    ]]}
+  },
+
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "999f38d9444535a4c9da35e8c7be72e1c3b6cca77c4ee547703ada54237ec1b4"
+  }
+}
