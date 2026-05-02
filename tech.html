@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <title>SK ICE — เดินทาง</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBD2P5eugiU8LQg9rMsyA4bv8zu3xJqVRg"></script>
 <style>
 @font-face { font-family:'SukhumvitSet'; src:url('fonts/SukhumvitSet-Bold.ttf'); font-weight:700; font-display:swap; }
@@ -94,6 +95,23 @@ html,body{font-family:var(--font);background:var(--bg);min-height:100vh;overflow
 .completed-icon{font-size:72px;margin-bottom:16px;}
 .completed-title{font-size:22px;font-weight:700;color:var(--green);margin-bottom:10px;}
 .completed-sub{font-size:14px;color:var(--muted);line-height:1.8;white-space:pre-line;}
+/* ── A3 Timestamps ── */
+.ts-box{background:#F5F5F7;border-radius:10px;padding:12px 16px;margin-top:12px;display:flex;flex-direction:column;gap:6px;}
+.ts-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;}
+.ts-lbl{color:var(--muted);}
+.ts-val{font-weight:700;color:var(--text);}
+.ts-val.pending{color:#C7C7CC;font-weight:400;}
+/* ── A5 TDS + Filter ── */
+.tds-wrap{display:flex;align-items:flex-end;gap:10px;margin-top:6px;}
+.tds-block{flex:1;display:flex;flex-direction:column;gap:5px;}
+.tds-lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+.tds-num{width:100%;border:1.5px solid var(--border);border-radius:10px;padding:12px;font-size:20px;font-family:var(--font);outline:none;color:var(--text);text-align:center;background:#fff;-moz-appearance:textfield;}
+.tds-num::-webkit-inner-spin-button,.tds-num::-webkit-outer-spin-button{-webkit-appearance:none;}
+.tds-num:focus{border-color:var(--accent);}
+.tds-arrow{font-size:22px;color:var(--muted);padding-bottom:10px;flex-shrink:0;}
+.check-wrap{display:flex;align-items:center;gap:14px;background:#F5F5F7;border-radius:14px;padding:16px;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;}
+.check-wrap input[type=checkbox]{width:24px;height:24px;accent-color:var(--green);cursor:pointer;flex-shrink:0;}
+.check-lbl{font-size:15px;font-weight:600;color:var(--text);}
 </style>
 </head>
 <body>
@@ -139,6 +157,12 @@ html,body{font-family:var(--font);background:var(--bg);min-height:100vh;overflow
       <div class="fix-step"><div class="fix-num">1</div><div class="fix-text">เปิด <b>การตั้งค่า</b> → <b>ความเป็นส่วนตัว</b> → <b>บริการระบุตำแหน่ง</b></div></div>
       <div class="fix-step"><div class="fix-num">2</div><div class="fix-text">หา <b>Safari</b> → ตั้งเป็น <b>"ขณะใช้แอป"</b></div></div>
       <div class="fix-step"><div class="fix-num">3</div><div class="fix-text">กลับมา Safari → <b>ปิดแล้วเปิดใหม่</b> → กดปุ่มอีกครั้ง</div></div>
+    </div>
+    <!-- A3: Timestamps -->
+    <div class="ts-box" id="ts-box">
+      <div class="ts-row"><span class="ts-lbl">🚗 เริ่มเดินทาง</span><span class="ts-val pending" id="ts-go">—</span></div>
+      <div class="ts-row"><span class="ts-lbl">📍 ถึงที่แล้ว</span><span class="ts-val pending" id="ts-here">—</span></div>
+      <div class="ts-row"><span class="ts-lbl">✅ งานเสร็จ</span><span class="ts-val pending" id="ts-done">—</span></div>
     </div>
   </div>
 
@@ -186,6 +210,30 @@ html,body{font-family:var(--font);background:var(--bg);min-height:100vh;overflow
       <div class="photo-previews" id="photo-previews"></div>
     </div>
 
+    <!-- A5: TDS -->
+    <div class="form-section">
+      <label class="form-label">💧 TDS ค่าน้ำ (ppm)</label>
+      <div class="tds-wrap">
+        <div class="tds-block">
+          <span class="tds-lbl">ก่อนกรอง (IN)</span>
+          <input class="tds-num" type="number" id="tds-in" placeholder="—" min="0" max="9999" inputmode="numeric">
+        </div>
+        <span class="tds-arrow">→</span>
+        <div class="tds-block">
+          <span class="tds-lbl">หลังกรอง (OUT)</span>
+          <input class="tds-num" type="number" id="tds-out" placeholder="—" min="0" max="9999" inputmode="numeric">
+        </div>
+      </div>
+    </div>
+
+    <!-- A5: Filter Changed -->
+    <div class="form-section">
+      <label class="check-wrap">
+        <input type="checkbox" id="filter-changed">
+        <span class="check-lbl">🔄 เปลี่ยนไส้กรองแล้ว</span>
+      </label>
+    </div>
+
     <div class="form-section">
       <label class="form-label">📝 หมายเหตุ</label>
       <textarea class="notes-inp" id="notes" placeholder="รายละเอียดงาน, ปัญหาที่พบ, คำแนะนำ..."></textarea>
@@ -203,11 +251,22 @@ html,body{font-family:var(--font);background:var(--bg);min-height:100vh;overflow
 </div>
 
 <script>
+// ── A1: LIFF Config ──
+const LIFF_ID = '2009959831-acEP45XL';
+
+// LINE userId → ชื่อช่าง (เพิ่มหลังเก็บ userId จากแต่ละคน)
+// วิธีเก็บ: ให้ช่างแต่ละคนเปิด LIFF URL แล้วดู console.log('userId:', profile.userId)
+const TECH_USER_MAP = {
+  // 'U1a2b3c4d...': 'PAM',
+  // 'U5e6f7g8h...': 'NOTE',
+  // 'U9i0j1k2l...': 'TOP',
+  // 'U3m4n5o6p...': 'TAN',
+};
+
 const p    = new URLSearchParams(location.search);
 const W    = p.get('work')  || 'WRK-000';
-const T    = p.get('tech')  || 'ช่าง';
-// รองรับช่างหลายคน — techs = comma-separated, fallback เป็น T คนเดียว
-const TECHS = p.get('techs') ? p.get('techs').split(',').map(s=>decodeURIComponent(s.trim())).filter(Boolean) : [T];
+let   T    = p.get('tech')  || 'ช่าง';   // let เพื่อให้ LIFF override ได้
+let   TECHS = p.get('techs') ? p.get('techs').split(',').map(s=>decodeURIComponent(s.trim())).filter(Boolean) : [T];
 const CL   = p.get('cline') || '';
 const CN   = p.get('cname') || '-';
 const AD   = decodeURIComponent(p.get('addr') || '');
@@ -278,6 +337,16 @@ let currentState = 'new';
 let watchId=null, count=0;
 let parts=[], photoFiles=[];
 
+// A3: Timestamps — record เวลาแต่ละ status
+var timestamps = { traveling: null, arrived: null, completed: null };
+function recordTS(key) {
+  timestamps[key] = new Date().toISOString();
+  var timeStr = new Date(timestamps[key]).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  var elMap = { traveling:'ts-go', arrived:'ts-here', completed:'ts-done' };
+  var el = document.getElementById(elMap[key]);
+  if (el) { el.textContent = timeStr; el.classList.remove('pending'); }
+}
+
 function saveSession(status, extra){
   var obj = {active:true,status:status,job_id:W,tech_name:T,customer_line_id:CL,customer_name:CN,count:count,saved_at:new Date().toISOString()};
   if(extra){ Object.keys(extra).forEach(function(k){ obj[k]=extra[k]; }); }
@@ -338,12 +407,50 @@ function checkResume(){
     startGPS(true);
   }
 }
-window.addEventListener('load', function(){ setTimeout(checkResume, 400); });
+// ── A1: LIFF Init ──
+async function initLIFF() {
+  try {
+    await liff.init({ liffId: LIFF_ID });
+
+    if (liff.isInClient()) {
+      // เปิดใน LINE app จริงๆ
+      if (!liff.isLoggedIn()) { liff.login({ redirectUri: location.href }); return; }
+
+      const profile = await liff.getProfile();
+      console.log('LIFF userId:', profile.userId); // ← ใช้ดึง userId ของช่างแต่ละคน
+
+      // Map userId → ชื่อช่าง ถ้าไม่เจอใน map ใช้ LINE displayName
+      const resolvedName = TECH_USER_MAP[profile.userId] || profile.displayName;
+      T = resolvedName;
+      TECHS = [resolvedName];
+
+      // อัพเดท UI ด้วยชื่อจาก LINE
+      document.getElementById('hdr-sub').textContent = T;
+      document.getElementById('d-tech').textContent  = T;
+      document.getElementById('nav-work-tag').textContent = W || 'งาน';
+
+      // แสดง avatar ถ้ามี
+      if (profile.pictureUrl) {
+        var logo = document.querySelector('.topnav-logo img');
+        if (logo) logo.src = profile.pictureUrl;
+      }
+    }
+    // ถ้าเปิดใน browser ปกติ (ไม่ใช่ LINE) → ใช้ URL params ตามเดิม ไม่ต้องทำอะไร
+  } catch(e) {
+    console.warn('LIFF init failed, falling back to URL params:', e.message);
+  }
+}
+
+window.addEventListener('load', function(){
+  initLIFF();          // A1: ดึง LINE identity
+  setTimeout(checkResume, 600);
+});
 
 // ── GPS ──
 function startGPS(isResume){
   if(!navigator.geolocation){ showFixBox('เบราว์เซอร์ไม่รองรับ GPS'); return; }
   if(!isResume) count=0;
+  if(!isResume) recordTS('traveling');
   setState('traveling');
   document.getElementById('s-icon').textContent='🚗';
   document.getElementById('s-text').textContent=isResume?'กำลังเดินทาง (ต่อ)':'กำลังเดินทาง';
@@ -385,6 +492,7 @@ function showFixBox(msg){
 }
 function arrived(){
   if(currentState!=='traveling') return;
+  recordTS('arrived');
   saveSession('arrived');
   if(watchId){ clearInterval(watchId); watchId=null; }
   setState('arrived');
@@ -530,13 +638,22 @@ async function submitReport(){
 
   // Step 3: ส่ง complete-job พร้อม Cloudinary URLs
   btn.textContent='⏳ กำลังส่งรายงาน...';
+  recordTS('completed');
   var payload={
     job_id:W, tech_name:T, tech_names:TECHS, customer_line_id:CL, customer_name:CN,
     parts:parts,
     notes:document.getElementById('notes').value.trim(),
     photo_count:photoUrls.length,
-    photo_urls:photoUrls,   // Cloudinary URLs แทน base64
-    completed_at:new Date().toISOString()
+    photo_urls:photoUrls,
+    // A3: timestamps ทุก phase
+    timestamps: timestamps,
+    traveling_at: timestamps.traveling,
+    arrived_at:   timestamps.arrived,
+    completed_at: timestamps.completed,
+    // A5: TDS + filter
+    tds_in:  parseInt(document.getElementById('tds-in').value)  || null,
+    tds_out: parseInt(document.getElementById('tds-out').value) || null,
+    filter_changed: document.getElementById('filter-changed').checked
   };
   // 2026-04-20: /complete-job รวม Admin Notify + LINE/SMS + T4 Care Plan แล้ว
   await fetch(BASE+'/complete-job',{method:'POST',headers:authJH(),body:JSON.stringify(payload)})
